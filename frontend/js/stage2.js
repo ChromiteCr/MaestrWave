@@ -5,24 +5,33 @@ document.addEventListener('DOMContentLoaded', () => {
   const info = document.getElementById('conductInfo');
 
   loadBtn.addEventListener('click', async () => {
-    if (!app.currentSession) { alert('请先生成分轨'); return; }
-    info.textContent = '加载中...';
+    if (!app.currentSession) {
+      info.textContent = '请先在阶段一生成，或从下方"音乐库"加载一段。';
+      return;
+    }
+    info.textContent = '加载中…';
     try {
       await app.audioEngine.loadStems(app.currentSession.stems);
-      info.textContent = '分轨加载完成';
+      info.textContent = `分轨加载完成（session=${app.currentSession.session_id}）`;
     } catch (e) {
       info.textContent = '加载失败: ' + (e.message || e);
     }
   });
 
   startBtn.addEventListener('click', async () => {
-    if (!app.currentSession) { alert('请先生成或加载分轨'); return; }
-    info.textContent = '启动指挥，准备传感器权限请求';
+    if (!app.currentSession) {
+      info.textContent = '请先生成或从音乐库加载一段。';
+      return;
+    }
+    info.textContent = '启动指挥…（如在手机请允许传感器权限）';
     try {
       await app.startConducting();
-      info.textContent = '正在指挥...';
+      const tip = SensorInput.isAvailable()
+        ? '正在指挥…（挥动手机）'
+        : '正在播放…（当前设备无传感器，将以默认混音播放）';
+      info.textContent = tip;
     } catch (e) {
-      info.textContent = '启动失败: ' + (e.message || e);
+      info.textContent = '启动失败: ' + (e.message || e) + '。可使用下方音乐库直接试听。';
     }
   });
 
