@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MTX Orchestral Conductor</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+  <header>
+    <h1>MTX 指挥体验</h1>
+  </header>
+
+  <main>
+    <section id="stage1">
+      <h2>阶段一：AI 生成分轨</h2>
+      <label>描述（风格 / 情绪 / 节奏）</label>
+      <textarea id="description" rows="4">Lush cinematic orchestral, warm strings, heroic brass</textarea>
+
+      <div class="row">
+        <label>时长（秒）<input id="duration" type="number" value="60" /></label>
+        <label>BPM<input id="bpm" type="number" value="80" /></label>
+        <label>Key<input id="key" type="text" value="D major" /></label>
+      </div>
+
+      <button id="generateBtn">生成分轨</button>
+      <div id="genInfo"></div>
+    </section>
+
+    <hr />
+
+    <section id="stage2">
+      <h2>阶段二：实时指挥</h2>
+      <div class="controls">
+        <button id="loadBtn">加载分轨</button>
+        <button id="startBtn">开始指挥</button>
+        <button id="stopBtn">停止</button>
+      </div>
+      <div id="conductInfo"></div>
+    </section>
+  </main>
+
+  <footer>
+    <small>本系统为演示骨架，需本地部署 ACE-Step API 以完成音频生成。</small>
+  </footer>
+
+  <script src="/static/js/sensor.js"></script>
+  <script src="/static/js/gesture.js"></script>
+  <script src="/static/js/audio-engine.js"></script>
+  <script src="/static/js/app.js"></script>
+  <script src="/static/js/stage1.js"></script>
+  <script src="/static/js/stage2.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      window.app = new MTXApp();
+      await app.init();
+    });
+  </script>
+</body>
+</html>
