@@ -2,9 +2,14 @@ from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from stems import StemGenerator
 from pathlib import Path
 import logging
+
+# support running as package (backend.app) or as module (app)
+try:
+    from .stems import StemGenerator
+except Exception:
+    from stems import StemGenerator
 
 logger = logging.getLogger(__name__)
 

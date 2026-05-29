@@ -2,8 +2,14 @@ import asyncio
 import uuid
 import logging
 from pathlib import Path
-from generator import ACEStepGenerator
-from config import STEM_PROMPTS, OUTPUT_DIR
+
+# support package or module import
+try:
+    from .generator import ACEStepGenerator
+    from .config import STEM_PROMPTS, OUTPUT_DIR
+except Exception:
+    from generator import ACEStepGenerator
+    from config import STEM_PROMPTS, OUTPUT_DIR
 
 logger = logging.getLogger(__name__)
 

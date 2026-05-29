@@ -2,7 +2,12 @@ import asyncio
 import logging
 import httpx
 from pathlib import Path
-from config import ACESTEP_API_URL, LOKR_WEIGHTS_PATH
+
+# support running as package (backend.generator) or as module (generator)
+try:
+    from .config import ACESTEP_API_URL, LOKR_WEIGHTS_PATH
+except Exception:
+    from config import ACESTEP_API_URL, LOKR_WEIGHTS_PATH
 
 logger = logging.getLogger(__name__)
 
