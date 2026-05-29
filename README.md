@@ -96,7 +96,3 @@ cd backend
 python dev_generate_mock.py
 # 启动服务后在浏览器加载该 session 的 /audio/<session_id>/full_mix.wav
 ```
-
-版权与许可
-- 本仓库为示例骨架，实现参考用户提供的项目规范。请在实际发布前补充许可与作者信息。
-
