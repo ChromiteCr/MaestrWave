@@ -4,8 +4,11 @@ from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 from pathlib import Path
 from typing import Optional
+<<<<<<< HEAD
 import asyncio
 import json
+=======
+>>>>>>> dae77008d3d21757083961899b4d89bbbdab2add
 import logging
 import time
 
@@ -152,6 +155,7 @@ async def generate_stems(req: GenerateRequest):
     )
 
 
+<<<<<<< HEAD
 @app.post("/api/generate/stream")
 async def generate_stems_stream(req: GenerateRequest):
     """以 SSE 流式推送生成进度。前端用 fetch + ReadableStream 读取。
@@ -213,6 +217,8 @@ async def generate_stems_stream(req: GenerateRequest):
     )
 
 
+=======
+>>>>>>> dae77008d3d21757083961899b4d89bbbdab2add
 @app.post("/api/repaint", response_model=RepaintResponse)
 async def repaint_segment(req: RepaintRequest):
     """对某个会话的指定轨道进行局部重绘，输出新文件。"""

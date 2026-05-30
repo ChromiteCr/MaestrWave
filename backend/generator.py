@@ -21,6 +21,7 @@ ACESTEP_V1_CHAT = "/v1/chat/completions"
 ACESTEP_V1_QUERY = "/query_result"
 ACESTEP_V1_AUDIO = "/v1/audio"
 
+<<<<<<< HEAD
 # 注意：本适配器**不**调用任何 caption / auto-tag 接口。
 # 所有 prompt 直接以 messages.user 字段送往 ACE-Step server，由调用方完整提供。
 
@@ -30,6 +31,8 @@ SUBMIT_TIMEOUT = 600.0
 # 单次任务最长等待秒数（轮询模式下生效）
 MAX_TASK_WAIT = 600
 
+=======
+>>>>>>> dae77008d3d21757083961899b4d89bbbdab2add
 
 def _resolve_lora_path(lora_path: Optional[str]) -> Optional[str]:
     """统一处理 lora_path 入参。"""
@@ -47,9 +50,13 @@ class ACEStepGenerator:
 
     def __init__(self, api_url: Optional[str] = None):
         self.api_url = (api_url or ACESTEP_API_URL).rstrip("/")
+<<<<<<< HEAD
         self.client = httpx.AsyncClient(timeout=SUBMIT_TIMEOUT)
         # 缓存 init 状态，避免每次 generate 都打 /v1/init 触发 server 端崩溃
         self._inited: bool = False
+=======
+        self.client = httpx.AsyncClient(timeout=600.0)
+>>>>>>> dae77008d3d21757083961899b4d89bbbdab2add
 
     async def _post(self, endpoint: str, payload: dict, timeout: float = None) -> dict:
         """POST 请求，返回 JSON 响应。"""
@@ -84,6 +91,7 @@ class ACEStepGenerator:
         return resp.content
 
     async def _init_if_needed(self) -> bool:
+<<<<<<< HEAD
         """初始化模型（如果未初始化）。同一 generator 实例只会成功调用一次。"""
         if self._inited:
             return True
@@ -91,6 +99,12 @@ class ACEStepGenerator:
             result = await self._post(ACESTEP_V1_INIT, {}, timeout=120.0)
             logger.info("ACE-Step model initialized: %s", result.get("data", {}).get("loaded_model"))
             self._inited = True
+=======
+        """初始化模型（如果未初始化）。"""
+        try:
+            result = await self._post(ACESTEP_V1_INIT, {}, timeout=120.0)
+            logger.info("ACE-Step model initialized: %s", result.get("data", {}).get("loaded_model"))
+>>>>>>> dae77008d3d21757083961899b4d89bbbdab2add
             return True
         except Exception as e:
             logger.warning("ACE-Step init failed: %s", e)
@@ -121,6 +135,7 @@ class ACEStepGenerator:
                        key: str = "D major", seed: int = -1,
                        lora_path: Optional[str] = None,
                        instrument_hint: Optional[str] = None) -> bytes:
+<<<<<<< HEAD
         """生成音频。兼容两种 server 行为：
         1) 异步任务队列：/v1/chat/completions 立即返回 task_id，再轮询 /query_result
         2) 同步阻塞：/v1/chat/completions 直接返回 audio_path / audio_url
@@ -129,6 +144,13 @@ class ACEStepGenerator:
         try:
             await self._init_if_needed()
 
+=======
+        """生成音频（v1 任务队列模式）。"""
+        try:
+            await self._init_if_needed()
+
+            # 构造 OpenRouter 兼容的 chat.completions 请求
+>>>>>>> dae77008d3d21757083961899b4d89bbbdab2add
             system_msg = f"Generate music with BPM={bpm}, Key={key}, Duration={duration}s"
             user_msg = f"{prompt}\n[Lyrics: {lyrics}]"
             if seed >= 0:
@@ -141,6 +163,7 @@ class ACEStepGenerator:
                     {"role": "user", "content": user_msg},
                 ],
                 "stream": False,
+<<<<<<< HEAD
                 # 显式告诉支持该字段的 server 不要再做 caption / auto-tag
                 "auto_caption": False,
                 "use_caption": False,
@@ -172,15 +195,35 @@ class ACEStepGenerator:
 
             logger.info("Generation task submitted: %s", task_id)
             task_result = await self._wait_for_task(task_id, max_wait_sec=MAX_TASK_WAIT)
+=======
+            }
+
+            logger.info("Submitting generation task: %s", prompt[:50])
+            submit_result = await self._post(ACESTEP_V1_CHAT, payload, timeout=30.0)
+            task_id = submit_result.get("data", {}).get("id") or submit_result.get("id")
+            if not task_id:
+                raise ValueError(f"No task_id in response: {submit_result}")
+
+            logger.info(f"Generation task submitted: {task_id}")
+            task_result = await self._wait_for_task(task_id, max_wait_sec=600)
+>>>>>>> dae77008d3d21757083961899b4d89bbbdab2add
 
             if task_result.get("status") != "succeeded":
                 raise RuntimeError(f"Task failed: {task_result.get('error')}")
 
+<<<<<<< HEAD
+=======
+            # 从响应取音频路径
+>>>>>>> dae77008d3d21757083961899b4d89bbbdab2add
             audio_path = task_result.get("audio_path") or task_result.get("file_path")
             if not audio_path:
                 raise ValueError(f"No audio_path in completed task: {task_result}")
 
+<<<<<<< HEAD
             logger.info("Downloading audio from: %s", audio_path)
+=======
+            logger.info(f"Downloading audio from: {audio_path}")
+>>>>>>> dae77008d3d21757083961899b4d89bbbdab2add
             return await self._get_audio_bytes(audio_path)
 
         except Exception as e:
@@ -234,6 +277,7 @@ class ACEStepGenerator:
             }
 
             logger.info(f"Submitting repaint task: {audio_path} [{start_time}-{end_time}]")
+<<<<<<< HEAD
             submit_result = await self._post(ACESTEP_V1_CHAT, payload, timeout=SUBMIT_TIMEOUT)
             data = submit_result.get("data", submit_result) or {}
             sync_audio_path = (
@@ -245,11 +289,19 @@ class ACEStepGenerator:
                 return await self._get_audio_bytes(sync_audio_path)
 
             task_id = data.get("id") or submit_result.get("id") or data.get("task_id")
+=======
+            submit_result = await self._post(ACESTEP_V1_CHAT, payload, timeout=30.0)
+            task_id = submit_result.get("data", {}).get("id") or submit_result.get("id")
+>>>>>>> dae77008d3d21757083961899b4d89bbbdab2add
             if not task_id:
                 raise ValueError(f"No task_id in response: {submit_result}")
 
             logger.info(f"Repaint task submitted: {task_id}")
+<<<<<<< HEAD
             task_result = await self._wait_for_task(task_id, max_wait_sec=MAX_TASK_WAIT)
+=======
+            task_result = await self._wait_for_task(task_id, max_wait_sec=600)
+>>>>>>> dae77008d3d21757083961899b4d89bbbdab2add
 
             if task_result.get("status") != "succeeded":
                 raise RuntimeError(f"Task failed: {task_result.get('error')}")

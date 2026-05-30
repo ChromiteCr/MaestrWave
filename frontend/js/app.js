@@ -102,6 +102,7 @@ class MTXApp {
         return this.currentSession;
     }
 
+<<<<<<< HEAD
     /**
      * 流式生成：通过 SSE (text/event-stream) 拿到实时进度。
      * onEvent({type, ...}) 每条进度事件都会回调。
@@ -171,6 +172,8 @@ class MTXApp {
         return finalSession;
     }
 
+=======
+>>>>>>> dae77008d3d21757083961899b4d89bbbdab2add
     async loadSessionById(sessionId) {
         const r = await fetch('/api/sessions/' + encodeURIComponent(sessionId));
         if (!r.ok) throw new Error('会话不存在');

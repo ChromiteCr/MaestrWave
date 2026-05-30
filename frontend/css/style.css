@@ -20,6 +20,7 @@ button.secondary{background:#f3f4f6;border:1px solid #d1d5db}
 .controls{display:flex;flex-wrap:wrap;gap:6px}
 footer{padding:10px;text-align:center;font-size:12px;color:#6b7280}
 
+<<<<<<< HEAD
 /* 生成进度 */
 .gen-progress{margin:6px 0 10px}
 .gen-progress-label{font-size:13px;color:#374151;margin-bottom:6px}
@@ -36,6 +37,8 @@ footer{padding:10px;text-align:center;font-size:12px;color:#6b7280}
 .gen-error{color:#dc2626;margin-top:6px}
 @keyframes gen-pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
+=======
+>>>>>>> dae77008d3d21757083961899b4d89bbbdab2add
 .repaint-box{margin-top:16px;padding:12px;border:1px solid #e5e7eb;border-radius:6px;background:#fafafa}
 .repaint-box h3{margin:0 0 6px;font-size:15px;color:#111827}
 
