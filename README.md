@@ -1,11 +1,11 @@
-# MTX Orchestral Conductor — 项目骨架
+# MTX Orchestral Conductor
 
 一个两阶段的交互式音乐系统骨架：
 
 - 阶段一：基于本地 ACE‑Step 生成多轨分声部（后端负责调用本地 ACE‑Step API 并将生成文件保存到 `output/sessions/{session_id}`）。
 - 阶段二：前端（手机/浏览器）使用 Web DeviceMotion/DeviceOrientation 作为指挥输入，运行 Web Audio 实时混音与空间化。
 
-本仓库包含完整骨架代码（后端 + 前端示例），目标是提供可运行的最小实现以便快速验证交互体验。
+本仓库包含完整代码（后端 + 前端示例）
 
 主要文件
 - 后端: [backend/app.py](backend/app.py) · [backend/generator.py](backend/generator.py) · [backend/stems.py](backend/stems.py) · [backend/config.py](backend/config.py) · [backend/requirements.txt](backend/requirements.txt)
@@ -23,6 +23,8 @@
 	- `OUTPUT_DIR`（生成音频输出目录，默认 `output/sessions`）
 
 启动与运行（开发）
+
+注：在启动开发前，需要先下载ACE-Step 1.5模型到本地。具体下载方法见模型仓库。
 
 以下两种运行方式均受支持：
 
@@ -82,10 +84,6 @@ API 说明
 - 如果出现 500 错误，请检查后端日志，通常是 ACE‑Step 的接口或参数不匹配。启动 ACE‑Step 后访问 `http://localhost:8001/docs` 查看实际端点与参数。
 - 若静态音频无法播放，确认生成的 wav 文件位于 `output/sessions/{session_id}` 并可通过 `http://<host>:3000/audio/{session_id}/violin.wav` 访问。
 - 若手机无法访问传感器，确保使用 HTTPS（见上文）并使用支持 DeviceMotion 的浏览器（Safari / Chrome 移动版在不同版本上行为不同）。
-
-下一步建议
-- 根据 ACE‑Step 实际 API 文档调整 `backend/generator.py` 的请求字段（`reference_audio` 等）。
-- 添加简单的单元测试和轻量集成测试（例如 mock ACE‑Step 返回）以自动化验证分轨生成流程。
 
 本地开发快速验证（无需 ACE‑Step）
  - 仓库包含 `backend/dev_generate_mock.py`，用于创建一个包含静音 `full_mix.wav` 和各声部 `*.wav` 的 mock session。
