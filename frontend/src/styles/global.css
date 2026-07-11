@@ -1,0 +1,151 @@
+@import "@fontsource/space-grotesk/500.css";
+@import "@fontsource/space-grotesk/600.css";
+@import "@fontsource/space-grotesk/700.css";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+@import "@fontsource/ibm-plex-mono/600.css";
+
+/*
+  调色板 —— 暖炭黑的深色基底 + 浅一点的水蓝主色，像月光下的水面：
+  accent（浅蓝）呼应波形/波浪的主题，wine（酒红）保留作为"录制/重绘"等状态色，
+  和蓝形成一冷一暖的对比，不是通用的"暖白+赤陶"或"纯黑+荧光绿"默认组合。
+*/
+:root {
+  --bg: #15130f;
+  --surface: #211c15;
+  --surface-2: #2c2519;
+  --surface-3: #382f1f;
+  --accent: #7cb2e8;
+  --accent-dim: #4d6f96;
+  --wine: #b8453a;
+  --ink: #f3eddd;
+  --line: rgba(243, 237, 221, 0.1);
+  --line-strong: rgba(243, 237, 221, 0.18);
+
+  /* 波浪渐变用到的几支蓝，深浅/冷暖略有差异，叠加时才有层次 */
+  --wave-1: #8fc1f0;
+  --wave-2: #5f9bd6;
+  --wave-3: #3a6ea8;
+  --wave-4: #bcdcf7;
+
+  --font-display: "Space Grotesk", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 标题与正文的尺度对比是这套设计系统的核心：巨大的展示字号 vs 克制的小号正文/标签。 */
+.display-1 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(40px, 6vw, 64px);
+  line-height: 0.98;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.display-2 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(24px, 3vw, 32px);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0;
+}
+
+.label {
+  font-size: 12px;
+  color: color-mix(in srgb, var(--ink) 55%, transparent);
+  letter-spacing: 0.01em;
+}
+
+.mono-chip {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--ink) 70%, transparent);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+
+button {
+  font-family: var(--font-body);
+  cursor: pointer;
+}
+
+textarea,
+input,
+select {
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 13px;
+  outline: none;
+}
+
+textarea:focus,
+input:focus,
+select:focus,
+button:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--surface-3);
+  border-radius: 6px;
+}

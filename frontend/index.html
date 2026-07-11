@@ -1,116 +1,13 @@
 <!doctype html>
 <html lang="zh-CN">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MTX Orchestral Conductor</title>
-  <link rel="stylesheet" href="/static/css/style.css" />
-</head>
-<body>
-  <header>
-    <h1>MTX 指挥体验</h1>
-    <div id="statusBar" class="status-bar">
-      <span id="backendStatus" class="badge badge-neutral">后端: 检测中…</span>
-      <span id="aceStatus" class="badge badge-neutral">ACE-Step: 检测中…</span>
-      <span id="phoneStatus" class="badge badge-neutral">手机传感器: 未连接</span>
-    </div>
-  </header>
-
-  <main>
-    <!-- ============ 阶段一 ============ -->
-    <section id="stage1">
-      <h2>阶段一：AI 生成分轨</h2>
-
-      <label>描述（风格 / 情绪 / 节奏）</label>
-      <textarea id="description" rows="3">Lush cinematic orchestral, warm strings, heroic brass</textarea>
-
-      <div class="row">
-        <label>LoKr / LoRA 模型
-          <select id="loraSelect">
-            <option value="none">无（不加载 LoKr，使用原始模型）</option>
-          </select>
-        </label>
-        <label>时长（秒）<input id="duration" type="number" value="30" min="5" max="240" /></label>
-        <label>BPM<input id="bpm" type="number" value="80" min="40" max="200" /></label>
-        <label>Key<input id="key" type="text" value="D major" /></label>
-      </div>
-
-      <button id="generateBtn" class="primary">生成分轨</button>
-      <button id="refreshLoraBtn" class="secondary" title="重新扫描 lokr_weights/ 目录">刷新模型列表</button>
-      <div id="genInfo" class="info"></div>
-
-      <div class="repaint-box">
-        <h3>局部 Repaint</h3>
-        <p class="hint">对当前会话的某个轨道按时间段重绘。先生成或从音乐库加载会话。</p>
-        <div class="row">
-          <label>Session ID<input id="repaintSessionId" type="text" placeholder="自动填充" /></label>
-          <label>目标轨道
-            <select id="repaintTarget">
-              <option value="full_mix">full_mix</option>
-              <option value="violin">violin</option>
-              <option value="cello">cello</option>
-              <option value="trumpet">trumpet</option>
-              <option value="woodwind">woodwind</option>
-              <option value="percussion">percussion</option>
-            </select>
-          </label>
-          <label>开始秒数<input id="repaintStart" type="number" min="0" value="8" step="0.1" /></label>
-          <label>结束秒数<input id="repaintEnd" type="number" min="0" value="16" step="0.1" /></label>
-        </div>
-        <label>Repaint Prompt</label>
-        <textarea id="repaintPrompt" rows="2">Bright, articulate brass and woodwinds, clearer attacks, cinematic dynamic phrasing</textarea>
-        <button id="repaintBtn" class="secondary">执行 Repaint</button>
-        <div id="repaintInfo" class="info"></div>
-      </div>
-    </section>
-
-    <hr />
-
-    <!-- ============ 阶段二 ============ -->
-    <section id="stage2">
-      <h2>阶段二：实时指挥</h2>
-      <p class="hint">手机访问本页面（HTTPS）后点击"开始指挥"以解锁传感器。若无手机，可使用下方<strong>音乐库</strong>试听所有已生成片段。</p>
-
-      <div class="controls">
-        <button id="loadBtn">加载当前分轨</button>
-        <button id="startBtn" class="primary">开始指挥</button>
-        <button id="stopBtn">停止</button>
-      </div>
-      <div id="conductInfo" class="info"></div>
-    </section>
-
-    <hr />
-
-    <!-- ============ 音乐库 / 无手机模式 ============ -->
-    <section id="library">
-      <div class="library-header">
-        <h2>音乐库（所有生成片段）</h2>
-        <button id="refreshSessionsBtn" class="secondary">刷新</button>
-      </div>
-      <p class="hint" id="libraryHint">未检测到手机连接，下面列出所有历史生成的音乐片段，可直接试听 / 加载到指挥台。</p>
-      <div id="sessionsList" class="sessions-list">
-        <em>加载中…</em>
-      </div>
-    </section>
-  </main>
-
-  <footer>
-    <small>MTX Demo · ACE-Step 1.5 · 当未连接 ACE-Step / 未选择 LoKr 时，后端会回退到本地程序化合成以保证链路畅通。</small>
-  </footer>
-
-  <script src="/static/js/sensor.js"></script>
-  <script src="/static/js/gesture.js"></script>
-  <script src="/static/js/audio-engine.js"></script>
-  <script src="/static/js/app.js"></script>
-  <script src="/static/js/stage1.js"></script>
-  <script src="/static/js/stage2.js"></script>
-  <script src="/static/js/library.js"></script>
-
-  <script>
-    document.addEventListener('DOMContentLoaded', async () => {
-      window.app = new MTXApp();
-      await app.init();
-    });
-  </script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <title>MaestrWave</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>

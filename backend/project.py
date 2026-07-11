@@ -94,6 +94,29 @@ def get_instrument(project: dict, instrument_id: str) -> dict:
     raise KeyError(f"instrument not found: {instrument_id}")
 
 
+def remove_instrument(project: dict, instrument_id: str) -> None:
+    """移除一个乐器 tab（连带它在磁盘上的 take 音频一起删）。"""
+    get_instrument(project, instrument_id)  # 校验存在，不存在则抛 KeyError
+    project["instruments"] = [i for i in project["instruments"] if i["id"] != instrument_id]
+    save_project(project)
+    d = takes_dir(project["project_id"], instrument_id)
+    if d.exists():
+        for f in d.iterdir():
+            f.unlink()
+        d.rmdir()
+
+
+def update_settings(project: dict, **fields) -> dict:
+    """更新项目级共享上下文（style_description/key/bpm/time_signature/
+    segment_duration/name），只接受这几个字段，其它 key 会被忽略。"""
+    allowed = {"style_description", "key", "bpm", "time_signature", "segment_duration", "name"}
+    for k, v in fields.items():
+        if k in allowed and v is not None:
+            project[k] = v
+    save_project(project)
+    return project
+
+
 def add_instrument(project: dict, library_key: str, display_name: Optional[str] = None) -> dict:
     """新增一个乐器 tab（还没有任何 take，等第一次 generate 才产出音频）。"""
     spec = get_instrument_spec(library_key)

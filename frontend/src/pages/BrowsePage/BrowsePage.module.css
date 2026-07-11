@@ -1,0 +1,75 @@
+.body {
+  padding: 24px 40px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 160px 1fr auto;
+  align-items: center;
+  gap: 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.rowInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.rowTitle {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowRole {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--ink) 45%, transparent);
+}
+
+.rowActions {
+  display: flex;
+  gap: 6px;
+}
+
+.playDot {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: var(--surface-2);
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.playDot:disabled {
+  opacity: 0.35;
+}
+
+.playDotActive {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.emptyState {
+  color: color-mix(in srgb, var(--ink) 40%, transparent);
+  font-size: 13px;
+  padding: 40px 0;
+  text-align: center;
+}

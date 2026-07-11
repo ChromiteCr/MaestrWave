@@ -1,0 +1,53 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 9px 16px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background: var(--surface-2);
+  color: var(--ink);
+  white-space: nowrap;
+  transition: opacity 0.15s ease, transform 0.05s ease;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+.primary {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.primary:not(:disabled):hover {
+  background: color-mix(in srgb, var(--accent) 88%, white);
+}
+
+.ghost {
+  background: transparent;
+  border-color: var(--line-strong);
+}
+
+.ghost:not(:disabled):hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.danger {
+  background: transparent;
+  border-color: var(--line-strong);
+  color: color-mix(in srgb, var(--wine) 80%, var(--ink));
+}
+
+.danger:not(:disabled):hover {
+  border-color: var(--wine);
+  background: color-mix(in srgb, var(--wine) 12%, transparent);
+}

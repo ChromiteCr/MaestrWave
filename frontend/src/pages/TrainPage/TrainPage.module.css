@@ -1,0 +1,92 @@
+.body {
+  padding: 28px 40px 60px;
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 28px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .body {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fieldLabel {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--ink) 45%, transparent);
+}
+
+.vramCard {
+  background: linear-gradient(155deg, var(--surface-2), var(--surface));
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.vramFigure {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.vramNumber {
+  font-family: var(--font-display);
+  font-size: 46px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--accent);
+}
+
+.vramUnit {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: color-mix(in srgb, var(--ink) 55%, transparent);
+}
+
+.vramCaption {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--ink) 45%, transparent);
+}
+
+.vramNote {
+  font-size: 12px;
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--ink) 60%, transparent);
+}
+
+.pendingNote {
+  font-size: 12px;
+  color: color-mix(in srgb, var(--wine) 85%, var(--ink));
+}

@@ -1,0 +1,66 @@
+{
+  "project_id": "6bcb6531",
+  "name": "Project 6bcb6531",
+  "created_at": "2026-07-11T13:50:39.332466Z",
+  "style_description": "Lush cinematic orchestral, heroic brass",
+  "key": "D major",
+  "bpm": 92,
+  "time_signature": "4/4",
+  "segment_duration": 16.0,
+  "instruments": [
+    {
+      "id": "5fe14669",
+      "library_key": "brass",
+      "display_name": "铜管",
+      "family": "brass",
+      "role": "harmony",
+      "takes": [
+        {
+          "take_id": "a0902cf7",
+          "created_at": "2026-07-11T13:51:30.991688Z",
+          "audio_file": "a0902cf7.wav",
+          "task_type_used": "text2music",
+          "params": {
+            "prompt": "Brass section, warm and cohesive ensemble blend, Lush cinematic orchestral, heroic brass",
+            "src_audio_path": null,
+            "referenced_instruments": [],
+            "bpm": 92,
+            "key": "D major",
+            "time_signature": "4/4",
+            "duration": 16.0,
+            "lora_path": "none"
+          }
+        }
+      ],
+      "current_take_id": "a0902cf7"
+    },
+    {
+      "id": "21d751e8",
+      "library_key": "trombone",
+      "display_name": "长号",
+      "family": "brass",
+      "role": "harmony",
+      "takes": [
+        {
+          "take_id": "ac69ffeb",
+          "created_at": "2026-07-11T13:52:34.955001Z",
+          "audio_file": "ac69ffeb.wav",
+          "task_type_used": "lego",
+          "params": {
+            "prompt": "Trombone section, warm brass harmony beneath the melody, Lush cinematic orchestral, heroic brass. On top of the existing 铜管, add a supporting harmony line that fits underneath them, same tempo and key throughout.",
+            "src_audio_path": "/Users/billgao/Documents/Coding/MTX/MaestrWave/output/projects/6bcb6531/mixes/21d751e8_ae355cd3.wav",
+            "referenced_instruments": [
+              "5fe14669"
+            ],
+            "bpm": 92,
+            "key": "D major",
+            "time_signature": "4/4",
+            "duration": 16.0,
+            "lora_path": "none"
+          }
+        }
+      ],
+      "current_take_id": "ac69ffeb"
+    }
+  ]
+}

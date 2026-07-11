@@ -1,13 +1,15 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
 from pydantic import BaseModel
 from pathlib import Path
 from typing import Optional
 import asyncio
+import io
 import json
 import logging
 import time
+import zipfile
 
 # support running as package (backend.app) or as module (app)
 try:
@@ -36,6 +38,7 @@ logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 FRONTEND_DIR = BASE_DIR / "frontend"
+FRONTEND_DIST_DIR = FRONTEND_DIR / "dist"
 AUDIO_DIR = Path(OUTPUT_DIR)
 AUDIO_DIR.mkdir(parents=True, exist_ok=True)
 Path(LOKR_WEIGHTS_DIR).mkdir(parents=True, exist_ok=True)
@@ -44,10 +47,13 @@ Path(PROJECTS_DIR).mkdir(parents=True, exist_ok=True)
 app = FastAPI(title="MTX Orchestral Conductor")
 
 # 静态文件服务
-app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
 app.mount("/audio", StaticFiles(directory=str(AUDIO_DIR)), name="audio")
 # 新的 project 模型的音频（takes/ 混音临时文件）单独挂一个前缀
 app.mount("/project-audio", StaticFiles(directory=str(PROJECTS_DIR)), name="project-audio")
+# 生产模式下 `npm run build` 产出的 React 前端（见 frontend/vite.config.ts）；
+# 开发模式下前端走 Vite dev server（:5173，proxy /api 到本服务），不经过这里。
+if FRONTEND_DIST_DIR.exists():
+    app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST_DIR / "assets")), name="frontend-assets")
 
 stem_gen = StemGenerator()
 
@@ -283,6 +289,15 @@ class CreateProjectRequest(BaseModel):
     name: str = ""
 
 
+class UpdateProjectRequest(BaseModel):
+    style_description: Optional[str] = None
+    key: Optional[str] = None
+    bpm: Optional[int] = None
+    time_signature: Optional[str] = None
+    segment_duration: Optional[float] = None
+    name: Optional[str] = None
+
+
 class AddInstrumentRequest(BaseModel):
     library_key: str
     display_name: Optional[str] = None
@@ -342,6 +357,41 @@ async def get_project_endpoint(project_id: str):
     return _serialize_project(project)
 
 
+@app.patch("/api/projects/{project_id}")
+async def update_project_endpoint(project_id: str, req: UpdateProjectRequest):
+    """更新项目级共享上下文（生成页「高级」面板用：调式/拍号/BPM/单段时长）。"""
+    try:
+        project = projectlib.load_project(project_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="project not found")
+    project = projectlib.update_settings(project, **req.model_dump(exclude_unset=True))
+    return _serialize_project(project)
+
+
+@app.get("/api/projects/{project_id}/export")
+async def export_project_endpoint(project_id: str):
+    """把 project.json + 所有 take 音频打包成 zip 下载。"""
+    try:
+        project = projectlib.load_project(project_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="project not found")
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("project.json", json.dumps(project, ensure_ascii=False, indent=2))
+        for inst in project["instruments"]:
+            for take in inst["takes"]:
+                wav_path = projectlib.takes_dir(project_id, inst["id"]) / take["audio_file"]
+                if wav_path.exists():
+                    zf.write(wav_path, f"takes/{inst['display_name']}_{inst['id']}/{take['audio_file']}")
+    buf.seek(0)
+    filename = f"{project.get('name') or project_id}.zip"
+    return StreamingResponse(
+        buf, media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @app.post("/api/projects/{project_id}/instruments")
 async def add_instrument_endpoint(project_id: str, req: AddInstrumentRequest):
     try:
@@ -353,6 +403,18 @@ async def add_instrument_endpoint(project_id: str, req: AddInstrumentRequest):
         logger.info("adding custom instrument not in library: %s", req.library_key)
     instrument = projectlib.add_instrument(project, req.library_key, req.display_name)
     return instrument
+
+
+@app.delete("/api/projects/{project_id}/instruments/{instrument_id}")
+async def remove_instrument_endpoint(project_id: str, instrument_id: str):
+    try:
+        project = projectlib.load_project(project_id)
+        projectlib.remove_instrument(project, instrument_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="project not found")
+    except KeyError:
+        raise HTTPException(status_code=404, detail="instrument not found")
+    return {"ok": True}
 
 
 @app.post("/api/projects/{project_id}/instruments/{instrument_id}/generate")
@@ -418,5 +480,15 @@ async def repaint_instrument_endpoint(project_id: str, instrument_id: str,
 
 @app.get("/")
 async def index():
-    idx = FRONTEND_DIR / "index.html"
-    return FileResponse(str(idx))
+    dist_index = FRONTEND_DIST_DIR / "index.html"
+    if dist_index.exists():
+        return FileResponse(str(dist_index))
+    return JSONResponse({
+        "backend": "ok",
+        "hint": (
+            "前端还没有构建产物（frontend/dist/）。开发时运行 `npm run dev`（在 "
+            "frontend/ 目录下）并访问它给出的地址（默认 http://localhost:5173），"
+            "它会把 /api、/audio、/project-audio 转发到这个后端；生产部署时先 "
+            "`npm run build` 再重启本服务。"
+        ),
+    })
