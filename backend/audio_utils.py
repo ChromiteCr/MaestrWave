@@ -1,0 +1,87 @@
+"""共享的 WAV 读写/混音工具（纯标准库，无需 numpy）。
+
+被两处使用：
+  - synth.py 的程序化占位音频合成（原来私有实现，这里提炼成公共函数）。
+  - project_gen.py 在调用 ACE-Step 的 lego 任务前，把项目里"已经生成的
+    乐器"混音落地成一个临时 wav，作为 src_audio_path 传给模型。
+"""
+from __future__ import annotations
+
+import io
+import struct
+import wave
+from pathlib import Path
+from typing import List, Sequence, Union
+
+
+def mix_into(target: List[float], src: Sequence[float], offset: int = 0) -> None:
+    """把 src 按 offset 累加进 target（原地修改）。"""
+    end = min(len(target), offset + len(src))
+    j = 0
+    for i in range(offset, end):
+        target[i] += src[j]
+        j += 1
+
+
+def to_wav_bytes(samples: Sequence[float], sr: int) -> bytes:
+    """float 采样（约 -1..1）峰值归一化后编码为 16-bit PCM mono WAV。"""
+    peak = 0.0
+    for s in samples:
+        a = s if s >= 0 else -s
+        if a > peak:
+            peak = a
+    gain = 0.9 / peak if peak > 1e-6 else 1.0
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(sr)
+        frames = bytearray()
+        for s in samples:
+            v = int(max(-1.0, min(1.0, s * gain)) * 32767)
+            frames += struct.pack("<h", v)
+        wf.writeframes(bytes(frames))
+    return buf.getvalue()
+
+
+def read_wav_samples(path: Union[str, Path]) -> tuple[List[float], int]:
+    """读取 16-bit mono/stereo WAV，返回 (float 采样[-1,1] mono, sample_rate)。
+    立体声会被降混为单声道。"""
+    with wave.open(str(path), "rb") as wf:
+        sr = wf.getframerate()
+        n_channels = wf.getnchannels()
+        n_frames = wf.getnframes()
+        raw = wf.readframes(n_frames)
+    total = struct.unpack("<" + "h" * (len(raw) // 2), raw)
+    if n_channels == 1:
+        samples = [v / 32767.0 for v in total]
+    else:
+        samples = []
+        for i in range(0, len(total) - n_channels + 1, n_channels):
+            frame = total[i:i + n_channels]
+            samples.append((sum(frame) / len(frame)) / 32767.0)
+    return samples, sr
+
+
+def mix_wav_files(paths: Sequence[Union[str, Path]], out_path: Union[str, Path],
+                   weights: Sequence[float] = None) -> Path:
+    """把多个 wav 文件按（可选）权重叠加混音，写入 out_path，返回该路径。
+    采样率以第一个文件为准；不做重采样，假设所有输入都在同一采样率下生成
+    （ACE-Step 输出应当一致）。"""
+    paths = list(paths)
+    if not paths:
+        raise ValueError("mix_wav_files: no input paths")
+    weights = list(weights) if weights else [1.0] * len(paths)
+
+    decoded = [read_wav_samples(p) for p in paths]
+    sr = decoded[0][1]
+    total_len = max(len(s) for s, _ in decoded)
+    out = [0.0] * total_len
+    for (samples, _), w in zip(decoded, weights):
+        weighted = [v * w for v in samples]
+        mix_into(out, weighted, 0)
+
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_bytes(to_wav_bytes(out, sr))
+    return out_path

@@ -16,6 +16,11 @@ import struct
 import wave
 from typing import List, Tuple
 
+try:
+    from .audio_utils import mix_into as _mix_into, to_wav_bytes as _to_wav_bytes
+except Exception:
+    from audio_utils import mix_into as _mix_into, to_wav_bytes as _to_wav_bytes
+
 
 SR = 22050  # 采样率（低一些以节省体积）
 
@@ -106,35 +111,6 @@ def _synth_percussion(dur: float, sr: int, amp: float = 0.5) -> List[float]:
     return out
 
 
-def _mix_into(target: List[float], src: List[float], offset: int) -> None:
-    end = min(len(target), offset + len(src))
-    j = 0
-    for i in range(offset, end):
-        target[i] += src[j]
-        j += 1
-
-
-def _to_wav_bytes(samples: List[float], sr: int = SR) -> bytes:
-    # 简单峰值归一化避免 clipping
-    peak = 0.0
-    for s in samples:
-        a = s if s >= 0 else -s
-        if a > peak:
-            peak = a
-    gain = 0.9 / peak if peak > 1e-6 else 1.0
-    buf = io.BytesIO()
-    with wave.open(buf, "wb") as wf:
-        wf.setnchannels(1)
-        wf.setsampwidth(2)
-        wf.setframerate(sr)
-        frames = bytearray()
-        for s in samples:
-            v = int(max(-1.0, min(1.0, s * gain)) * 32767)
-            frames += struct.pack("<h", v)
-        wf.writeframes(bytes(frames))
-    return buf.getvalue()
-
-
 def synth_stem(instrument: str, duration: int = 30, bpm: int = 80,
                key: str = "D major", seed: int = -1) -> bytes:
     """为指定声部合成一段占位音频，返回 WAV bytes。"""
@@ -158,7 +134,7 @@ def synth_stem(instrument: str, duration: int = 30, bpm: int = 80,
             if random.random() < profile["trigger"]:
                 hit = _synth_percussion(0.25, SR, amp=0.6 if b % 2 == 0 else 0.35)
                 _mix_into(out, hit, int(b * beat_sec * SR))
-        return _to_wav_bytes(out)
+        return _to_wav_bytes(out, SR)
 
     # 旋律/和声声部：在节拍上随机挑选音阶音
     last_degree = 0
@@ -182,7 +158,7 @@ def synth_stem(instrument: str, duration: int = 30, bpm: int = 80,
         _mix_into(out, tone, int(b * beat_sec * SR))
         last_degree = degree
 
-    return _to_wav_bytes(out)
+    return _to_wav_bytes(out, SR)
 
 
 def synth_full_mix(duration: int = 30, bpm: int = 80, key: str = "D major",
@@ -202,4 +178,4 @@ def synth_full_mix(duration: int = 30, bpm: int = 80, key: str = "D major",
         amp = {"violin": 0.8, "cello": 0.7, "trumpet": 0.6, "woodwind": 0.6, "percussion": 0.5}.get(inst, 0.6)
         for i in range(min(len(out), len(samples))):
             out[i] += (samples[i] / 32767.0) * amp
-    return _to_wav_bytes(out)
+    return _to_wav_bytes(out, SR)

@@ -1,11 +1,31 @@
+"""ACE-Step 1.5 原生任务队列 API 的最小客户端。
+
+对齐的是 ACE-Step 官方文档 docs/zh/API.md 描述的真实接口：
+  POST /release_task   提交任务，返回 {data: {task_id, status, queue_position}}
+  POST /query_result    轮询，body={"task_id_list": [...]}，
+                         data[].status 是 0(排队/运行)/1(成功)/2(失败)，
+                         成功时 data[].result 是一个 JSON 字符串，需要 json.loads
+                         后取 "file" 字段（形如 "/v1/audio?path=..."）
+  GET  /v1/audio?path=  下载生成的音频字节
+  GET  /health           健康检查
+
+之前的实现把这套原生 API 和另一套完全不同的 OpenRouter 兼容接口
+（/v1/chat/completions，同步返回、音频以 base64 内嵌在
+choices[0].message.audio 里）混在了一起，还调用了一个文档中不存在的
+/v1/init，这是导致生成经常静默 fallback 到 synth.py 占位音频、同时
+ACE-Step 服务端仍在真实跑推理消耗显存的根因之一。这里改为只对接原生
+任务队列 API，且显式对每次请求设置 batch_size=1（原生 API 默认值是 2，
+之前从未覆盖，等于每次调用都在被动地把计算/显存翻倍）。
+"""
 import asyncio
+import json
 import logging
-import httpx
 import time
 from pathlib import Path
 from typing import Optional
 
-# support running as package (backend.generator) or as module (generator)
+import httpx
+
 try:
     from .config import ACESTEP_API_URL, LOKR_WEIGHTS_PATH, ALLOW_SYNTH_FALLBACK
     from . import synth
@@ -15,27 +35,29 @@ except Exception:
 
 logger = logging.getLogger(__name__)
 
-# ACE-Step v1 API 路由
-ACESTEP_V1_INIT = "/v1/init"
-ACESTEP_V1_CHAT = "/v1/chat/completions"
-ACESTEP_V1_QUERY = "/query_result"
-ACESTEP_V1_AUDIO = "/v1/audio"
+RELEASE_TASK = "/release_task"
+QUERY_RESULT = "/query_result"
+AUDIO_ENDPOINT = "/v1/audio"
 
-<<<<<<< HEAD
-# 注意：本适配器**不**调用任何 caption / auto-tag 接口。
-# 所有 prompt 直接以 messages.user 字段送往 ACE-Step server，由调用方完整提供。
+SUBMIT_TIMEOUT = 30.0   # 提交任务本身很快，不应该长时间挂起
+MAX_TASK_WAIT = 600     # 单次任务最长轮询等待秒数
+POLL_INTERVAL = 2.0
 
-# 提交任务时的超时（秒）。设置较大值是为了兼容部分 ACE-Step server 实现里
-# /v1/chat/completions 是"同步阻塞直到出音频"而非"立即返回 task_id"的情况。
-SUBMIT_TIMEOUT = 600.0
-# 单次任务最长等待秒数（轮询模式下生效）
-MAX_TASK_WAIT = 600
+# 任务失败/排队/成功的 status 码（见 API.md）
+STATUS_PENDING = 0
+STATUS_SUCCEEDED = 1
+STATUS_FAILED = 2
 
-=======
->>>>>>> dae77008d3d21757083961899b4d89bbbdab2add
+TASK_TEXT2MUSIC = "text2music"
+TASK_COVER = "cover"
+TASK_REPAINT = "repaint"
+TASK_LEGO = "lego"
+TASK_EXTRACT = "extract"
+TASK_COMPLETE = "complete"
+
 
 def _resolve_lora_path(lora_path: Optional[str]) -> Optional[str]:
-    """统一处理 lora_path 入参。"""
+    """统一处理 lora_path 入参：none/default/绝对路径。"""
     if not lora_path or str(lora_path).lower() in ("none", "no-model", "no_model", "raw"):
         return None
     if str(lora_path).lower() == "default":
@@ -46,191 +68,136 @@ def _resolve_lora_path(lora_path: Optional[str]) -> Optional[str]:
 
 
 class ACEStepGenerator:
-    """ACE-Step v1 API 适配器（任务队列模式）：submit -> poll -> download。"""
+    """ACE-Step 原生任务队列 API 的薄封装：submit -> poll -> download。"""
 
     def __init__(self, api_url: Optional[str] = None):
         self.api_url = (api_url or ACESTEP_API_URL).rstrip("/")
-<<<<<<< HEAD
         self.client = httpx.AsyncClient(timeout=SUBMIT_TIMEOUT)
-        # 缓存 init 状态，避免每次 generate 都打 /v1/init 触发 server 端崩溃
-        self._inited: bool = False
-=======
-        self.client = httpx.AsyncClient(timeout=600.0)
->>>>>>> dae77008d3d21757083961899b4d89bbbdab2add
 
     async def _post(self, endpoint: str, payload: dict, timeout: float = None) -> dict:
-        """POST 请求，返回 JSON 响应。"""
-        url = f"{self.api_url}{endpoint}"
         resp = await self.client.post(
-            url,
-            json=payload,
-            timeout=timeout or self.client.timeout,
+            f"{self.api_url}{endpoint}", json=payload, timeout=timeout or SUBMIT_TIMEOUT,
         )
         resp.raise_for_status()
         return resp.json()
 
-    async def _get(self, endpoint: str, params: dict = None, timeout: float = None) -> dict:
-        """GET 请求，返回 JSON 响应。"""
-        url = f"{self.api_url}{endpoint}"
-        resp = await self.client.get(
-            url,
-            params=params or {},
-            timeout=timeout or self.client.timeout,
-        )
-        resp.raise_for_status()
-        return resp.json()
-
-    async def _get_audio_bytes(self, file_path: str) -> bytes:
-        """从 /v1/audio 下载 WAV 字节流。"""
-        resp = await self.client.get(
-            f"{self.api_url}{ACESTEP_V1_AUDIO}",
-            params={"path": file_path},
-            timeout=60.0,
-        )
+    async def _get_audio_bytes(self, file_ref: str) -> bytes:
+        """下载生成的音频。file_ref 既可能是纯路径，也可能是
+        query_result 里返回的完整 "/v1/audio?path=..." 引用。"""
+        if file_ref.startswith("http://") or file_ref.startswith("https://"):
+            resp = await self.client.get(file_ref, timeout=60.0)
+        elif file_ref.startswith(AUDIO_ENDPOINT):
+            resp = await self.client.get(f"{self.api_url}{file_ref}", timeout=60.0)
+        else:
+            resp = await self.client.get(
+                f"{self.api_url}{AUDIO_ENDPOINT}", params={"path": file_ref}, timeout=60.0,
+            )
         resp.raise_for_status()
         return resp.content
 
-    async def _init_if_needed(self) -> bool:
-<<<<<<< HEAD
-        """初始化模型（如果未初始化）。同一 generator 实例只会成功调用一次。"""
-        if self._inited:
-            return True
-        try:
-            result = await self._post(ACESTEP_V1_INIT, {}, timeout=120.0)
-            logger.info("ACE-Step model initialized: %s", result.get("data", {}).get("loaded_model"))
-            self._inited = True
-=======
-        """初始化模型（如果未初始化）。"""
-        try:
-            result = await self._post(ACESTEP_V1_INIT, {}, timeout=120.0)
-            logger.info("ACE-Step model initialized: %s", result.get("data", {}).get("loaded_model"))
->>>>>>> dae77008d3d21757083961899b4d89bbbdab2add
-            return True
-        except Exception as e:
-            logger.warning("ACE-Step init failed: %s", e)
-            return False
+    async def submit(self, task_type: str, *, prompt: str = "", lyrics: str = "[Instrumental]",
+                      bpm: Optional[int] = None, key: Optional[str] = None,
+                      time_signature: Optional[str] = None, duration: Optional[float] = None,
+                      seed: int = -1, batch_size: int = 1,
+                      inference_steps: int = 8, guidance_scale: float = 7.0,
+                      src_audio_path: Optional[str] = None,
+                      reference_audio_path: Optional[str] = None,
+                      audio_cover_strength: Optional[float] = None,
+                      repainting_start: Optional[float] = None,
+                      repainting_end: Optional[float] = None,
+                      lora_path: Optional[str] = None) -> str:
+        """提交一个任务，返回 task_id。"""
+        payload = {
+            "task_type": task_type,
+            "prompt": prompt,
+            "caption": prompt,
+            "lyrics": lyrics,
+            "audio_format": "wav",
+            # batch_size 原生默认是 2；这里显式覆盖为 1，是最直接的显存/算力节省点。
+            "batch_size": max(1, batch_size),
+            "inference_steps": inference_steps,
+            "guidance_scale": guidance_scale,
+            "seed": seed,
+            "use_random_seed": seed is None or seed < 0,
+        }
+        if bpm is not None:
+            payload["bpm"] = bpm
+        if key is not None:
+            payload["key_scale"] = key
+        if time_signature is not None:
+            payload["time_signature"] = time_signature
+        if duration is not None:
+            payload["audio_duration"] = duration
+        if src_audio_path is not None:
+            payload["src_audio_path"] = src_audio_path
+        if reference_audio_path is not None:
+            payload["reference_audio_path"] = reference_audio_path
+        if audio_cover_strength is not None:
+            payload["audio_cover_strength"] = audio_cover_strength
+        if repainting_start is not None:
+            payload["repainting_start"] = repainting_start
+        if repainting_end is not None:
+            payload["repainting_end"] = repainting_end
+        # 注意：ACE-Step 文档没有明确给出 /release_task 层面的每请求 LoRA/LoKr
+        # 选择字段（官方 Gradio 界面是在服务启动/加载模型时选权重）。这里仍然
+        # 把 lora_path 透传过去，若服务端不识别会被忽略；真正验证需要对着
+        # 本机跑起来的 acestep-api 实测。
+        resolved_lora = _resolve_lora_path(lora_path)
+        if resolved_lora:
+            payload["lora_path"] = resolved_lora
 
-    async def _wait_for_task(self, task_id: str, max_wait_sec: int = 300) -> dict:
-        """轮询 /query_result 直到任务完成。"""
+        logger.info("release_task[%s]: %s", task_type, (prompt or "")[:60])
+        result = await self._post(RELEASE_TASK, payload, timeout=SUBMIT_TIMEOUT)
+        data = result.get("data", result) or {}
+        task_id = data.get("task_id")
+        if not task_id:
+            raise ValueError(f"No task_id in /release_task response: {result}")
+        return task_id
+
+    async def wait_result(self, task_id: str, max_wait_sec: int = MAX_TASK_WAIT) -> dict:
+        """轮询 /query_result 直到任务成功/失败，返回解析后的 result dict。"""
         start = time.time()
-        poll_interval = 2
         while True:
             elapsed = time.time() - start
             if elapsed > max_wait_sec:
                 raise TimeoutError(f"Task {task_id} not completed after {max_wait_sec}s")
-            try:
-                result = await self._post(ACESTEP_V1_QUERY, {"task_ids": [task_id]})
-                items = result.get("data", [])
-                if items and len(items) > 0:
-                    item = items[0]
-                    if item.get("status") in ("succeeded", "failed"):
-                        return item
-                logger.debug(f"Task {task_id} still pending...")
-            except Exception as e:
-                logger.warning(f"Poll query_result failed: {e}")
-            await asyncio.sleep(poll_interval)
 
-    async def generate(self, prompt: str, lyrics: str = "[Instrumental]",
-                       duration: int = 60, bpm: int = 80,
-                       key: str = "D major", seed: int = -1,
-                       lora_path: Optional[str] = None,
-                       instrument_hint: Optional[str] = None) -> bytes:
-<<<<<<< HEAD
-        """生成音频。兼容两种 server 行为：
-        1) 异步任务队列：/v1/chat/completions 立即返回 task_id，再轮询 /query_result
-        2) 同步阻塞：/v1/chat/completions 直接返回 audio_path / audio_url
-        本方法不调用任何 caption / auto-tag 接口，prompt 原样下发。
+            resp = await self._post(QUERY_RESULT, {"task_id_list": [task_id]})
+            items = resp.get("data", [])
+            if items:
+                item = items[0]
+                status = item.get("status")
+                if status == STATUS_SUCCEEDED:
+                    raw = item.get("result")
+                    return json.loads(raw) if isinstance(raw, str) else (raw or {})
+                if status == STATUS_FAILED:
+                    raise RuntimeError(f"Task {task_id} failed: {item.get('result')}")
+                # status == STATUS_PENDING: 继续轮询
+            await asyncio.sleep(POLL_INTERVAL)
+
+    async def run(self, task_type: str, *, instrument_hint: Optional[str] = None, **kwargs) -> bytes:
+        """submit + poll + download 的组合便捷方法，返回音频字节。
+
+        失败时（网络错误/服务不可达/解析失败）在 ALLOW_SYNTH_FALLBACK=1 时
+        回退到本地程序化合成占位音频，保证链路始终可演示；否则原样抛出。
         """
         try:
-            await self._init_if_needed()
-
-=======
-        """生成音频（v1 任务队列模式）。"""
-        try:
-            await self._init_if_needed()
-
-            # 构造 OpenRouter 兼容的 chat.completions 请求
->>>>>>> dae77008d3d21757083961899b4d89bbbdab2add
-            system_msg = f"Generate music with BPM={bpm}, Key={key}, Duration={duration}s"
-            user_msg = f"{prompt}\n[Lyrics: {lyrics}]"
-            if seed >= 0:
-                user_msg += f"\n[Seed: {seed}]"
-
-            payload = {
-                "model": "acestep-v15-turbo",
-                "messages": [
-                    {"role": "system", "content": system_msg},
-                    {"role": "user", "content": user_msg},
-                ],
-                "stream": False,
-<<<<<<< HEAD
-                # 显式告诉支持该字段的 server 不要再做 caption / auto-tag
-                "auto_caption": False,
-                "use_caption": False,
-            }
-            if lora_path:
-                payload["lora_path"] = lora_path
-
-            logger.info("Submitting generation task: %s", prompt[:50])
-            submit_result = await self._post(
-                ACESTEP_V1_CHAT, payload, timeout=SUBMIT_TIMEOUT,
-            )
-
-            # ---- 同步路径：响应里直接带音频 ----
-            data = submit_result.get("data", submit_result) or {}
-            sync_audio_path = (
-                data.get("audio_path")
-                or data.get("file_path")
-                or submit_result.get("audio_path")
-                or submit_result.get("file_path")
-            )
-            if sync_audio_path:
-                logger.info("Sync mode: downloading audio from %s", sync_audio_path)
-                return await self._get_audio_bytes(sync_audio_path)
-
-            # ---- 异步路径：取 task_id 轮询 ----
-            task_id = data.get("id") or submit_result.get("id") or data.get("task_id")
-            if not task_id:
-                raise ValueError(f"No task_id / audio_path in response: {submit_result}")
-
-            logger.info("Generation task submitted: %s", task_id)
-            task_result = await self._wait_for_task(task_id, max_wait_sec=MAX_TASK_WAIT)
-=======
-            }
-
-            logger.info("Submitting generation task: %s", prompt[:50])
-            submit_result = await self._post(ACESTEP_V1_CHAT, payload, timeout=30.0)
-            task_id = submit_result.get("data", {}).get("id") or submit_result.get("id")
-            if not task_id:
-                raise ValueError(f"No task_id in response: {submit_result}")
-
-            logger.info(f"Generation task submitted: {task_id}")
-            task_result = await self._wait_for_task(task_id, max_wait_sec=600)
->>>>>>> dae77008d3d21757083961899b4d89bbbdab2add
-
-            if task_result.get("status") != "succeeded":
-                raise RuntimeError(f"Task failed: {task_result.get('error')}")
-
-<<<<<<< HEAD
-=======
-            # 从响应取音频路径
->>>>>>> dae77008d3d21757083961899b4d89bbbdab2add
-            audio_path = task_result.get("audio_path") or task_result.get("file_path")
-            if not audio_path:
-                raise ValueError(f"No audio_path in completed task: {task_result}")
-
-<<<<<<< HEAD
-            logger.info("Downloading audio from: %s", audio_path)
-=======
-            logger.info(f"Downloading audio from: {audio_path}")
->>>>>>> dae77008d3d21757083961899b4d89bbbdab2add
-            return await self._get_audio_bytes(audio_path)
-
+            task_id = await self.submit(task_type, **kwargs)
+            result = await self.wait_result(task_id)
+            file_ref = result.get("file")
+            if not file_ref:
+                raise ValueError(f"No 'file' in query_result: {result}")
+            logger.info("Downloading audio: %s", file_ref)
+            return await self._get_audio_bytes(file_ref)
         except Exception as e:
-            logger.warning("ACE-Step generation failed (%s), falling back to synth: %s",
-                           type(e).__name__, e)
+            logger.warning("ACE-Step %s failed (%s), falling back to synth: %s",
+                            task_type, type(e).__name__, e)
             if not ALLOW_SYNTH_FALLBACK:
                 raise
+            duration = int(kwargs.get("duration") or 30)
+            bpm = kwargs.get("bpm") or 80
+            key = kwargs.get("key") or "D major"
+            seed = kwargs.get("seed", -1)
             return synth.synth_stem(
                 instrument=instrument_hint or "full",
                 duration=duration, bpm=bpm, key=key, seed=seed,
@@ -238,87 +205,45 @@ class ACEStepGenerator:
                 duration=duration, bpm=bpm, key=key, seed=seed,
             )
 
+    # ---- 便捷封装：与旧调用方（backend/stems.py）保持方法名兼容 ----
+
+    async def generate(self, prompt: str, lyrics: str = "[Instrumental]",
+                        duration: int = 60, bpm: int = 80,
+                        key: str = "D major", seed: int = -1,
+                        lora_path: Optional[str] = None,
+                        instrument_hint: Optional[str] = None) -> bytes:
+        """text2music：不依赖任何已有音轨的独立生成。"""
+        return await self.run(
+            TASK_TEXT2MUSIC, instrument_hint=instrument_hint,
+            prompt=prompt, lyrics=lyrics, duration=duration, bpm=bpm, key=key,
+            seed=seed, lora_path=lora_path,
+        )
+
     async def generate_with_reference(self, prompt: str, reference_audio_path: str,
                                        duration: int = 60, bpm: int = 80,
                                        key: str = "D major", seed: int = -1,
                                        lora_path: Optional[str] = None,
                                        instrument_hint: Optional[str] = None) -> bytes:
-        """使用参考音频指导生成（目前回退到普通生成，因为 v1 接口不直接支持）。"""
-        logger.info("Reference generation: falling back to regular generation")
-        return await self.generate(
-            prompt=prompt,
-            lyrics="[Instrumental]",
-            duration=duration,
-            bpm=bpm,
-            key=key,
-            seed=seed,
-            lora_path=lora_path,
-            instrument_hint=instrument_hint,
+        """在已有音轨基础上新增一个声部，使用 ACE-Step 原生的 lego 任务——
+        这是真正在音频内容层面做协同生成的机制（reference_audio 参数按官方
+        文档只控制音色/混音等声学层面，不控制旋律/节奏/和声，撑不起这个需求）。
+        """
+        return await self.run(
+            TASK_LEGO, instrument_hint=instrument_hint,
+            prompt=prompt, lyrics="[Instrumental]", duration=duration, bpm=bpm, key=key,
+            seed=seed, lora_path=lora_path, src_audio_path=reference_audio_path,
         )
 
     async def repaint(self, audio_path: str, prompt: str,
-                      start_time: float, end_time: float,
-                      lora_path: Optional[str] = None) -> bytes:
-        """局部重绘（v1 任务队列模式）。"""
-        try:
-            await self._init_if_needed()
-
-            system_msg = f"Repaint audio from {start_time}s to {end_time}s"
-            user_msg = f"Source: {audio_path}\nStyle: {prompt}"
-
-            payload = {
-                "model": "acestep-v15-turbo",
-                "messages": [
-                    {"role": "system", "content": system_msg},
-                    {"role": "user", "content": user_msg},
-                ],
-                "stream": False,
-                "task_type": "repaint",
-            }
-
-            logger.info(f"Submitting repaint task: {audio_path} [{start_time}-{end_time}]")
-<<<<<<< HEAD
-            submit_result = await self._post(ACESTEP_V1_CHAT, payload, timeout=SUBMIT_TIMEOUT)
-            data = submit_result.get("data", submit_result) or {}
-            sync_audio_path = (
-                data.get("audio_path") or data.get("file_path")
-                or submit_result.get("audio_path") or submit_result.get("file_path")
-            )
-            if sync_audio_path:
-                logger.info("Repaint sync mode: downloading from %s", sync_audio_path)
-                return await self._get_audio_bytes(sync_audio_path)
-
-            task_id = data.get("id") or submit_result.get("id") or data.get("task_id")
-=======
-            submit_result = await self._post(ACESTEP_V1_CHAT, payload, timeout=30.0)
-            task_id = submit_result.get("data", {}).get("id") or submit_result.get("id")
->>>>>>> dae77008d3d21757083961899b4d89bbbdab2add
-            if not task_id:
-                raise ValueError(f"No task_id in response: {submit_result}")
-
-            logger.info(f"Repaint task submitted: {task_id}")
-<<<<<<< HEAD
-            task_result = await self._wait_for_task(task_id, max_wait_sec=MAX_TASK_WAIT)
-=======
-            task_result = await self._wait_for_task(task_id, max_wait_sec=600)
->>>>>>> dae77008d3d21757083961899b4d89bbbdab2add
-
-            if task_result.get("status") != "succeeded":
-                raise RuntimeError(f"Task failed: {task_result.get('error')}")
-
-            audio_path = task_result.get("audio_path") or task_result.get("file_path")
-            if not audio_path:
-                raise ValueError(f"No audio_path in completed task: {task_result}")
-
-            logger.info(f"Downloading repaint from: {audio_path}")
-            return await self._get_audio_bytes(audio_path)
-
-        except Exception as e:
-            logger.warning("ACE-Step repaint failed (%s): %s", type(e).__name__, e)
-            raise
+                       start_time: float, end_time: float,
+                       lora_path: Optional[str] = None) -> bytes:
+        return await self.run(
+            TASK_REPAINT, prompt=prompt, lyrics="[Instrumental]",
+            src_audio_path=audio_path, repainting_start=start_time,
+            repainting_end=end_time, lora_path=lora_path,
+        )
 
     async def ping(self) -> bool:
-        """检查 ACE-Step API 是否可达。"""
         try:
             resp = await self.client.get(f"{self.api_url}/health", timeout=3.0)
             return resp.status_code < 500

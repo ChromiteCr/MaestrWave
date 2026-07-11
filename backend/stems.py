@@ -2,16 +2,10 @@ import asyncio
 import uuid
 import json
 import logging
-<<<<<<< HEAD
 import gc
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Callable, Awaitable, Union
-=======
-from datetime import datetime
-from pathlib import Path
-from typing import Optional
->>>>>>> dae77008d3d21757083961899b4d89bbbdab2add
 
 # support package or module import
 try:
@@ -81,17 +75,12 @@ class StemGenerator:
     async def generate_full_session(self, user_description: str,
                                      duration: int = 60, bpm: int = 80,
                                      key: str = "D major",
-<<<<<<< HEAD
                                      lora_path: Optional[str] = None,
                                      progress_cb: Optional[ProgressCb] = None) -> dict:
-=======
-                                     lora_path: Optional[str] = None) -> dict:
->>>>>>> dae77008d3d21757083961899b4d89bbbdab2add
         session_id = str(uuid.uuid4())[:8]
         session_dir = Path(OUTPUT_DIR) / session_id
         session_dir.mkdir(parents=True, exist_ok=True)
 
-<<<<<<< HEAD
         # 总步数 = full_mix + 各 stem
         stem_names = list(STEM_PROMPTS.keys())
         total_steps = 1 + len(stem_names)
@@ -116,14 +105,6 @@ class StemGenerator:
                 key=key,
                 lora_path=lora_path,
                 instrument_hint="full",
-=======
-        # Step 1: 完整混音作为参考
-        full_prompt = f"Full orchestral ensemble, {user_description}"
-        try:
-            full_audio = await self.gen.generate(
-                prompt=full_prompt, duration=duration, bpm=bpm, key=key,
-                lora_path=lora_path, instrument_hint="full",
->>>>>>> dae77008d3d21757083961899b4d89bbbdab2add
             )
         except Exception as e:
             logger.exception("生成 full_mix 失败: %s", e)
@@ -152,27 +133,19 @@ class StemGenerator:
                 stem_audio = await self._generate_once(
                     prompt=prompt,
                     reference_audio_path=str(full_path),
-<<<<<<< HEAD
                     duration=duration,
                     bpm=bpm,
                     key=key,
                     lora_path=lora_path,
                     instrument_hint=instrument,
-=======
-                    duration=duration, bpm=bpm, key=key,
-                    lora_path=lora_path, instrument_hint=instrument,
->>>>>>> dae77008d3d21757083961899b4d89bbbdab2add
                 )
             except Exception as e:
                 logger.exception("Failed to generate stem %s: %s", instrument, e)
                 if not ALLOW_SYNTH_FALLBACK:
-<<<<<<< HEAD
                     await _emit(progress_cb, {
                         "type": "stage_error", "stage": instrument,
                         "index": i + 1, "total": total_steps, "error": str(e),
                     })
-=======
->>>>>>> dae77008d3d21757083961899b4d89bbbdab2add
                     continue
                 stem_audio = synth.synth_stem(
                     instrument=instrument, duration=duration, bpm=bpm, key=key,
@@ -180,14 +153,11 @@ class StemGenerator:
             stem_path = session_dir / f"{instrument}.wav"
             stem_path.write_bytes(stem_audio)
             stems[instrument] = str(stem_path)
-<<<<<<< HEAD
             await _emit(progress_cb, {
                 "type": "stage_done", "stage": instrument,
                 "index": i + 1, "total": total_steps,
                 "url": f"/audio/{session_id}/{instrument}.wav",
             })
-=======
->>>>>>> dae77008d3d21757083961899b4d89bbbdab2add
 
         # 写入 metadata 方便后续 "音乐库" 浏览
         meta = {

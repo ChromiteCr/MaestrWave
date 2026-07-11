@@ -12,7 +12,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const bpm = parseInt(document.getElementById('bpm').value) || 80;
     const key = document.getElementById('key').value || 'D major';
     const loraPath = document.getElementById('loraSelect').value || 'none';
-<<<<<<< HEAD
 
     genBtn.disabled = true;
 
@@ -110,25 +109,6 @@ document.addEventListener('DOMContentLoaded', () => {
       err.className = 'gen-error';
       err.textContent = '生成失败: ' + (e.message || e);
       info.appendChild(err);
-=======
-
-    genBtn.disabled = true;
-    info.textContent = `正在生成（LoKr=${loraPath}）…`;
-    try {
-      const session = await app.generateStems(desc, duration, bpm, key, loraPath);
-      if (repaintSessionId) repaintSessionId.value = session.session_id;
-      const usedLora = (session.metadata && session.metadata.lora_path) || '(无)';
-      info.innerHTML = `Session: <strong>${session.session_id}</strong>　使用权重: <code>${usedLora || '(无)'}</code>`;
-      const audio = document.createElement('audio');
-      audio.controls = true;
-      audio.src = session.full_mix_url;
-      info.appendChild(document.createElement('br'));
-      info.appendChild(audio);
-      // 刷新音乐库
-      if (window.MTXLibrary) await window.MTXLibrary.refresh();
-    } catch (e) {
-      info.textContent = '生成失败: ' + (e.message || e);
->>>>>>> dae77008d3d21757083961899b4d89bbbdab2add
     } finally {
       genBtn.disabled = false;
     }
