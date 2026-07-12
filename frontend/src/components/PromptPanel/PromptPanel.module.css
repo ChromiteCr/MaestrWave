@@ -1,7 +1,7 @@
 .panel {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 }
 
 .toggleRow {
@@ -13,8 +13,8 @@
 .toggle {
   display: inline-flex;
   background: var(--surface-2);
-  border-radius: 7px;
-  padding: 3px;
+  border-radius: 8px;
+  padding: 4px;
   gap: 2px;
 }
 
@@ -23,11 +23,11 @@
   background: transparent;
   color: color-mix(in srgb, var(--ink) 55%, transparent);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  padding: 6px 12px;
-  border-radius: 5px;
+  padding: 8px 16px;
+  border-radius: 6px;
 }
 
 .toggleActive {
@@ -38,7 +38,7 @@
 .advancedRow {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
+  gap: 14px;
 }
 
 @media (max-width: 600px) {
@@ -50,13 +50,5 @@
 .field {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-}
-
-.fieldLabel {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--ink) 45%, transparent);
+  gap: 7px;
 }

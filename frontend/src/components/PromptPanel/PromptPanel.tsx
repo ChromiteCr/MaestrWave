@@ -36,7 +36,7 @@ export function PromptPanel({ project, onCommit }: PromptPanelProps) {
       {mode === "advanced" && (
         <div className={styles.advancedRow}>
           <div className={styles.field}>
-            <span className={styles.fieldLabel}>调性</span>
+            <span className="field-label">调性</span>
             <select value={project.key} onChange={(e) => onCommit({ key: e.target.value })}>
               {KEY_OPTIONS.map((k) => (
                 <option key={k} value={k}>
@@ -46,7 +46,7 @@ export function PromptPanel({ project, onCommit }: PromptPanelProps) {
             </select>
           </div>
           <div className={styles.field}>
-            <span className={styles.fieldLabel}>拍号</span>
+            <span className="field-label">拍号</span>
             <select value={project.time_signature} onChange={(e) => onCommit({ time_signature: e.target.value })}>
               {["4/4", "3/4", "6/8", "2/4"].map((t) => (
                 <option key={t} value={t}>
@@ -56,7 +56,7 @@ export function PromptPanel({ project, onCommit }: PromptPanelProps) {
             </select>
           </div>
           <div className={styles.field}>
-            <span className={styles.fieldLabel}>BPM</span>
+            <span className="field-label">BPM</span>
             <input
               type="number"
               min={40}
@@ -66,7 +66,7 @@ export function PromptPanel({ project, onCommit }: PromptPanelProps) {
             />
           </div>
           <div className={styles.field}>
-            <span className={styles.fieldLabel}>单段时长（秒）</span>
+            <span className="field-label">乐曲总时长（秒）</span>
             <input
               type="number"
               min={4}

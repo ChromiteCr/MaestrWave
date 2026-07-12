@@ -17,7 +17,8 @@
 
 .meta {
   display: flex;
-  gap: 6px;
+  align-items: center;
+  gap: 8px;
   flex-wrap: wrap;
   padding-bottom: 6px;
 }

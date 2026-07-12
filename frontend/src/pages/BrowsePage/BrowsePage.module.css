@@ -1,31 +1,31 @@
 .body {
-  padding: 24px 40px 60px;
+  padding: 32px 40px 64px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
 }
 
 .row {
   display: grid;
-  grid-template-columns: 160px 1fr auto;
+  grid-template-columns: 190px 1fr auto;
   align-items: center;
-  gap: 18px;
+  gap: 22px;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 14px 16px;
+  border-radius: 12px;
+  padding: 20px 22px;
 }
 
 .rowInfo {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   min-width: 0;
 }
 
 .rowTitle {
   font-family: var(--font-display);
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -34,7 +34,7 @@
 
 .rowRole {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: color-mix(in srgb, var(--ink) 45%, transparent);
@@ -42,12 +42,13 @@
 
 .rowActions {
   display: flex;
-  gap: 6px;
+  align-items: center;
+  gap: 10px;
 }
 
 .playDot {
-  width: 30px;
-  height: 30px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   border: none;
   background: var(--surface-2);
@@ -69,7 +70,7 @@
 
 .emptyState {
   color: color-mix(in srgb, var(--ink) 40%, transparent);
-  font-size: 13px;
+  font-size: 14px;
   padding: 40px 0;
   text-align: center;
 }

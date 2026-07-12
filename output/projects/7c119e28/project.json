@@ -1,0 +1,38 @@
+{
+  "project_id": "7c119e28",
+  "name": "测试自定义乐器",
+  "created_at": "2026-07-12T01:28:23.427541Z",
+  "style_description": "",
+  "key": "D major",
+  "bpm": 92,
+  "time_signature": "4/4",
+  "segment_duration": 16.0,
+  "instruments": [
+    {
+      "id": "819b076d",
+      "library_key": "萨克斯风",
+      "display_name": "萨克斯风",
+      "family": "萨克斯风",
+      "role": "harmony",
+      "takes": [
+        {
+          "take_id": "07a8f435",
+          "created_at": "2026-07-12T01:29:17.684494Z",
+          "audio_file": "07a8f435.wav",
+          "task_type_used": "text2music",
+          "params": {
+            "prompt": "萨克斯风, orchestral, blending naturally with the rest of the ensemble, ",
+            "src_audio_path": null,
+            "referenced_instruments": [],
+            "bpm": 92,
+            "key": "D major",
+            "time_signature": "4/4",
+            "duration": 16.0,
+            "lora_path": "none"
+          }
+        }
+      ],
+      "current_take_id": "07a8f435"
+    }
+  ]
+}

@@ -1,24 +1,25 @@
 .body {
-  padding: 28px 40px 60px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  max-width: 640px;
+  padding: 32px 40px 64px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+  max-width: 1080px;
+  align-items: start;
 }
 
 .card {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 20px 22px;
+  border-radius: 14px;
+  padding: 26px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 18px;
 }
 
 .cardTitle {
   font-family: var(--font-display);
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
   margin: 0;
 }
@@ -27,24 +28,31 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 13px;
+  font-size: 14px;
+  gap: 12px;
 }
 
 .statLabel {
+  display: flex;
+  align-items: center;
   color: color-mix(in srgb, var(--ink) 55%, transparent);
 }
 
 .statValue {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dot {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   display: inline-block;
-  margin-right: 6px;
+  margin-right: 8px;
+  flex: 0 0 auto;
   background: color-mix(in srgb, var(--ink) 30%, transparent);
 }
 
@@ -59,13 +67,5 @@
 .field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-}
-
-.fieldLabel {
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--ink) 45%, transparent);
+  gap: 8px;
 }

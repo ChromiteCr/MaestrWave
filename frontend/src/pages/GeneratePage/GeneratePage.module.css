@@ -1,44 +1,44 @@
 .body {
-  padding: 28px 40px 60px;
+  padding: 32px 40px 64px;
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 24px;
 }
 
 .panelCard {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 18px 20px;
+  border-radius: 14px;
+  padding: 24px;
 }
 
 .tabsCard {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 16px 20px 6px;
+  border-radius: 14px;
+  padding: 20px 24px 12px;
 }
 
 .trackCard {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 20px;
+  border-radius: 14px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
 }
 
 .transportRow {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 14px;
+  gap: 16px;
 }
 
 .playBtn {
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   background: var(--accent);
   color: var(--bg);
@@ -55,15 +55,15 @@
 
 .timeLabel {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 13px;
   color: color-mix(in srgb, var(--ink) 55%, transparent);
-  min-width: 92px;
+  min-width: 104px;
 }
 
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
   margin-left: auto;
 }
 
@@ -77,15 +77,15 @@
 .repaintForm {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding-top: 14px;
+  gap: 12px;
+  padding-top: 18px;
   border-top: 1px solid var(--line);
 }
 
 .repaintRow {
   display: grid;
-  grid-template-columns: 1fr 100px 100px auto;
-  gap: 10px;
+  grid-template-columns: 1fr 110px 110px auto;
+  gap: 12px;
   align-items: end;
 }
 
@@ -98,20 +98,12 @@
 .field {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-}
-
-.fieldLabel {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--ink) 45%, transparent);
+  gap: 7px;
 }
 
 .emptyState {
   color: color-mix(in srgb, var(--ink) 40%, transparent);
-  font-size: 13px;
+  font-size: 14px;
   padding: 40px 0;
   text-align: center;
 }

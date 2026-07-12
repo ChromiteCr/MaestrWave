@@ -1,7 +1,7 @@
 .body {
-  padding: 32px 40px 60px;
+  padding: 32px 40px 64px;
   display: grid;
-  grid-template-columns: 320px 1fr;
+  grid-template-columns: 340px 1fr;
   gap: 48px;
   align-items: start;
 }
@@ -15,60 +15,40 @@
 .formCard {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 22px;
+  border-radius: 14px;
+  padding: 28px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 18px;
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-}
-
-.fieldLabel {
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--ink) 45%, transparent);
-}
-
-.row2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-@media (max-width: 420px) {
-  .row2 {
-    grid-template-columns: 1fr;
-  }
+  gap: 8px;
 }
 
 .sectionTitle {
   font-family: var(--font-display);
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
-  margin: 0 0 16px;
+  margin: 0 0 4px;
 }
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
 }
 
 .card {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: 14px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   cursor: pointer;
   transition: border-color 0.15s ease, transform 0.1s ease;
 }
@@ -80,7 +60,7 @@
 
 .cardTitle {
   font-family: var(--font-display);
-  font-size: 17px;
+  font-size: 19px;
   font-weight: 600;
   margin: 0;
   overflow: hidden;
@@ -89,7 +69,7 @@
 }
 
 .cardDesc {
-  font-size: 12px;
+  font-size: 13px;
   color: color-mix(in srgb, var(--ink) 55%, transparent);
   overflow: hidden;
   display: -webkit-box;
@@ -113,6 +93,6 @@
 
 .empty {
   color: color-mix(in srgb, var(--ink) 40%, transparent);
-  font-size: 13px;
+  font-size: 14px;
   padding: 20px 0;
 }

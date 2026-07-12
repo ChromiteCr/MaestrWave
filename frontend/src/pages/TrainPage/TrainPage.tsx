@@ -16,7 +16,7 @@ export function TrainPage() {
       <div className={styles.body}>
         <div className={styles.card}>
           <div className={styles.field}>
-            <span className={styles.fieldLabel}>数据集目录</span>
+            <span className="field-label">数据集目录</span>
             <input
               value={datasetPath}
               onChange={(e) => setDatasetPath(e.target.value)}
@@ -26,20 +26,20 @@ export function TrainPage() {
 
           <div className={styles.row2}>
             <div className={styles.field}>
-              <span className={styles.fieldLabel}>方法</span>
+              <span className="field-label">方法</span>
               <select value={method} onChange={(e) => setMethod(e.target.value as "lora" | "lokr")}>
                 <option value="lokr">LoKr（推荐，更快）</option>
                 <option value="lora">LoRA</option>
               </select>
             </div>
             <div className={styles.field}>
-              <span className={styles.fieldLabel}>Epochs</span>
+              <span className="field-label">Epochs</span>
               <input type="number" min={50} max={2000} value={epochs} onChange={(e) => setEpochs(Number(e.target.value))} />
             </div>
           </div>
 
           <div className={styles.field}>
-            <span className={styles.fieldLabel}>Batch Size</span>
+            <span className="field-label">Batch Size</span>
             <input type="number" min={1} max={8} value={batchSize} onChange={(e) => setBatchSize(Number(e.target.value))} />
           </div>
 

@@ -199,15 +199,15 @@ export function GeneratePage() {
               <div className={styles.repaintForm}>
                 <div className={styles.repaintRow}>
                   <div className={styles.field}>
-                    <span className={styles.fieldLabel}>Repaint 描述</span>
+                    <span className="field-label">Repaint 描述</span>
                     <input value={repaintPrompt} onChange={(e) => setRepaintPrompt(e.target.value)} placeholder="更明亮的起音、更清晰的力度…" />
                   </div>
                   <div className={styles.field}>
-                    <span className={styles.fieldLabel}>起始秒</span>
+                    <span className="field-label">起始秒</span>
                     <input type="number" min={0} value={repaintStart} onChange={(e) => setRepaintStart(Number(e.target.value))} />
                   </div>
                   <div className={styles.field}>
-                    <span className={styles.fieldLabel}>结束秒</span>
+                    <span className="field-label">结束秒</span>
                     <input type="number" min={0} value={repaintEnd} onChange={(e) => setRepaintEnd(Number(e.target.value))} />
                   </div>
                   <Button variant="primary" disabled={isPending} onClick={handleRepaint}>

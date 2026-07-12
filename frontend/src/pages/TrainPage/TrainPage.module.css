@@ -1,8 +1,8 @@
 .body {
-  padding: 28px 40px 60px;
+  padding: 32px 40px 64px;
   display: grid;
-  grid-template-columns: 1fr 320px;
-  gap: 28px;
+  grid-template-columns: 1fr 360px;
+  gap: 32px;
   align-items: start;
 }
 
@@ -15,41 +15,33 @@
 .card {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 22px;
+  border-radius: 14px;
+  padding: 28px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 }
 
 .row2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 14px;
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-}
-
-.fieldLabel {
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--ink) 45%, transparent);
+  gap: 8px;
 }
 
 .vramCard {
   background: linear-gradient(155deg, var(--surface-2), var(--surface));
   border: 1px solid var(--line-strong);
-  border-radius: 12px;
-  padding: 22px;
+  border-radius: 14px;
+  padding: 28px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 18px;
 }
 
 .vramFigure {
@@ -60,7 +52,7 @@
 
 .vramNumber {
   font-family: var(--font-display);
-  font-size: 46px;
+  font-size: 52px;
   font-weight: 600;
   line-height: 1;
   color: var(--accent);
@@ -68,25 +60,26 @@
 
 .vramUnit {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 14px;
   color: color-mix(in srgb, var(--ink) 55%, transparent);
 }
 
 .vramCaption {
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: color-mix(in srgb, var(--ink) 45%, transparent);
 }
 
 .vramNote {
-  font-size: 12px;
-  line-height: 1.6;
+  font-size: 13px;
+  line-height: 1.65;
   color: color-mix(in srgb, var(--ink) 60%, transparent);
 }
 
 .pendingNote {
-  font-size: 12px;
+  font-size: 13px;
+  line-height: 1.6;
   color: color-mix(in srgb, var(--wine) 85%, var(--ink));
 }

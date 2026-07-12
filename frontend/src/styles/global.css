@@ -94,15 +94,25 @@ body {
 
 .mono-chip {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.04em;
   color: color-mix(in srgb, var(--ink) 70%, transparent);
   background: var(--surface-2);
   border: 1px solid var(--line);
-  border-radius: 4px;
-  padding: 4px 8px;
+  border-radius: 5px;
+  padding: 5px 10px;
   white-space: nowrap;
+}
+
+/* 表单字段的小标签，各页面统一用这一个类，不再各自重复定义。 */
+.field-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--ink) 48%, transparent);
 }
 
 button {
@@ -117,9 +127,9 @@ select {
   color: var(--ink);
   background: var(--surface-2);
   border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 10px 12px;
-  font-size: 13px;
+  border-radius: 7px;
+  padding: 12px 14px;
+  font-size: 14.5px;
   outline: none;
 }
 

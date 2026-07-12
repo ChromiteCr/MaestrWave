@@ -32,7 +32,7 @@ function InstrumentRow({ instrument, playing, onToggleSolo, onEdit }: {
         peaks={peaks}
         state={take ? "ready" : "empty"}
         isPlaying={isPlayingThis}
-        height={48}
+        height={72}
         getProgress={() => {
           const dur = sharedAudioEngine.duration(instrument.id);
           return dur ? sharedAudioEngine.playheadSeconds(instrument.id) / dur : 0;

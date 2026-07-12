@@ -47,7 +47,7 @@ export function SettingsPage() {
         <div className={styles.card}>
           <p className={styles.cardTitle}>LoKr / LoRA</p>
           <div className={styles.field}>
-            <span className={styles.fieldLabel}>生成时使用的权重</span>
+            <span className="field-label">生成时使用的权重</span>
             <select value={loraPath} onChange={(e) => setLoraPath(e.target.value)}>
               <option value="none">无（原始模型）</option>
               {lokrOptions

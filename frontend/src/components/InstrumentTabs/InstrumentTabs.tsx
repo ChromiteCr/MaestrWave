@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Instrument, InstrumentLibrary } from "../../lib/api";
 import { CloseIcon, PlusIcon } from "../icons";
+import { Button } from "../Button/Button";
 import styles from "./InstrumentTabs.module.css";
 
 interface InstrumentTabsProps {
@@ -15,11 +16,26 @@ interface InstrumentTabsProps {
 
 export function InstrumentTabs({ instruments, selectedId, pendingIds, library, onSelect, onAdd, onClose }: InstrumentTabsProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [customMode, setCustomMode] = useState(false);
+  const [customName, setCustomName] = useState("");
 
   const status = (inst: Instrument) => {
     if (pendingIds.has(inst.id)) return styles.dotPending;
     if (inst.current_take_id) return styles.dotReady;
     return "";
+  };
+
+  const closePicker = () => {
+    setPickerOpen(false);
+    setCustomMode(false);
+    setCustomName("");
+  };
+
+  const submitCustom = () => {
+    const name = customName.trim();
+    if (!name) return;
+    onAdd(name);
+    closePicker();
   };
 
   return (
@@ -36,12 +52,12 @@ export function InstrumentTabs({ instruments, selectedId, pendingIds, library, o
         </div>
       ))}
 
-      <button type="button" className={styles.addBtn} title="添加乐器" onClick={() => setPickerOpen((v) => !v)}>
+      <button type="button" className={styles.addBtn} title="添加乐器" onClick={() => (pickerOpen ? closePicker() : setPickerOpen(true))}>
         <PlusIcon />
       </button>
 
-      {pickerOpen && library && (
-        <div className={styles.picker} onMouseLeave={() => setPickerOpen(false)}>
+      {pickerOpen && library && !customMode && (
+        <div className={styles.picker} onMouseLeave={closePicker}>
           {Object.entries(library.library).map(([key, spec]) => (
             <button
               key={key}
@@ -49,12 +65,32 @@ export function InstrumentTabs({ instruments, selectedId, pendingIds, library, o
               className={styles.pickerItem}
               onClick={() => {
                 onAdd(key);
-                setPickerOpen(false);
+                closePicker();
               }}
             >
               {spec.display_name}
             </button>
           ))}
+          <button type="button" className={styles.pickerItem} onClick={() => setCustomMode(true)}>
+            其他…
+          </button>
+        </div>
+      )}
+
+      {pickerOpen && customMode && (
+        <div className={styles.picker}>
+          <div className={styles.customRow}>
+            <input
+              autoFocus
+              placeholder="输入乐器名，比如萨克斯风"
+              value={customName}
+              onChange={(e) => setCustomName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && submitCustom()}
+            />
+            <Button variant="primary" disabled={!customName.trim()} onClick={submitCustom}>
+              添加
+            </Button>
+          </div>
         </div>
       )}
     </div>

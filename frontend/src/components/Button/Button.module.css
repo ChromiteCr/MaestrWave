@@ -1,11 +1,13 @@
 .btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
-  padding: 9px 16px;
-  border-radius: 7px;
+  padding: 11px 20px;
+  min-height: 42px;
+  border-radius: 8px;
   border: 1px solid transparent;
   background: var(--surface-2);
   color: var(--ink);
