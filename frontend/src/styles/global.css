@@ -133,6 +133,11 @@ select {
   outline: none;
 }
 
+textarea::placeholder,
+input::placeholder {
+  color: color-mix(in srgb, var(--ink) 38%, transparent);
+}
+
 textarea:focus,
 input:focus,
 select:focus,

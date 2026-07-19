@@ -9,6 +9,8 @@ interface PromptPanelProps {
 
 const KEY_OPTIONS = ["C", "G", "D", "A", "E", "F", "Bb", "Eb"].flatMap((k) => [`${k} major`, `${k} minor`]);
 
+const PROMPT_PLACEHOLDER = "例如：史诗感电影配乐，温暖弦乐，英雄气概铜管";
+
 export function PromptPanel({ project, onCommit }: PromptPanelProps) {
   const [mode, setMode] = useState<"basic" | "advanced">("basic");
   const [desc, setDesc] = useState(project.style_description);
@@ -25,13 +27,6 @@ export function PromptPanel({ project, onCommit }: PromptPanelProps) {
           </button>
         </div>
       </div>
-
-      <textarea
-        rows={2}
-        value={desc}
-        onChange={(e) => setDesc(e.target.value)}
-        onBlur={() => desc !== project.style_description && onCommit({ style_description: desc })}
-      />
 
       {mode === "advanced" && (
         <div className={styles.advancedRow}>
@@ -77,6 +72,14 @@ export function PromptPanel({ project, onCommit }: PromptPanelProps) {
           </div>
         </div>
       )}
+
+      <textarea
+        rows={2}
+        value={desc}
+        placeholder={PROMPT_PLACEHOLDER}
+        onChange={(e) => setDesc(e.target.value)}
+        onBlur={() => desc !== project.style_description && onCommit({ style_description: desc })}
+      />
     </div>
   );
 }

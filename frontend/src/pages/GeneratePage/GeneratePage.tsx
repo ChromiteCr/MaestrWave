@@ -136,17 +136,7 @@ export function GeneratePage() {
 
   return (
     <div>
-      <PageHeader
-        eyebrow={project.name || "MaestrWave"}
-        title="生成"
-        meta={
-          <>
-            <span className="mono-chip">{project.key}</span>
-            <span className="mono-chip">{project.bpm} bpm</span>
-            <span className="mono-chip">{project.time_signature}</span>
-          </>
-        }
-      />
+      <PageHeader eyebrow={project.name || "MaestrWave"} title="生成" />
 
       <div className={styles.body}>
         <div className={styles.panelCard}>
