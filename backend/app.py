@@ -24,6 +24,7 @@ try:
     from .generation_backend import get_backend
     from .conduct import hub as conduct_hub
     from .netinfo import network_info
+    from .tunnel import manager as tunnel_manager
 except Exception:
     from stems import StemGenerator, list_sessions
     from config import (
@@ -36,6 +37,7 @@ except Exception:
     from generation_backend import get_backend
     from conduct import hub as conduct_hub
     from netinfo import network_info
+    from tunnel import manager as tunnel_manager
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -176,6 +178,36 @@ async def conduct_ws(websocket: WebSocket, room_id: str, role: str = "remote"):
         logger.exception("conduct ws 异常 room=%s role=%s", room_id, role)
     finally:
         await conduct_hub.leave(room_id, role, peer_id)
+
+
+class TunnelStartRequest(BaseModel):
+    port: int = 5173
+
+
+@app.get("/api/tunnel")
+async def get_tunnel_status():
+    """隧道当前状态（见 backend/tunnel.py）。前端轮询它等域名分配下来。"""
+    return tunnel_manager.status()
+
+
+@app.post("/api/tunnel/start")
+async def start_tunnel(req: TunnelStartRequest):
+    """
+    启动 cloudflared 隧道。只应由用户在「输出」页显式点击触发——
+    这会把本机 dev server 暴露到公网。
+    """
+    return await tunnel_manager.start(req.port)
+
+
+@app.post("/api/tunnel/stop")
+async def stop_tunnel():
+    return await tunnel_manager.stop()
+
+
+@app.on_event("shutdown")
+async def _shutdown_tunnel():
+    """后端退出时兜底关掉隧道，避免它在用户不知情的情况下一直开着。"""
+    await tunnel_manager.stop()
 
 
 @app.get("/api/lokr")

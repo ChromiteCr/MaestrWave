@@ -37,7 +37,8 @@ MaestrWave 是一个面向“AI 生成管弦乐素材 + 体感指挥演绎”的
   - 「输出」页电脑模式显示房间码与二维码，手机扫码即进入专用遥控界面（`pages/RemotePage`，不加载任何音频）。
   - 开发模式下 Vite 改为监听 `0.0.0.0` 并代理 WebSocket——此前只绑 localhost，手机在局域网里根本连不上。
   - 新增 `scripts/dev-certs.sh` 生成 HTTPS 证书：iOS 只在安全上下文才允许运动传感器权限。HTTPS 是显式开关（`npm run dev:https`），避免装完证书后 http:// 旧地址静默失效。
-  - 「输出」页电脑模式提供「局域网 / 隧道」两种配对方式：隧道方式给出 cloudflared 命令、粘贴隧道地址即生成二维码，任何手机零安装。`npm run dev:tunnel` 按后缀放行常见隧道域名，解决"隧道域名随机、Vite 却要启动时就知道放行谁"的鸡生蛋问题。
+  - 「输出」页电脑模式提供「局域网 / 隧道」两种配对方式，任何手机零安装即可用隧道方式接入。`npm run dev:tunnel` 按后缀放行常见隧道域名，解决"隧道域名随机、Vite 却要启动时就知道放行谁"的鸡生蛋问题。
+  - 隧道可在 UI 上一键启停（`backend/tunnel.py` 代管 cloudflared 子进程，抓到域名后回传前端自动填入），不需要另开终端；后端退出时自动关闭隧道。
   - 顺带修回一个 M2 移植时漏掉的逻辑：起播后 5 秒无传感器数据的检测（原先桌面端会永远停在"等待手势…"）。
 
 ## 代码结构
@@ -50,6 +51,7 @@ MaestrWave 是一个面向“AI 生成管弦乐素材 + 体感指挥演绎”的
   - generation_backend.py：生成后端抽象
   - conduct.py：手机遥控指挥的 WebSocket 中转
   - netinfo.py：局域网地址探测
+  - tunnel.py：代管 cloudflared 隧道进程（UI 一键启停）
   - synth.py：程序化音频 fallback
   - config.py：配置项与乐器目录
 - frontend
@@ -140,17 +142,21 @@ Android 上 Chrome 通常不强制这一点，HTTP 也能拿到传感器数据�
 
 「输出」页电脑模式里可以把配对方式从「局域网」切到「隧道」，页面会给出完整步骤。原理是用 cloudflared / ngrok 把本机暴露到公网，它们自带**公开受信任**的 HTTPS 证书，所以任何手机都不用装任何东西，也不要求和电脑在同一个网络。
 
-```bash
-# 1. 启动 dev server（必须用 dev:tunnel，见下）
-npm run dev:tunnel
+前提是装了 cloudflared，并且 dev server 用 `dev:tunnel` 启动（原因见下）：
 
-# 2. 另开一个终端
-cloudflared tunnel --url http://localhost:5173
+```bash
+brew install cloudflared
+npm run dev:tunnel
 ```
 
-把 cloudflared 输出的 `https://xxx.trycloudflare.com` 粘进「输出」页的输入框，二维码就会按这个地址生成（地址会存在 localStorage，刷新页面不丢）。走隧道时**不需要 mkcert 证书，也不需要 `dev:https`**——TLS 由隧道那一端终结。
+然后在「输出」页 → 电脑模式 → 隧道，**点「启动隧道」**即可：后端会代管 cloudflared 进程，拿到域名后自动填进输入框、二维码同步刷新，不需要你另开终端。再点一次「停止隧道」关闭。
 
-如果你直接用隧道域名在电脑上打开本页面，UI 会自动识别并预填，无需手动粘贴。
+走隧道时**不需要 mkcert 证书，也不需要 `dev:https`**——TLS 由隧道那一端终结。
+
+其它情况：
+- 没装 cloudflared 时，UI 会显示安装提示和可复制的手动命令，跑完把网址粘进输入框也一样能用（地址存在 localStorage，刷新不丢）。
+- 直接用隧道域名在电脑上打开本页面时，UI 会自动识别并预填。
+- 后端进程退出时会自动关掉它启动的隧道，避免机器在你不知情的情况下一直暴露在公网。
 
 **为什么必须用 `dev:tunnel`**：Vite 会拒绝 Host 头不在允许列表里的请求（防 DNS 重绑定攻击），而 cloudflared 的临时隧道每次启动都是随机域名，没法提前写进配置——鸡生蛋。`MW_TUNNEL=1`（即 `dev:tunnel`）按**后缀**放行 `.trycloudflare.com`、`.ngrok-free.app`、`.ngrok.io`、`.ngrok.app`、`.loca.lt`，既不用提前知道具体域名，也保留了对其它域名的防护。
 
@@ -184,6 +190,7 @@ cloudflared tunnel --url http://localhost:5173
 - GET /api/health：检查后端与 ACE-Step 可达性
 - GET /api/network-info：局域网地址，「输出」页用它生成手机扫码地址
 - WS /ws/conduct/{room_id}?role=stage|remote：手机遥控指挥的中转通道
+- GET /api/tunnel、POST /api/tunnel/start、POST /api/tunnel/stop：cloudflared 隧道启停与状态
 - GET /api/lokr：列出可用 LoKr / LoRA 权重
 - POST /api/projects：创建项目
 - GET /api/projects：列出项目

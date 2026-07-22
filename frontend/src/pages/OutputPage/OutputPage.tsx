@@ -5,7 +5,7 @@ import { useConductor } from "../../lib/useConductor";
 import { ConductLink, newRoomCode, type LinkStatus } from "../../lib/conductLink";
 import { LocalSensorSource, RemoteSensorSource, type SensorSource } from "../../lib/sensorSource";
 import type { InstrumentRole } from "../../lib/gesture";
-import { api, type NetworkInfo } from "../../lib/api";
+import { api, type NetworkInfo, type TunnelStatus } from "../../lib/api";
 import { useAppStore } from "../../state/store";
 import styles from "./OutputPage.module.css";
 
@@ -64,6 +64,8 @@ export function OutputPage() {
     openedViaTunnel ? window.location.origin : readStoredTunnelUrl(),
   );
   const [copied, setCopied] = useState(false);
+  const [tunnelStatus, setTunnelStatus] = useState<TunnelStatus | null>(null);
+  const [tunnelBusy, setTunnelBusy] = useState(false);
 
   useEffect(() => {
     try {
@@ -151,7 +153,44 @@ export function OutputPage() {
   // 本地是 http，但手机走的是隧道的 https，不该误报。
   const insecureWarning = phoneUrl.startsWith("http://");
 
-  const cloudflaredCmd = `cloudflared tunnel --url http://localhost:${window.location.port || "5173"}`;
+  const devPort = Number(window.location.port) || 5173;
+  const cloudflaredCmd = `cloudflared tunnel --url http://localhost:${devPort}`;
+
+  // 进「隧道」方式时轮询后端代管的 cloudflared 状态：域名要几秒才分配下来，
+  // 而且隧道中途挂掉也要能反映出来。
+  useEffect(() => {
+    if (pairMethod !== "tunnel") return;
+    let alive = true;
+    const tick = () => {
+      api.tunnelStatus()
+        .then((s) => {
+          if (!alive) return;
+          setTunnelStatus(s);
+          // 后端一拿到域名就自动填进输入框，用户不用手动复制粘贴。
+          if (s.url) setTunnelUrl((prev) => (prev === s.url ? prev : s.url!));
+        })
+        .catch(() => alive && setTunnelStatus(null));
+    };
+    tick();
+    const id = setInterval(tick, 2000);
+    return () => {
+      alive = false;
+      clearInterval(id);
+    };
+  }, [pairMethod]);
+
+  const toggleTunnel = async () => {
+    setTunnelBusy(true);
+    try {
+      const s = tunnelStatus?.running ? await api.tunnelStop() : await api.tunnelStart(devPort);
+      setTunnelStatus(s);
+      if (!s.running) setTunnelUrl("");
+    } catch (e) {
+      setError((e as Error).message || "隧道操作失败");
+    } finally {
+      setTunnelBusy(false);
+    }
+  };
 
   const copyCmd = async () => {
     try {
@@ -280,16 +319,51 @@ export function OutputPage() {
                   {pairMethod === "tunnel" && (
                     <>
                       <div className={styles.field}>
-                        <span className="field-label">1. 另开一个终端运行</span>
-                        <div className={styles.cmdRow}>
-                          <code className={styles.cmd}>{cloudflaredCmd}</code>
-                          <button type="button" className={styles.copyBtn} onClick={copyCmd}>
-                            {copied ? "已复制" : "复制"}
-                          </button>
-                        </div>
+                        <span className="field-label">隧道</span>
+                        {tunnelStatus && !tunnelStatus.available ? (
+                          <>
+                            <p className={styles.note}>
+                              没检测到 cloudflared。装上就能在这里一键启停：
+                              <code>brew install cloudflared</code>
+                              <br />
+                              或者自己开个终端跑下面这条命令，再把网址粘到下面。
+                            </p>
+                            <div className={styles.cmdRow}>
+                              <code className={styles.cmd}>{cloudflaredCmd}</code>
+                              <button type="button" className={styles.copyBtn} onClick={copyCmd}>
+                                {copied ? "已复制" : "复制"}
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <div className={styles.cmdRow}>
+                            <button
+                              type="button"
+                              className={`${styles.tunnelBtn} ${tunnelStatus?.running ? styles.tunnelBtnOn : ""}`}
+                              onClick={toggleTunnel}
+                              disabled={tunnelBusy || !tunnelStatus}
+                            >
+                              {tunnelBusy
+                                ? "处理中…"
+                                : tunnelStatus?.running
+                                  ? "停止隧道"
+                                  : "启动隧道"}
+                            </button>
+                            <span className={styles.linkText}>
+                              {!tunnelStatus
+                                ? "检测中…"
+                                : tunnelStatus.running && tunnelStatus.url
+                                  ? "隧道已就绪"
+                                  : tunnelStatus.running
+                                    ? "正在分配域名…"
+                                    : "未启动"}
+                            </span>
+                          </div>
+                        )}
                       </div>
+
                       <div className={styles.field}>
-                        <span className="field-label">2. 把它输出的网址粘到这里</span>
+                        <span className="field-label">隧道地址（启动后自动填入，也可手填）</span>
                         <input
                           value={tunnelUrl}
                           onChange={(e) => setTunnelUrl(e.target.value)}
@@ -301,6 +375,7 @@ export function OutputPage() {
                       {tunnelUrl.trim() && !tunnelOrigin && (
                         <p className={styles.warn}>这个地址解析不了，检查一下有没有粘全。</p>
                       )}
+                      {tunnelStatus?.error && <p className={styles.warn}>{tunnelStatus.error}</p>}
                     </>
                   )}
 

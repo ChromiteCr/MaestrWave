@@ -181,6 +181,37 @@
   color: var(--accent);
 }
 
+.tunnelBtn {
+  flex: none;
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 8px 18px;
+  border-radius: 6px;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.tunnelBtn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.tunnelBtn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* 隧道开着 = 本机正暴露在公网，用酒红提醒，而不是和普通操作一样的蓝。 */
+.tunnelBtnOn {
+  border-color: var(--wine);
+  color: var(--wine);
+}
+
+.tunnelBtnOn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--wine) 14%, transparent);
+}
+
 .note {
   margin: 0;
   font-size: 11.5px;

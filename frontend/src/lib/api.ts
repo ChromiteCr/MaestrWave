@@ -58,6 +58,16 @@ export interface NetworkInfo {
   conduct_rooms: Record<string, { stage: boolean; remotes: number }>;
 }
 
+/** 见 backend/tunnel.py：后端代管的 cloudflared 进程状态。 */
+export interface TunnelStatus {
+  available: boolean;
+  running: boolean;
+  url: string | null;
+  port: number | null;
+  error: string | null;
+  log_tail: string[];
+}
+
 export interface LokrOption {
   id: string;
   name: string;
@@ -80,6 +90,12 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   health: () => req<HealthInfo>("/api/health"),
   networkInfo: () => req<NetworkInfo>("/api/network-info"),
+
+  tunnelStatus: () => req<TunnelStatus>("/api/tunnel"),
+  tunnelStart: (port: number) =>
+    req<TunnelStatus>("/api/tunnel/start", { method: "POST", body: JSON.stringify({ port }) }),
+  tunnelStop: () => req<TunnelStatus>("/api/tunnel/stop", { method: "POST" }),
+
   instrumentLibrary: () => req<InstrumentLibrary>("/api/instrument-library"),
   lokrOptions: () => req<{ options: LokrOption[]; weights_dir: string }>("/api/lokr"),
 
