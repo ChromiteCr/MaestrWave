@@ -41,6 +41,45 @@
   color: color-mix(in srgb, var(--ink) 48%, transparent);
 }
 
+/* ---------- 配对方式（局域网 / 隧道） ---------- */
+
+/* 比模式切换低一级：更小、无实色底，避免和上面的主切换抢视觉重心。 */
+.methodToggle {
+  display: inline-flex;
+  gap: 4px;
+  margin-top: -6px;
+}
+
+.methodBtn {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: color-mix(in srgb, var(--ink) 52%, transparent);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  padding: 5px 14px;
+  border-radius: 999px;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.methodBtn:hover {
+  color: var(--ink);
+}
+
+.methodActive {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.methodHint {
+  margin: -12px 0 0;
+  max-width: 460px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--ink) 42%, transparent);
+}
+
 /* ---------- 配对卡片（电脑模式） ---------- */
 
 .pairCard {
@@ -104,6 +143,63 @@
   border-radius: 6px;
   padding: 8px 10px;
   word-break: break-all;
+}
+
+.cmdRow {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.cmd {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--accent);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 10px;
+  word-break: break-all;
+  user-select: all;
+}
+
+.copyBtn {
+  flex: none;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: color-mix(in srgb, var(--ink) 66%, transparent);
+  font-size: 11.5px;
+  padding: 0 12px;
+  border-radius: 6px;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.copyBtn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.note {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.65;
+  color: color-mix(in srgb, var(--ink) 46%, transparent);
+}
+
+.note code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: color-mix(in srgb, var(--ink) 72%, transparent);
+  background: var(--surface-2);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.note strong {
+  color: var(--wine);
+  font-weight: 600;
 }
 
 .linkRow {

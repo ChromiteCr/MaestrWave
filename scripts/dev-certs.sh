@@ -66,7 +66,11 @@ fi
 
 echo
 echo "证书位置：$CERT_DIR"
-echo "重启 npm run dev 后，Vite 会自动以 HTTPS 启动。"
+echo
+echo "HTTPS 不会自动启用（否则 http:// 的旧地址会静默失效）。要连手机时用："
+echo "    npm run dev:https"
+echo "日常桌面开发仍然用 npm run dev（HTTP）。"
 if [ -n "$LAN_IP" ]; then
+  echo
   echo "手机访问：https://$LAN_IP:5173"
 fi

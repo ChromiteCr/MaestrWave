@@ -36,7 +36,8 @@ MaestrWave 是一个面向“AI 生成管弦乐素材 + 体感指挥演绎”的
   - 前端把"采集传感器"抽成可替换的 `SensorSource`（`lib/sensorSource.ts`），单机模式与电脑模式共用同一套指挥/出声逻辑。
   - 「输出」页电脑模式显示房间码与二维码，手机扫码即进入专用遥控界面（`pages/RemotePage`，不加载任何音频）。
   - 开发模式下 Vite 改为监听 `0.0.0.0` 并代理 WebSocket——此前只绑 localhost，手机在局域网里根本连不上。
-  - 新增 `scripts/dev-certs.sh` 生成 HTTPS 证书：iOS 只在安全上下文才允许运动传感器权限。
+  - 新增 `scripts/dev-certs.sh` 生成 HTTPS 证书：iOS 只在安全上下文才允许运动传感器权限。HTTPS 是显式开关（`npm run dev:https`），避免装完证书后 http:// 旧地址静默失效。
+  - 「输出」页电脑模式提供「局域网 / 隧道」两种配对方式：隧道方式给出 cloudflared 命令、粘贴隧道地址即生成二维码，任何手机零安装。`npm run dev:tunnel` 按后缀放行常见隧道域名，解决"隧道域名随机、Vite 却要启动时就知道放行谁"的鸡生蛋问题。
   - 顺带修回一个 M2 移植时漏掉的逻辑：起播后 5 秒无传感器数据的检测（原先桌面端会永远停在"等待手势…"）。
 
 ## 代码结构
@@ -109,7 +110,9 @@ npm run dev
 
 电脑模式的流程是：「输出」页切到电脑模式 → 页面显示房间码和二维码 → 手机扫码进入遥控界面 → 电脑点「开始指挥」→ 挥动手机，声音从电脑放出。手机端只发传感器数据，不下载音频。
 
-### iOS 必须先启用 HTTPS
+电脑模式下手机怎么连过来有两种方式，在「输出」页可以切换：**局域网**（延迟最低，iPhone 需装一次证书）和**隧道**（零安装，不要求同一网络）。
+
+### 方式一：局域网 —— iOS 必须先启用 HTTPS
 
 iOS 只在安全上下文里才允许 `DeviceMotionEvent.requestPermission()`。手机通过局域网 IP 走 http:// 访问时，Safari 连权限弹窗都不会出现。生成证书：
 
@@ -117,17 +120,52 @@ iOS 只在安全上下文里才允许 `DeviceMotionEvent.requestPermission()`。
 bash scripts/dev-certs.sh
 ```
 
-脚本优先用 mkcert（推荐 `brew install mkcert`，签出的证书受系统信任），没有则用 openssl 自签名兜底。证书写到 `frontend/certs/`，重启 `npm run dev` 后 Vite 会自动以 HTTPS 启动。用 mkcert 时手机还需要安装一次它的根证书（脚本会打印步骤）；用自签名证书则手机首次访问时点「继续访问」即可。
+脚本优先用 mkcert（推荐 `brew install mkcert`，签出的证书受系统信任），没有则用 openssl 自签名兜底。证书写到 `frontend/certs/`。
+
+证书生成后 HTTPS **不会自动启用**——要用 HTTPS 启动：
+
+```bash
+npm run dev:https
+```
+
+日常桌面开发继续用 `npm run dev`（HTTP）。这样区分是因为：如果"有证书就自动切 HTTPS"，那么所有 `http://localhost:5173` 的旧地址会静默失效，Safari 只会报一句「服务器意外中断了连接」，很难联想到是协议变了。
+
+用 mkcert 时手机还需要安装一次它的根证书（脚本会打印步骤）；用自签名证书则手机首次访问时点「继续访问」即可。
+
+> 每台要连的 iPhone 都得装一次 mkcert 根证书——它是只有你自己设备信任的私有 CA。如果要给多个人/多台手机演示，用下面的隧道方案更合适（公开受信任证书，任何设备零安装）。Android 上 Chrome 通常不强制 HTTPS，直接用 HTTP 即可。
 
 Android 上 Chrome 通常不强制这一点，HTTP 也能拿到传感器数据。
 
-### 用隧道代替证书
+### 方式二：隧道（不用证书，任何手机零安装）
 
-不想折腾证书的话，用 ngrok / cloudflared 暴露 5173 端口也可以，它们自带受信任的 HTTPS。这种情况下要放行 Vite 的 Host 检查：
+「输出」页电脑模式里可以把配对方式从「局域网」切到「隧道」，页面会给出完整步骤。原理是用 cloudflared / ngrok 把本机暴露到公网，它们自带**公开受信任**的 HTTPS 证书，所以任何手机都不用装任何东西，也不要求和电脑在同一个网络。
 
 ```bash
-MW_ALLOWED_HOSTS=your-tunnel.ngrok-free.app npm run dev
+# 1. 启动 dev server（必须用 dev:tunnel，见下）
+npm run dev:tunnel
+
+# 2. 另开一个终端
+cloudflared tunnel --url http://localhost:5173
 ```
+
+把 cloudflared 输出的 `https://xxx.trycloudflare.com` 粘进「输出」页的输入框，二维码就会按这个地址生成（地址会存在 localStorage，刷新页面不丢）。走隧道时**不需要 mkcert 证书，也不需要 `dev:https`**——TLS 由隧道那一端终结。
+
+如果你直接用隧道域名在电脑上打开本页面，UI 会自动识别并预填，无需手动粘贴。
+
+**为什么必须用 `dev:tunnel`**：Vite 会拒绝 Host 头不在允许列表里的请求（防 DNS 重绑定攻击），而 cloudflared 的临时隧道每次启动都是随机域名，没法提前写进配置——鸡生蛋。`MW_TUNNEL=1`（即 `dev:tunnel`）按**后缀**放行 `.trycloudflare.com`、`.ngrok-free.app`、`.ngrok.io`、`.ngrok.app`、`.loca.lt`，既不用提前知道具体域名，也保留了对其它域名的防护。
+
+自建隧道或自有域名用 `MW_ALLOWED_HOSTS=a.example.com,b.example.com npm run dev`；`MW_ALLOWED_HOSTS=*` 可以放行一切，但会关掉 DNS 重绑定防护，只在临时演示时用。
+
+> ⚠️ 隧道地址是**公网可访问**的，拿到链接的人都能接进房间指挥。房间码是 6 位随机码（约 8.8 亿组合，暴力猜不现实），但链接本身别乱发，演示完记得关掉隧道。
+
+### 两种方式怎么选
+
+| | 局域网 | 隧道 |
+|---|---|---|
+| 延迟 | 最低 | 多几十毫秒 |
+| iPhone 要装证书 | 是（每台一次） | 否 |
+| 要求同一 Wi-Fi | 是 | 否 |
+| 适合 | 自己开发调试 | 给别人演示、多台手机 |
 
 ## 配置说明
 
