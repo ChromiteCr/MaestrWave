@@ -9,3 +9,6 @@ env/
 
 # Output audio
 /output/sessions/
+
+# M4：本地开发用 HTTPS 证书，不进仓库
+frontend/certs/

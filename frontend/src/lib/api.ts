@@ -51,6 +51,13 @@ export interface HealthInfo {
   generation_backend: string;
 }
 
+/** 见 backend/netinfo.py：浏览器拿不到本机局域网 IP，只能问后端。 */
+export interface NetworkInfo {
+  hostname: string;
+  lan_ips: string[];
+  conduct_rooms: Record<string, { stage: boolean; remotes: number }>;
+}
+
 export interface LokrOption {
   id: string;
   name: string;
@@ -72,6 +79,7 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   health: () => req<HealthInfo>("/api/health"),
+  networkInfo: () => req<NetworkInfo>("/api/network-info"),
   instrumentLibrary: () => req<InstrumentLibrary>("/api/instrument-library"),
   lokrOptions: () => req<{ options: LokrOption[]; weights_dir: string }>("/api/lokr"),
 

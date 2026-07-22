@@ -1,19 +1,25 @@
 import { useRef, useState } from "react";
 import type { Project } from "./api";
 import { sharedAudioEngine } from "./audioEngine";
-import { SensorInput } from "./sensor";
 import { GestureInterpreter, type GestureParams, type InstrumentRole } from "./gesture";
+import type { SensorSource } from "./sensorSource";
 import { currentTake } from "../state/store";
 
-export type ConductorStatus = "idle" | "requesting" | "waiting" | "active" | "error";
+export type ConductorStatus = "idle" | "requesting" | "waiting" | "active" | "nodata" | "error";
 
 const ROLE_PAN: Record<InstrumentRole, number> = { melody: -0.7, harmony: 0.7, bass: -0.3, rhythm: 0.3 };
 
+/** 起播后多久还没收到任何采样，就认为这台设备没有传感器（或手机还没连上）。 */
+const NO_DATA_TIMEOUT_MS = 5000;
+
 /**
- * 移植自 legacy/js/app.js 里的 startConducting/_applyToAudio + stage2.js，
- * 把「按乐器名硬编码」改成「按角色（melody/harmony/bass/rhythm）」，
- * 因为新架构下项目乐器是任意的。手势解析/传感器采集本身不变
- * （见 lib/sensor.ts、lib/gesture.ts）。
+ * 指挥编排（移植自 legacy/js/app.js 的 startConducting/_applyToAudio + stage2.js）。
+ *
+ * M4 起「传感器从哪来」由调用方通过 SensorSource 注入（见 lib/sensorSource.ts），
+ * 因此单机模式和电脑模式共用这一份逻辑：这里只负责装载音轨、解析手势、
+ * 把参数写进音频引擎，不关心采样是本机采的还是手机发来的。
+ *
+ * 手势解析始终跑在这一侧，因为节拍检测依赖 60 帧历史窗口和项目 baseBpm。
  */
 export function useConductor() {
   const [status, setStatus] = useState<ConductorStatus>("idle");
@@ -22,6 +28,9 @@ export function useConductor() {
   });
   const [dynamics, setDynamics] = useState(0);
   const gestureRef = useRef<GestureInterpreter | null>(null);
+  const sourceRef = useRef<SensorSource | null>(null);
+  const noDataTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const gotSampleRef = useRef(false);
 
   const applyToAudio = (project: Project, params: GestureParams) => {
     for (const inst of project.instruments) {
@@ -44,7 +53,7 @@ export function useConductor() {
     }
   };
 
-  const start = async (project: Project) => {
+  const start = async (project: Project, source: SensorSource) => {
     setStatus("requesting");
     await sharedAudioEngine.init();
     await sharedAudioEngine.resume();
@@ -54,23 +63,31 @@ export function useConductor() {
       if (take) await sharedAudioEngine.loadTrack(inst.id, take.url, ROLE_PAN[inst.role] ?? 0);
     }
 
-    const sensor = new SensorInput();
     try {
-      await sensor.requestPermission();
+      await source.start();
     } catch (e) {
       setStatus("error");
       throw e;
     }
+    sourceRef.current = source;
 
     const gesture = new GestureInterpreter();
     gesture.baseBpm = project.bpm;
     gestureRef.current = gesture;
 
-    sensor.start();
     setStatus("waiting");
     sharedAudioEngine.playAll();
 
-    sensor.onUpdate((sample) => {
+    // legacy 版本里有这个「5 秒无数据」检测，M2 移植时漏掉了，导致桌面端
+    // 点了开始后音乐在放、界面却永远停在「等待手势…」。这里补回来。
+    gotSampleRef.current = false;
+    if (noDataTimerRef.current) clearTimeout(noDataTimerRef.current);
+    noDataTimerRef.current = setTimeout(() => {
+      if (!gotSampleRef.current) setStatus("nodata");
+    }, NO_DATA_TIMEOUT_MS);
+
+    source.onSample((sample) => {
+      gotSampleRef.current = true;
       const params = gesture.process(sample);
       setStatus("active");
       setRoleActivation(params.roles);
@@ -80,9 +97,17 @@ export function useConductor() {
   };
 
   const stop = () => {
+    if (noDataTimerRef.current) {
+      clearTimeout(noDataTimerRef.current);
+      noDataTimerRef.current = null;
+    }
+    sourceRef.current?.stop();
+    sourceRef.current = null;
     sharedAudioEngine.stop();
+    setRoleActivation({ melody: 0, harmony: 0, bass: 0, rhythm: 0 });
+    setDynamics(0);
     setStatus("idle");
   };
 
-  return { status, roleActivation, dynamics, start, stop, sensorAvailable: SensorInput.isAvailable() };
+  return { status, roleActivation, dynamics, start, stop };
 }

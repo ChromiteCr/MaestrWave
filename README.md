@@ -14,7 +14,7 @@ MaestrWave 是一个面向“AI 生成管弦乐素材 + 体感指挥演绎”的
 - 基于项目模型组织“项目 → 乐器 → take”的生成流程
 - 支持单乐器生成、重新生成与局部重绘
 - 提供浏览页波形与统一播放体验
-- 支持手机 IMU 作为实时混音输入
+- 支持手机 IMU 作为实时混音输入，可选"手机自采自放"或"手机遥控、电脑出声"两种模式
 - 当 ACE-Step 不可用时，自动回退到程序化占位音频，便于本地验证
 
 ## 版本记录
@@ -31,6 +31,13 @@ MaestrWave 是一个面向“AI 生成管弦乐素材 + 体感指挥演绎”的
   - 「高级」模式下的调性/拍号/BPM/乐曲总时长挪到了风格描述输入框的上方（原来在下方）。
   - 风格描述输入框在没有内容时，和其它输入框一样显示占位提示文字。
 - ⏳ **M3** 训练页后端：尚未开始，卡在需要确认训练机器上具体用 ACE-Step 自带的 Gradio LoRA Training 标签页，还是 Side-Step CLI。
+- ✅ **M4** 手机遥控指挥（本次改动）：在原本"手机单机自采自放"之外，新增"手机当指挥棒、电脑出声"的模式，两种模式在「输出」页可切换。
+  - 后端新增 WebSocket 中转 `/ws/conduct/{room}`（`backend/conduct.py`），只做纯转发不解析手势；新增 `/api/network-info`（`backend/netinfo.py`）供前端拼手机可达地址。
+  - 前端把"采集传感器"抽成可替换的 `SensorSource`（`lib/sensorSource.ts`），单机模式与电脑模式共用同一套指挥/出声逻辑。
+  - 「输出」页电脑模式显示房间码与二维码，手机扫码即进入专用遥控界面（`pages/RemotePage`，不加载任何音频）。
+  - 开发模式下 Vite 改为监听 `0.0.0.0` 并代理 WebSocket——此前只绑 localhost，手机在局域网里根本连不上。
+  - 新增 `scripts/dev-certs.sh` 生成 HTTPS 证书：iOS 只在安全上下文才允许运动传感器权限。
+  - 顺带修回一个 M2 移植时漏掉的逻辑：起播后 5 秒无传感器数据的检测（原先桌面端会永远停在"等待手势…"）。
 
 ## 代码结构
 
@@ -40,13 +47,17 @@ MaestrWave 是一个面向“AI 生成管弦乐素材 + 体感指挥演绎”的
   - project.py：项目/乐器/take 数据模型
   - project_gen.py：分乐器协同生成与 lego 编排逻辑
   - generation_backend.py：生成后端抽象
+  - conduct.py：手机遥控指挥的 WebSocket 中转
+  - netinfo.py：局域网地址探测
   - synth.py：程序化音频 fallback
   - config.py：配置项与乐器目录
 - frontend
   - src/App.tsx：页面路由与侧栏入口
-  - src/pages：文件、生成、浏览、输出、训练、设置六个页面
-  - src/components：波形、侧栏、提示面板等 UI 组件
-  - src/lib：音频引擎、传感器、手势解析与 API 封装
+  - src/pages：文件、生成、浏览、输出、训练、设置六个页面，外加手机端遥控页 RemotePage
+  - src/components：波形、侧栏、提示面板、二维码等 UI 组件
+  - src/lib：音频引擎、传感器源、手势解析、指挥链路（conductLink）与 API 封装
+- scripts
+  - dev-certs.sh：生成开发用 HTTPS 证书（iOS 传感器权限需要）
 - output
   - projects：项目化生成产物
   - sessions：旧版 legacy 生成产物
@@ -85,7 +96,38 @@ npm run dev
 1. 打开“文件”页，新建项目（只需要项目名称和乐曲总时长）。
 2. 在“生成”页填写风格描述、按需调整调性/拍号/BPM，为不同乐器创建 tab（含自定义乐器）并逐个生成音频。
 3. 在“浏览”页试听与检查生成结果。
-4. 在“输出”页用手机打开同一地址，并授权传感器权限后进行实时指挥。
+4. 在“输出”页选择指挥模式：单机模式用手机打开同一地址，电脑模式用手机扫二维码接入（详见下面「手机指挥」）。
+
+## 手机指挥
+
+「输出」页有两种模式：
+
+| 模式 | 谁采传感器 | 谁出声 | 需要什么 |
+|------|-----------|--------|----------|
+| 单机模式 | 手机 | 手机 | 手机能打开页面即可 |
+| 电脑模式 | 手机 | 这台电脑 | 手机和电脑在同一局域网 |
+
+电脑模式的流程是：「输出」页切到电脑模式 → 页面显示房间码和二维码 → 手机扫码进入遥控界面 → 电脑点「开始指挥」→ 挥动手机，声音从电脑放出。手机端只发传感器数据，不下载音频。
+
+### iOS 必须先启用 HTTPS
+
+iOS 只在安全上下文里才允许 `DeviceMotionEvent.requestPermission()`。手机通过局域网 IP 走 http:// 访问时，Safari 连权限弹窗都不会出现。生成证书：
+
+```bash
+bash scripts/dev-certs.sh
+```
+
+脚本优先用 mkcert（推荐 `brew install mkcert`，签出的证书受系统信任），没有则用 openssl 自签名兜底。证书写到 `frontend/certs/`，重启 `npm run dev` 后 Vite 会自动以 HTTPS 启动。用 mkcert 时手机还需要安装一次它的根证书（脚本会打印步骤）；用自签名证书则手机首次访问时点「继续访问」即可。
+
+Android 上 Chrome 通常不强制这一点，HTTP 也能拿到传感器数据。
+
+### 用隧道代替证书
+
+不想折腾证书的话，用 ngrok / cloudflared 暴露 5173 端口也可以，它们自带受信任的 HTTPS。这种情况下要放行 Vite 的 Host 检查：
+
+```bash
+MW_ALLOWED_HOSTS=your-tunnel.ngrok-free.app npm run dev
+```
 
 ## 配置说明
 
@@ -102,6 +144,8 @@ npm run dev
 当前主流程以 project API 为主：
 
 - GET /api/health：检查后端与 ACE-Step 可达性
+- GET /api/network-info：局域网地址，「输出」页用它生成手机扫码地址
+- WS /ws/conduct/{room_id}?role=stage|remote：手机遥控指挥的中转通道
 - GET /api/lokr：列出可用 LoKr / LoRA 权重
 - POST /api/projects：创建项目
 - GET /api/projects：列出项目
@@ -115,5 +159,4 @@ npm run dev
 
 - 如果 ACE-Step 服务未启动，应用仍可走 fallback 流程，便于前后端联调。
 - 如果需要在手机上使用传感器功能，建议使用 HTTPS 环境，例如通过 mkcert 或 ngrok 暴露本地服务。
-- 当前项目仍在持续演进，前端界面与生成链路已经从旧版 Vanilla JS 重构为更适合长期维护的 React/Vite 结构。
 

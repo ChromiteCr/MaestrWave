@@ -1,0 +1,129 @@
+/* 手机端专用布局：单列、大点击区、避开刘海和底部手势条。 */
+.shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: calc(env(safe-area-inset-top, 0px) + 20px) 20px calc(env(safe-area-inset-bottom, 0px) + 28px);
+  gap: 20px;
+  background: var(--bg);
+  /* 指挥时手会大幅挥动，禁掉下拉刷新和长按选中，避免误触。 */
+  overscroll-behavior: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.roomCode {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  color: var(--accent);
+}
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.dotOk {
+  background: var(--accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.dotBad {
+  background: var(--wine);
+}
+
+.statusText {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--ink) 62%, transparent);
+}
+
+.divider {
+  width: 1px;
+  height: 12px;
+  background: var(--line-strong);
+}
+
+.center {
+  flex: 1;
+  width: 100%;
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+
+/* 挥动力度的可视反馈——手机端看不到电平条，靠这圈光晕确认"真的在发数据"。 */
+.energyRing {
+  position: absolute;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 36%, transparent) 0%, transparent 68%);
+  transition: transform 0.09s linear, opacity 0.09s linear;
+  pointer-events: none;
+}
+
+.bigBtn {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  transition: background 0.15s ease, color 0.15s ease;
+  touch-action: manipulation;
+}
+
+.bigBtn:disabled {
+  opacity: 0.4;
+  border-color: var(--line-strong);
+  color: color-mix(in srgb, var(--ink) 45%, transparent);
+}
+
+.bigBtnActive {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.hint {
+  margin: 0;
+  max-width: 320px;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--ink) 52%, transparent);
+}
+
+.error {
+  margin: 0;
+  font-size: 13px;
+  color: var(--wine);
+  text-align: center;
+}

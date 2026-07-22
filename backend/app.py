@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
 from pydantic import BaseModel
@@ -22,6 +22,8 @@ try:
     from . import project as projectlib
     from . import project_gen
     from .generation_backend import get_backend
+    from .conduct import hub as conduct_hub
+    from .netinfo import network_info
 except Exception:
     from stems import StemGenerator, list_sessions
     from config import (
@@ -32,6 +34,8 @@ except Exception:
     import project as projectlib
     import project_gen
     from generation_backend import get_backend
+    from conduct import hub as conduct_hub
+    from netinfo import network_info
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -119,6 +123,59 @@ async def health():
         "synth_fallback_enabled": ALLOW_SYNTH_FALLBACK,
         "generation_backend": GENERATION_BACKEND,
     }
+
+
+@app.get("/api/network-info")
+async def get_network_info():
+    """
+    局域网地址。「输出」页在电脑模式下用它拼出手机扫码用的 URL——
+    浏览器自己拿不到本机局域网 IP，必须问后端（见 backend/netinfo.py）。
+    """
+    info = network_info()
+    info["conduct_rooms"] = conduct_hub.room_stats()
+    return info
+
+
+@app.websocket("/ws/conduct/{room_id}")
+async def conduct_ws(websocket: WebSocket, room_id: str, role: str = "remote"):
+    """
+    手机遥控指挥的中转通道（见 backend/conduct.py）。
+    role=stage 是电脑（加载音频、出声），role=remote 是手机（只采传感器）。
+    """
+    if role not in ("stage", "remote"):
+        await websocket.close(code=1008)
+        return
+
+    try:
+        peer_id = await conduct_hub.join(room_id, role, websocket)
+    except RuntimeError:
+        return  # join 里已经关掉连接了（比如房间满）
+
+    try:
+        while True:
+            raw = await websocket.receive_text()
+            try:
+                payload = json.loads(raw)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(payload, dict):
+                continue
+
+            # 心跳就地应答，不进转发链路。
+            if payload.get("t") == "ping":
+                await websocket.send_text(json.dumps({"t": "pong"}))
+                continue
+
+            if role == "remote":
+                await conduct_hub.relay_from_remote(room_id, peer_id, payload)
+            else:
+                await conduct_hub.relay_from_stage(room_id, payload)
+    except WebSocketDisconnect:
+        pass
+    except Exception:
+        logger.exception("conduct ws 异常 room=%s role=%s", room_id, role)
+    finally:
+        await conduct_hub.leave(room_id, role, peer_id)
 
 
 @app.get("/api/lokr")
