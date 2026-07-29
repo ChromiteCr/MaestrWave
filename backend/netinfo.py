@@ -10,8 +10,16 @@ localhost），所以由后端探测后通过 /api/network-info 告诉前端。
 前端跑在哪个端口。
 """
 
+import re
+import shutil
 import socket
+import subprocess
+from pathlib import Path
 from typing import List
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+# 前端 dev server 的证书位置（scripts/dev-certs.sh 生成，frontend/vite.config.ts 读取）
+CERT_PATH = REPO_ROOT / "frontend" / "certs" / "dev-cert.pem"
 
 
 def _primary_lan_ip() -> str | None:
@@ -49,8 +57,41 @@ def lan_ips() -> List[str]:
     return ips
 
 
+def cert_info() -> dict:
+    """开发证书的状态：存不存在、覆盖了哪些地址。
+
+    「输出」页用它自检——最常见的两个坑都是静默失败：
+      1. 证书生成了但 dev server 是用 `npm run dev`（HTTP）起的；
+      2. 换了 Wi-Fi 导致局域网 IP 变了，而证书里签的还是旧 IP。
+    两种情况手机扫码都连不上，界面上不提示的话根本查不出来。
+    """
+    info = {"exists": CERT_PATH.exists(), "covers": [], "path": str(CERT_PATH)}
+    if not info["exists"]:
+        return info
+
+    openssl = shutil.which("openssl")
+    if not openssl:
+        return info  # 拿不到覆盖范围就只报存在性，不猜
+
+    try:
+        out = subprocess.run(
+            [openssl, "x509", "-in", str(CERT_PATH), "-noout", "-ext", "subjectAltName"],
+            capture_output=True, text=True, timeout=10,
+        ).stdout
+        # 形如: DNS:localhost, IP Address:127.0.0.1, IP Address:192.168.1.5
+        info["covers"] = re.findall(r"(?:DNS|IP Address):\s*([^,\s]+)", out)
+    except (subprocess.SubprocessError, OSError):
+        pass
+    return info
+
+
 def network_info() -> dict:
     return {
         "hostname": socket.gethostname(),
         "lan_ips": lan_ips(),
+        "cert": cert_info(),
+        # 「输出」页用它拼出**带绝对路径**的命令：面板里那几条命令是给用户
+        # 直接复制去终端跑的，只写 `npm run dev:https` 的话，在 backend/ 或
+        # 别的目录下执行会报 ENOENT（找不到 package.json）。
+        "repo_root": str(REPO_ROOT),
     }

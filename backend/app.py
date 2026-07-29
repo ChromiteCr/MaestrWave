@@ -21,7 +21,7 @@ try:
     from .generator import ACEStepGenerator
     from . import project as projectlib
     from . import project_gen
-    from .generation_backend import get_backend
+    from .generation_backend import get_backend, backend_capabilities
     from .conduct import hub as conduct_hub
     from .netinfo import network_info
     from .tunnel import manager as tunnel_manager
@@ -34,7 +34,7 @@ except Exception:
     from generator import ACEStepGenerator
     import project as projectlib
     import project_gen
-    from generation_backend import get_backend
+    from generation_backend import get_backend, backend_capabilities
     from conduct import hub as conduct_hub
     from netinfo import network_info
     from tunnel import manager as tunnel_manager
@@ -118,12 +118,23 @@ async def health():
         ace_ok = await gen.ping()
     finally:
         await gen.close()
+    # 当前选中的生成后端是否可用（天琴看密钥配没配，ACE-Step 看服务通不通）
+    active = get_backend()
+    try:
+        active_ok = await active.health()
+    except Exception:
+        active_ok = False
+    finally:
+        await active.close()
+
     return {
         "backend": "ok",
         "acestep_api_url": ACESTEP_API_URL,
         "acestep_reachable": ace_ok,
         "synth_fallback_enabled": ALLOW_SYNTH_FALLBACK,
         "generation_backend": GENERATION_BACKEND,
+        "generation_backend_ready": active_ok,
+        "capabilities": backend_capabilities(),
     }
 
 
@@ -556,6 +567,10 @@ async def repaint_instrument_endpoint(project_id: str, instrument_id: str,
         raise HTTPException(status_code=404, detail="instrument not found")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except NotImplementedError as e:
+        # 当前生成后端不支持 repaint（比如天琴只有整曲文生乐），
+        # 用 501 而不是 500，前端好区分"能力缺失"和"真出错了"。
+        raise HTTPException(status_code=501, detail=str(e))
     except Exception as e:
         logger.exception("instrument repaint failed: %s", e)
         raise HTTPException(status_code=500, detail=str(e))

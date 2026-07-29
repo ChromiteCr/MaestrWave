@@ -30,8 +30,11 @@ export function GeneratePage() {
   const beginPending = useAppStore((s) => s.beginPending);
   const endPending = useAppStore((s) => s.endPending);
   const loraPath = useAppStore((s) => s.loraPath);
+  const health = useAppStore((s) => s.health);
+  const refreshHealth = useAppStore((s) => s.refreshHealth);
 
   const [isPlaying, setIsPlaying] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
   const [repaintOpen, setRepaintOpen] = useState(false);
   const [repaintPrompt, setRepaintPrompt] = useState("");
   const [repaintStart, setRepaintStart] = useState(0);
@@ -39,7 +42,11 @@ export function GeneratePage() {
 
   useEffect(() => {
     loadInstrumentLibrary();
-  }, [loadInstrumentLibrary]);
+    refreshHealth();
+  }, [loadInstrumentLibrary, refreshHealth]);
+
+  // 后端能力未知时默认按"支持"处理，避免健康检查还没回来就把按钮藏了
+  const repaintSupported = health?.capabilities ? health.capabilities.repaint : true;
 
   useEffect(() => {
     setIsPlaying(false);
@@ -60,6 +67,17 @@ export function GeneratePage() {
   const { peaks } = useInstrumentTrack(trackId, take, 0);
   const isPending = instrument ? pendingInstruments.has(instrument.id) : false;
   const duration = take ? sharedAudioEngine.duration(trackId) : project?.segment_duration ?? 0;
+
+  // 生成耗时正计时：云端生成动辄一两分钟，没有反馈的话用户会以为卡死了。
+  useEffect(() => {
+    if (!isPending) {
+      setElapsed(0);
+      return;
+    }
+    const startedAt = Date.now();
+    const id = setInterval(() => setElapsed(Math.floor((Date.now() - startedAt) / 1000)), 250);
+    return () => clearInterval(id);
+  }, [isPending]);
 
   if (!project) {
     return (
@@ -143,6 +161,19 @@ export function GeneratePage() {
           <PromptPanel project={project} onCommit={commitProject} />
         </div>
 
+        {/* 当前用哪种方式生成——本机 ACE-Step 还是云端 API，直接摆在生成区里，
+            省得用户去「设置」页确认 */}
+        <div className={styles.backendBar}>
+          <span className={`${styles.backendDot} ${health?.generation_backend_ready ? styles.backendOk : styles.backendOff}`} />
+          <span className={styles.backendLabel}>生成方式</span>
+          <span className={styles.backendName}>{health?.capabilities?.display_name ?? "检测中…"}</span>
+          {health && !health.generation_backend_ready && (
+            <span className={styles.backendWarn}>
+              {health.synth_fallback_enabled ? "未就绪，将回退到占位音频" : "未就绪"}
+            </span>
+          )}
+        </div>
+
         <div className={styles.tabsCard}>
           <InstrumentTabs
             instruments={project.instruments}
@@ -170,17 +201,25 @@ export function GeneratePage() {
               <button className={styles.playBtn} disabled={!take || isPending} onClick={togglePlay}>
                 {isPlaying ? <StopIcon /> : <PlayIcon />}
               </button>
-              <span className={styles.timeLabel}>
-                {formatTime(take ? sharedAudioEngine.playheadSeconds(trackId) : 0)} / {formatTime(duration)}
-              </span>
+              {isPending ? (
+                <span className={styles.waving}>
+                  <span className={styles.wavingText}>Waving…</span>
+                  <span className={styles.wavingTimer}>{formatTime(elapsed)}</span>
+                </span>
+              ) : (
+                <span className={styles.timeLabel}>
+                  {formatTime(take ? sharedAudioEngine.playheadSeconds(trackId) : 0)} / {formatTime(duration)}
+                </span>
+              )}
               <div className={styles.actions}>
-                {take && (
+                {/* 天琴等纯文生乐后端没有局部重绘能力，藏起来而不是让用户点了才报错 */}
+                {take && repaintSupported && (
                   <Button variant="ghost" disabled={isPending} onClick={() => setRepaintOpen((v) => !v)}>
                     Repaint
                   </Button>
                 )}
                 <Button variant="primary" disabled={isPending} onClick={handleGenerate}>
-                  {isPending ? "生成中…" : take ? "重新生成" : "生成"}
+                  {isPending ? `生成中 ${formatTime(elapsed)}` : take ? "重新生成" : "生成"}
                 </Button>
               </div>
             </div>

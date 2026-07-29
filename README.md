@@ -15,6 +15,7 @@ MaestrWave 是一个面向“AI 生成管弦乐素材 + 体感指挥演绎”的
 - 支持单乐器生成、重新生成与局部重绘
 - 提供浏览页波形与统一播放体验
 - 支持手机 IMU 作为实时混音输入，可选"手机自采自放"或"手机遥控、电脑出声"两种模式
+- 生成后端可切换：本机 ACE-Step，或腾讯音乐天琴云端 API（不占本机显存）
 - 当 ACE-Step 不可用时，自动回退到程序化占位音频，便于本地验证
 
 ## 版本记录
@@ -40,6 +41,42 @@ MaestrWave 是一个面向“AI 生成管弦乐素材 + 体感指挥演绎”的
   - 「输出」页电脑模式提供「局域网 / 隧道」两种配对方式，任何手机零安装即可用隧道方式接入。`npm run dev:tunnel` 按后缀放行常见隧道域名，解决"隧道域名随机、Vite 却要启动时就知道放行谁"的鸡生蛋问题。
   - 隧道可在 UI 上一键启停（`backend/tunnel.py` 代管 cloudflared 子进程，抓到域名后回传前端自动填入），不需要另开终端；后端退出时自动关闭隧道。
   - 顺带修回一个 M2 移植时漏掉的逻辑：起播后 5 秒无传感器数据的检测（原先桌面端会永远停在"等待手势…"）。
+- ✅ **M4a**（本次改动，M4 之下的一次细化调整）新增云端 API 生成方式，本机不跑模型：
+  - 新增 `backend/tme_backend.py` 对接腾讯音乐天琴 workflow API（HMAC 签名、异步提交、轮询、下载），`GENERATION_BACKEND=tme` 即可切换。
+  - 生成请求的 tags 会带上「生成」页里的全部音乐信息：乐器（含自定义名）、角色、调号、拍号、BPM、片段时长、风格描述、已有声部。
+  - 天琴只有整曲文生乐：`lego` 降级为共享乐理上下文的文字对齐，`repaint` 明确返回 501 且前端自动隐藏按钮；「设置」页新增「当前后端能力」卡片说明差异。
+  - 天琴返回整曲 MP3，用 ffmpeg 转单声道 WAV 并裁到项目时长，保证多轨对齐；`mix_wav_files` 改为跳过读不了的音轨而不是整体崩掉。
+
+## 用云端 API 生成（不占本机显存）
+
+ACE-Step 要在本机跑模型，消费级设备显存吃紧。可以改用腾讯音乐天琴的云端 API：
+
+```bash
+export GENERATION_BACKEND=tme
+export TME_APP_ID=你的AppId
+export TME_APP_KEY=你的AppKey
+uvicorn app:app --host 0.0.0.0 --port 3000
+```
+
+密钥只从环境变量读，不写进仓库。配好后「设置」页会显示当前后端、是否就绪，以及能力差异。
+
+生成时会把「生成」页里的**全部音乐信息**编进请求的 tags，包括正在生成哪件乐器（含自定义乐器名）、它承担的角色、调号、拍号、BPM、片段时长、风格描述，以及已有哪些声部。实际发出的 tags 会打进后端日志，方便核对。
+
+### 能力差异（重要）
+
+天琴是**整曲生成器**，只有文生乐，没有 ACE-Step 的两项能力：
+
+| | 本机 ACE-Step | 天琴（云端） |
+|---|---|---|
+| 显存占用 | 本机 16GB+ | 无 |
+| 文生乐 | ✅ | ✅ |
+| 音频层面协同（lego） | ✅ 真的"听"已有音轨来加声部 | ❌ 降级为共享调号/拍号/速度的文字对齐 |
+| 局部重绘（Repaint） | ✅ | ❌ 按钮会自动隐藏 |
+| LoKr / LoRA 权重 | ✅ | ❌ |
+
+也就是说，用天琴时**各声部之间的配合会明显弱于 ACE-Step**——它们是各自独立生成的，只靠同一套乐理参数和文字描述对齐，而不是像 `lego` 那样在音频内容层面协同。想要最好的配合效果，仍然建议用 ACE-Step（本机或 AutoDL 等租用的 GPU 机器）。
+
+天琴返回的是完整曲子的 MP3，后端会用 ffmpeg 转成单声道 WAV 并裁到项目的「乐曲总时长」，保证多轨能对齐循环播放。没装 ffmpeg 时会告警并保留原始音频（浏览器仍能播，但 Python 侧的混音会跳过这条轨）。
 
 ## 代码结构
 
@@ -48,7 +85,8 @@ MaestrWave 是一个面向“AI 生成管弦乐素材 + 体感指挥演绎”的
   - generator.py：ACE-Step 客户端与生成任务封装
   - project.py：项目/乐器/take 数据模型
   - project_gen.py：分乐器协同生成与 lego 编排逻辑
-  - generation_backend.py：生成后端抽象
+  - generation_backend.py：生成后端抽象与能力声明
+  - tme_backend.py：腾讯音乐天琴云端生成后端
   - conduct.py：手机遥控指挥的 WebSocket 中转
   - netinfo.py：局域网地址探测
   - tunnel.py：代管 cloudflared 隧道进程（UI 一键启停）
@@ -124,11 +162,13 @@ bash scripts/dev-certs.sh
 
 脚本优先用 mkcert（推荐 `brew install mkcert`，签出的证书受系统信任），没有则用 openssl 自签名兜底。证书写到 `frontend/certs/`。
 
-证书生成后 HTTPS **不会自动启用**——要用 HTTPS 启动：
+证书生成后 HTTPS **不会自动启用**——要用 HTTPS 启动（注意在 `frontend/` 目录下）：
 
 ```bash
-npm run dev:https
+cd frontend && npm run dev:https
 ```
+
+> 换了 Wi-Fi 之后局域网 IP 会变，而证书里签的是生成时那一刻的 IP，手机会因证书不匹配连不上。重跑一次 `scripts/dev-certs.sh` 再重启即可（根证书不用在手机上重装）。「输出」页的局域网模式会自动检测这种情况并给出可复制的命令。
 
 日常桌面开发继续用 `npm run dev`（HTTP）。这样区分是因为：如果"有证书就自动切 HTTPS"，那么所有 `http://localhost:5173` 的旧地址会静默失效，Safari 只会报一句「服务器意外中断了连接」，很难联想到是协议变了。
 
@@ -146,7 +186,7 @@ Android 上 Chrome 通常不强制这一点，HTTP 也能拿到传感器数据�
 
 ```bash
 brew install cloudflared
-npm run dev:tunnel
+cd frontend && npm run dev:tunnel
 ```
 
 然后在「输出」页 → 电脑模式 → 隧道，**点「启动隧道」**即可：后端会代管 cloudflared 进程，拿到域名后自动填进输入框、二维码同步刷新，不需要你另开终端。再点一次「停止隧道」关闭。
@@ -177,7 +217,10 @@ npm run dev:tunnel
 
 后端配置主要在 [backend/config.py](backend/config.py) 中，支持通过环境变量覆盖：
 
+- GENERATION_BACKEND：生成后端，local（默认，本机 ACE-Step）/ tme（腾讯音乐天琴云端）/ cloud（预留）
 - ACESTEP_API_URL：ACE-Step 服务地址，默认 http://localhost:8001
+- TME_APP_ID / TME_APP_KEY：天琴的 AppId 与密钥，用 tme 后端时必填
+- TME_API_URL：天琴接口地址，默认测试环境
 - PROJECTS_DIR：项目产物目录，默认 output/projects
 - OUTPUT_DIR：legacy 产物目录，默认 output/sessions
 - LOKR_WEIGHTS_DIR：LoKr / LoRA 权重目录

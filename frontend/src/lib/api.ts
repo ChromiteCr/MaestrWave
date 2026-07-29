@@ -43,18 +43,36 @@ export interface Project {
   instruments: Instrument[];
 }
 
+/** 见 backend/generation_backend.py 的 backend_capabilities()：
+ *  不同生成后端能力不同（天琴没有 lego / repaint），前端据此禁用相应按钮。 */
+export interface BackendCapabilities {
+  name: string;
+  display_name: string;
+  text2music: boolean;
+  lego: boolean;
+  repaint: boolean;
+  lora: boolean;
+  note: string;
+}
+
 export interface HealthInfo {
   backend: string;
   acestep_api_url: string;
   acestep_reachable: boolean;
   synth_fallback_enabled: boolean;
   generation_backend: string;
+  generation_backend_ready: boolean;
+  capabilities: BackendCapabilities;
 }
 
 /** 见 backend/netinfo.py：浏览器拿不到本机局域网 IP，只能问后端。 */
 export interface NetworkInfo {
   hostname: string;
   lan_ips: string[];
+  /** 开发证书状态，用于「输出」页自检 HTTPS 是否真的能用。 */
+  cert: { exists: boolean; covers: string[]; path: string };
+  /** 仓库根目录绝对路径，用来拼出在任何目录下都能跑的命令。 */
+  repo_root: string;
   conduct_rooms: Record<string, { stage: boolean; remotes: number }>;
 }
 

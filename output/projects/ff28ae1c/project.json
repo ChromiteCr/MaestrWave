@@ -7,5 +7,80 @@
   "bpm": 92,
   "time_signature": "4/4",
   "segment_duration": 16.0,
-  "instruments": []
+  "instruments": [
+    {
+      "id": "a7baf6ab",
+      "library_key": "brass",
+      "display_name": "铜管",
+      "family": "brass",
+      "role": "harmony",
+      "takes": [
+        {
+          "take_id": "70292ad1",
+          "created_at": "2026-07-29T14:14:47.428593Z",
+          "audio_file": "70292ad1.wav",
+          "task_type_used": "text2music",
+          "params": {
+            "prompt": "Brass section, warm and cohesive ensemble blend, Lush cinematic orchestral, heroic brass",
+            "src_audio_path": null,
+            "referenced_instruments": [],
+            "bpm": 92,
+            "key": "D major",
+            "time_signature": "4/4",
+            "duration": 16.0,
+            "lora_path": "none"
+          }
+        },
+        {
+          "take_id": "4553483e",
+          "created_at": "2026-07-29T14:16:16.163504Z",
+          "audio_file": "4553483e.wav",
+          "task_type_used": "text2music",
+          "params": {
+            "prompt": "Brass section, warm and cohesive ensemble blend, Lush cinematic orchestral, heroic brass",
+            "src_audio_path": null,
+            "referenced_instruments": [],
+            "bpm": 92,
+            "key": "D major",
+            "time_signature": "4/4",
+            "duration": 16.0,
+            "lora_path": "none"
+          }
+        },
+        {
+          "take_id": "8f2ee6f2",
+          "created_at": "2026-07-29T14:16:59.888913Z",
+          "audio_file": "8f2ee6f2.wav",
+          "task_type_used": "text2music",
+          "params": {
+            "prompt": "Brass section, warm and cohesive ensemble blend, Lush cinematic orchestral, heroic brass",
+            "src_audio_path": null,
+            "referenced_instruments": [],
+            "bpm": 92,
+            "key": "D major",
+            "time_signature": "4/4",
+            "duration": 16.0,
+            "lora_path": "none"
+          }
+        },
+        {
+          "take_id": "ddff5cfc",
+          "created_at": "2026-07-29T14:17:29.004360Z",
+          "audio_file": "ddff5cfc.wav",
+          "task_type_used": "text2music",
+          "params": {
+            "prompt": "Brass section, warm and cohesive ensemble blend, Lush cinematic orchestral, heroic brass",
+            "src_audio_path": null,
+            "referenced_instruments": [],
+            "bpm": 92,
+            "key": "D major",
+            "time_signature": "4/4",
+            "duration": 16.0,
+            "lora_path": "none"
+          }
+        }
+      ],
+      "current_take_id": "ddff5cfc"
+    }
+  ]
 }

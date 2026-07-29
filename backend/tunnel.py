@@ -1,5 +1,5 @@
 """
-从「输出」页一键启停 cloudflared 隧道（M4a）。
+从「输出」页一键启停 cloudflared 隧道（M4）。
 
 为什么放在后端：cloudflared 是个要长期驻留的子进程，浏览器起不了进程，
 所以由 FastAPI 代管——用户点一下按钮，后端 spawn 它、从输出里抓出随机分配的

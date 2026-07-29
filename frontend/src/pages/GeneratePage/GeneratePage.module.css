@@ -107,3 +107,79 @@
   padding: 40px 0;
   text-align: center;
 }
+
+/* ---------- 当前生成方式 ---------- */
+
+.backendBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  border-radius: 9px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.backendDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.backendOk {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.backendOff {
+  background: var(--wine);
+}
+
+.backendLabel {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--ink) 44%, transparent);
+}
+
+.backendName {
+  font-size: 13px;
+  color: color-mix(in srgb, var(--ink) 82%, transparent);
+}
+
+.backendWarn {
+  font-size: 12px;
+  color: var(--wine);
+}
+
+/* ---------- 生成中：Waving… + 正计时 ---------- */
+
+.waving {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.wavingText {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--accent);
+  /* 呼吸感的明暗变化，暗示"还在跑，没卡住" */
+  animation: wavingPulse 1.4s ease-in-out infinite;
+}
+
+.wavingTimer {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--ink) 58%, transparent);
+}
+
+@keyframes wavingPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}

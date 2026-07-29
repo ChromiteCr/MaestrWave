@@ -69,3 +69,17 @@
   flex-direction: column;
   gap: 8px;
 }
+
+.capNote {
+  margin: 0 0 4px;
+  font-size: 12px;
+  line-height: 1.65;
+  color: color-mix(in srgb, var(--ink) 46%, transparent);
+}
+
+.capWarn {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--wine);
+}

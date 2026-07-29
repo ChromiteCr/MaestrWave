@@ -6,13 +6,28 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ACE-Step API 地址（与 README 中一致，默认 8001）
 ACESTEP_API_URL = os.environ.get("ACESTEP_API_URL", "http://localhost:8001")
 
-# 生成后端选择：local（本机/局域网 ACE-Step）或 cloud（未来租用的带显卡服务器）。
+# 生成后端选择：
+#   local —— 本机/局域网跑着的 ACE-Step（默认）
+#   cloud —— 未来租用的带显卡服务器（预留）
+#   tme   —— 腾讯音乐天琴 API，纯云端不吃本机显存（见 backend/tme_backend.py）
 # 见 backend/generation_backend.py 里的 GenerationBackend 抽象。
 GENERATION_BACKEND = os.environ.get("GENERATION_BACKEND", "local")
 
 # 云端后端预留配置：现在多半还未使用，等以后接入真实云端 ACE-Step 服务再填。
 CLOUD_ACESTEP_API_URL = os.environ.get("CLOUD_ACESTEP_API_URL", "")
 CLOUD_ACESTEP_API_KEY = os.environ.get("CLOUD_ACESTEP_API_KEY", "")
+
+# ---- 腾讯音乐天琴（TME）API ----
+# APP_KEY 是密钥，只从环境变量读，不写进仓库。设置方式见 README「用云端 API 生成」。
+TME_API_URL = os.environ.get(
+    "TME_API_URL",
+    "https://test.y.qq.com/opentest/rpc_proxy/fcgi-bin/music_open_api.fcg",
+)
+TME_APP_ID = os.environ.get("TME_APP_ID", "")
+TME_APP_KEY = os.environ.get("TME_APP_KEY", "")
+# 单次生成的轮询上限（秒）。天琴做一首歌通常一两分钟，留足余量。
+TME_POLL_TIMEOUT = int(os.environ.get("TME_POLL_TIMEOUT", "300"))
+TME_POLL_INTERVAL = float(os.environ.get("TME_POLL_INTERVAL", "5"))
 
 # 项目（project）数据存放目录，替代旧的固定 5 声部 session 模型。
 PROJECTS_DIR = Path(os.environ.get("PROJECTS_DIR", str(BASE_DIR / "output" / "projects")))

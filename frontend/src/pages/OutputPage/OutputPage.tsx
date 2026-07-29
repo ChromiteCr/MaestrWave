@@ -63,7 +63,7 @@ export function OutputPage() {
   const [tunnelUrl, setTunnelUrl] = useState<string>(() =>
     openedViaTunnel ? window.location.origin : readStoredTunnelUrl(),
   );
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
   const [tunnelStatus, setTunnelStatus] = useState<TunnelStatus | null>(null);
   const [tunnelBusy, setTunnelBusy] = useState(false);
 
@@ -156,6 +156,39 @@ export function OutputPage() {
   const devPort = Number(window.location.port) || 5173;
   const cloudflaredCmd = `cloudflared tunnel --url http://localhost:${devPort}`;
 
+  /**
+   * 局域网模式的 HTTPS 自检。
+   *
+   * 这里有两个坑，之前都是**静默失败**：页面照样给出二维码，手机扫了却连不上，
+   * 界面上一点线索都没有。
+   *   - notStarted：证书生成过了，但 dev server 是用 `npm run dev`（HTTP）起的
+   *   - ipNotCovered：换了 Wi-Fi 导致局域网 IP 变了，证书里签的还是旧 IP
+   */
+  const lanHttps = useMemo(() => {
+    if (pairMethod !== "lan") return null;
+    const cert = netInfo?.cert;
+    const isHttps = window.location.protocol === "https:";
+    // selectedHost 形如 "192.168.1.5:5173"，证书里记的是不带端口的地址
+    const selectedIp = selectedHost.replace(/:\d+$/, "");
+    // 拿不到覆盖列表时（没装 openssl）不误报，按"覆盖了"处理
+    const covered = !cert?.covers?.length || cert.covers.includes(selectedIp);
+
+    if (isHttps) {
+      return covered
+        ? { kind: "ok" as const }
+        : { kind: "ipNotCovered" as const, ip: selectedIp, covers: cert!.covers };
+    }
+    if (!cert?.exists) return { kind: "noCert" as const };
+    if (!covered) return { kind: "ipNotCovered" as const, ip: selectedIp, covers: cert.covers };
+    return { kind: "notStarted" as const };
+  }, [pairMethod, netInfo, selectedHost]);
+
+  // 命令里带上仓库绝对路径：这几条是给用户直接复制去终端跑的，只写
+  // `npm run dev:https` 的话，在 backend/ 之类的目录下执行会 ENOENT。
+  const root = netInfo?.repo_root;
+  const httpsCmd = root ? `npm --prefix ${root}/frontend run dev:https` : "npm run dev:https";
+  const certsCmd = root ? `bash ${root}/scripts/dev-certs.sh` : "bash scripts/dev-certs.sh";
+
   // 进「隧道」方式时轮询后端代管的 cloudflared 状态：域名要几秒才分配下来，
   // 而且隧道中途挂掉也要能反映出来。
   useEffect(() => {
@@ -192,15 +225,25 @@ export function OutputPage() {
     }
   };
 
-  const copyCmd = async () => {
+  const copyCmd = async (text: string) => {
     try {
-      await navigator.clipboard.writeText(cloudflaredCmd);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1600);
+      await navigator.clipboard.writeText(text);
+      setCopied(text);
+      setTimeout(() => setCopied(null), 1600);
     } catch {
       /* 无剪贴板权限时用户仍可手动选中复制 */
     }
   };
+
+  /** 一行可复制的命令。自检提示和隧道说明都用它。 */
+  const CmdLine = ({ cmd }: { cmd: string }) => (
+    <div className={styles.cmdRow}>
+      <code className={styles.cmd}>{cmd}</code>
+      <button type="button" className={styles.copyBtn} onClick={() => copyCmd(cmd)}>
+        {copied === cmd ? "已复制" : "复制"}
+      </button>
+    </div>
+  );
 
   const handleToggle = async () => {
     if (running) {
@@ -328,12 +371,7 @@ export function OutputPage() {
                               <br />
                               或者自己开个终端跑下面这条命令，再把网址粘到下面。
                             </p>
-                            <div className={styles.cmdRow}>
-                              <code className={styles.cmd}>{cloudflaredCmd}</code>
-                              <button type="button" className={styles.copyBtn} onClick={copyCmd}>
-                                {copied ? "已复制" : "复制"}
-                              </button>
-                            </div>
+                            <CmdLine cmd={cloudflaredCmd} />
                           </>
                         ) : (
                           <div className={styles.cmdRow}>
@@ -396,6 +434,39 @@ export function OutputPage() {
                       没探测到手机可达的地址。请确认已连上 Wi-Fi，或改用「隧道」方式。
                     </p>
                   )}
+
+                  {/* HTTPS 自检：把原本静默失败的两种情况说清楚，并给出可复制的命令 */}
+                  {lanHttps?.kind === "notStarted" && (
+                    <div className={styles.diag}>
+                      <p className={styles.warn}>
+                        证书已就绪，但 dev server 当前是以 HTTP 启动的，二维码里也就只能是 http://。
+                        iPhone 在 HTTP 下拿不到运动传感器权限。改用下面的命令重启：
+                      </p>
+                      <CmdLine cmd={httpsCmd} />
+                    </div>
+                  )}
+
+                  {lanHttps?.kind === "noCert" && (
+                    <div className={styles.diag}>
+                      <p className={styles.warn}>
+                        还没有生成 HTTPS 证书。iPhone 需要 HTTPS 才能授权运动传感器，先生成证书、再用 HTTPS 启动：
+                      </p>
+                      <CmdLine cmd={certsCmd} />
+                      <CmdLine cmd={httpsCmd} />
+                    </div>
+                  )}
+
+                  {lanHttps?.kind === "ipNotCovered" && (
+                    <div className={styles.diag}>
+                      <p className={styles.warn}>
+                        证书没有覆盖 {lanHttps.ip}（它签的是 {lanHttps.covers.join("、")}）。
+                        多半是换过 Wi-Fi 导致局域网 IP 变了，手机会因为证书不匹配而连不上。
+                        重新生成证书并重启即可（根证书不用在手机上重装）：
+                      </p>
+                      <CmdLine cmd={certsCmd} />
+                      <CmdLine cmd={httpsCmd} />
+                    </div>
+                  )}
                   {pairMethod === "tunnel" && (
                     <p className={styles.note}>
                       隧道要求 dev server 放行它的域名，用 <code>npm run dev:tunnel</code> 启动即可（普通{" "}
@@ -404,12 +475,11 @@ export function OutputPage() {
                       ⚠️ 这个网址<strong>公网可访问</strong>，拿到链接的人都能接进来指挥。演示完记得关掉隧道。
                     </p>
                   )}
-                  {insecureWarning && (
+                  {/* 隧道模式的 HTTP 提醒；局域网模式已由上面的自检覆盖，不重复报 */}
+                  {insecureWarning && pairMethod === "tunnel" && (
                     <p className={styles.warn}>
-                      手机访问地址是 HTTP。iOS 只在 HTTPS 下才允许运动传感器权限——
-                      {pairMethod === "lan"
-                        ? "用 npm run dev:https 启动，并在 iPhone 上装 mkcert 根证书（见 README「手机指挥」）。"
-                        : "隧道地址应该是 https://，检查一下粘贴的网址。"}
+                      手机访问地址是 HTTP。iOS 只在 HTTPS 下才允许运动传感器权限——隧道地址应该是
+                      https://，检查一下粘贴的网址。
                     </p>
                   )}
                 </div>

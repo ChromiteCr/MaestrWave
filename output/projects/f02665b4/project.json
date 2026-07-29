@@ -1,0 +1,95 @@
+{
+  "project_id": "f02665b4",
+  "name": "测试",
+  "created_at": "2026-07-29T13:55:59.809641Z",
+  "style_description": "史诗级的电影配乐，有慷慨激昂的旋律，开头所有乐器都出声，然后木管主旋律铜管伴奏",
+  "key": "C major",
+  "bpm": 92,
+  "time_signature": "4/4",
+  "segment_duration": 30.0,
+  "instruments": [
+    {
+      "id": "33016655",
+      "library_key": "brass",
+      "display_name": "铜管",
+      "family": "brass",
+      "role": "harmony",
+      "takes": [
+        {
+          "take_id": "6795cbaa",
+          "created_at": "2026-07-29T13:59:04.875652Z",
+          "audio_file": "6795cbaa.wav",
+          "task_type_used": "text2music",
+          "params": {
+            "prompt": "Brass section, warm and cohesive ensemble blend, 史诗级的电影配乐，有慷慨激昂的旋律，开头所有乐器都出声，然后木管主旋律铜管伴奏",
+            "src_audio_path": null,
+            "referenced_instruments": [],
+            "bpm": 92,
+            "key": "C major",
+            "time_signature": "4/4",
+            "duration": 30.0,
+            "lora_path": "none"
+          }
+        }
+      ],
+      "current_take_id": "6795cbaa"
+    },
+    {
+      "id": "fe7f1cd6",
+      "library_key": "cello",
+      "display_name": "大提琴",
+      "family": "strings",
+      "role": "bass",
+      "takes": [
+        {
+          "take_id": "880d1460",
+          "created_at": "2026-07-29T14:02:14.108579Z",
+          "audio_file": "880d1460.wav",
+          "task_type_used": "lego",
+          "params": {
+            "prompt": "Cello section, orchestral bass and harmony, rich warm tone, 史诗级的电影配乐，有慷慨激昂的旋律，开头所有乐器都出声，然后木管主旋律铜管伴奏. On top of the existing 铜管, add a low-register foundation beneath them, same tempo and key throughout.",
+            "src_audio_path": "/Users/billgao/Documents/Coding/MTX/MaestrWave/output/projects/f02665b4/mixes/fe7f1cd6_124ab125.wav",
+            "referenced_instruments": [
+              "33016655"
+            ],
+            "bpm": 92,
+            "key": "C major",
+            "time_signature": "4/4",
+            "duration": 30.0,
+            "lora_path": "none"
+          }
+        }
+      ],
+      "current_take_id": "880d1460"
+    },
+    {
+      "id": "4a38e07f",
+      "library_key": "violin",
+      "display_name": "小提琴",
+      "family": "strings",
+      "role": "melody",
+      "takes": [
+        {
+          "take_id": "1f419340",
+          "created_at": "2026-07-29T14:05:12.445748Z",
+          "audio_file": "1f419340.wav",
+          "task_type_used": "lego",
+          "params": {
+            "prompt": "Solo violin melody, orchestral, legato, expressive vibrato, 史诗级的电影配乐，有慷慨激昂的旋律，开头所有乐器都出声，然后木管主旋律铜管伴奏. On top of the existing 铜管、大提琴, add a clear lead melody that stands out above them, same tempo and key throughout.",
+            "src_audio_path": "/Users/billgao/Documents/Coding/MTX/MaestrWave/output/projects/f02665b4/mixes/4a38e07f_79ea87ed.wav",
+            "referenced_instruments": [
+              "33016655",
+              "fe7f1cd6"
+            ],
+            "bpm": 92,
+            "key": "C major",
+            "time_signature": "4/4",
+            "duration": 30.0,
+            "lora_path": "none"
+          }
+        }
+      ],
+      "current_take_id": "1f419340"
+    }
+  ]
+}

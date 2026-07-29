@@ -8,10 +8,13 @@
 from __future__ import annotations
 
 import io
+import logging
 import struct
 import wave
 from pathlib import Path
 from typing import List, Sequence, Union
+
+logger = logging.getLogger(__name__)
 
 
 def mix_into(target: List[float], src: Sequence[float], offset: int = 0) -> None:
@@ -73,7 +76,21 @@ def mix_wav_files(paths: Sequence[Union[str, Path]], out_path: Union[str, Path],
         raise ValueError("mix_wav_files: no input paths")
     weights = list(weights) if weights else [1.0] * len(paths)
 
-    decoded = [read_wav_samples(p) for p in paths]
+    # 有的 take 可能不是真正的 WAV（比如云端后端返回 MP3、而本机没装 ffmpeg
+    # 转不了码，见 tme_backend._transcode）。跳过读不了的那些，而不是让整次
+    # 生成因为一条旧轨崩掉。
+    decoded = []
+    kept_weights = []
+    for p, w in zip(paths, weights):
+        try:
+            decoded.append(read_wav_samples(p))
+            kept_weights.append(w)
+        except Exception as e:
+            logger.warning("mix_wav_files: 跳过无法读取的音频 %s (%s: %s)",
+                           p, type(e).__name__, e)
+    if not decoded:
+        raise ValueError("mix_wav_files: 没有任何可读的 WAV 输入")
+    weights = kept_weights
     sr = decoded[0][1]
     total_len = max(len(s) for s, _ in decoded)
     out = [0.0] * total_len
