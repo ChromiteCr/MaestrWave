@@ -32,6 +32,22 @@ export function useConductor() {
   const noDataTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gotSampleRef = useRef(false);
 
+  /**
+   * M4b：每个乐器每帧只写一次音量。
+   *
+   * 原实现先按 activation*dynamics 写一遍，density 条件成立时又对部分乐器写第二次 0，
+   * 同帧两次调用各自触发一段 gain ramp、互相打断，是"乱响"里那层咔哒声的来源。
+   * 现在先把最终值算出来再统一写。
+   *
+   * cutoff 也不再在这里动主音量：原来是 setMasterVolume(0) 之后 100ms 无条件拉回 1，
+   * 既不管用户是不是还在指挥、也不管当前该是什么音量，和每帧持续写入的 trackVolume
+   * 直接冲突 —— 这就是"完全停止之后又直接没有声音了"。收势现在由 GestureInterpreter
+   * 自己走 dynamics 的 release 曲线，全系统只有那一套衰减机制。
+   *
+   * M4c：删掉了原来"density<0.3 时按当前帧四个角色的相对大小排序、把最低的两个强制
+   * 静音"那段。排序逐帧重算，稍有抖动名次就翻转，刚静音的声部下一帧又起播 —— 这是
+   * "乐器乱响"最直接的来源。声部音量现在由 mixIntent 各自独立算出，不比名次、不关声部。
+   */
   const applyToAudio = (project: Project, params: GestureParams) => {
     for (const inst of project.instruments) {
       if (!inst.current_take_id) continue;
@@ -39,18 +55,6 @@ export function useConductor() {
       sharedAudioEngine.setTrackVolume(inst.id, activation * params.dynamics);
     }
     sharedAudioEngine.setPlaybackRate(params.tempo);
-
-    if (params.density < 0.3) {
-      const sorted = (Object.entries(params.roles) as [InstrumentRole, number][]).sort((a, b) => b[1] - a[1]);
-      const quietRoles = new Set(sorted.slice(2).map(([role]) => role));
-      for (const inst of project.instruments) {
-        if (quietRoles.has(inst.role)) sharedAudioEngine.setTrackVolume(inst.id, 0);
-      }
-    }
-    if (params.expression === "cutoff") {
-      sharedAudioEngine.setMasterVolume(0);
-      setTimeout(() => sharedAudioEngine.setMasterVolume(1), 100);
-    }
   };
 
   const start = async (project: Project, source: SensorSource) => {

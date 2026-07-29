@@ -4,6 +4,8 @@
  * （波形组件画播放头要用）。核心 Web Audio 图结构不变：
  * source -> gain -> panner -> masterGain -> destination。
  */
+import { VOLUME_TIME_CONSTANT } from "./gestureConstants";
+
 export interface TrackInfo {
   id: string;
   buffer: AudioBuffer;
@@ -128,13 +130,13 @@ export class AudioEngine {
   setTrackVolume(id: string, value: number): void {
     const track = this.tracks.get(id);
     if (track && this.ctx) {
-      track.gain.gain.linearRampToValueAtTime(value, this.ctx.currentTime + 0.05);
+      track.gain.gain.setTargetAtTime(value, this.ctx.currentTime, VOLUME_TIME_CONSTANT);
     }
   }
 
   setMasterVolume(value: number): void {
     if (this.masterGain && this.ctx) {
-      this.masterGain.gain.linearRampToValueAtTime(value, this.ctx.currentTime + 0.05);
+      this.masterGain.gain.setTargetAtTime(value, this.ctx.currentTime, VOLUME_TIME_CONSTANT);
     }
   }
 

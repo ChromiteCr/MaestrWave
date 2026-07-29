@@ -1,0 +1,149 @@
+.page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 32px 28px 64px;
+  font-family: system-ui, sans-serif;
+  color: #1b2430;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+
+.lead {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #6b7684;
+  margin: 0 0 24px;
+}
+
+.lead code {
+  background: #eef2f7;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.presetRow {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.presetBtn {
+  border: 1px solid #d6dde8;
+  background: #fff;
+  color: #4a5666;
+  border-radius: 7px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.presetBtn:hover {
+  border-color: #9db4dd;
+}
+
+.presetActive {
+  background: #2f6fed;
+  border-color: #2f6fed;
+  color: #fff;
+}
+
+.bpm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #6b7684;
+}
+
+.bpm input {
+  width: 70px;
+  border: 1px solid #d6dde8;
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 12px;
+}
+
+.purpose {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #4a5666;
+  background: #f4f7fb;
+  border-left: 3px solid #2f6fed;
+  border-radius: 0 6px 6px 0;
+  padding: 10px 14px;
+  margin: 0 0 16px;
+}
+
+.canvas {
+  width: 100%;
+  height: 260px;
+  background: #fff;
+  border: 1px solid #e3e8f0;
+  border-radius: 10px;
+}
+
+.legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 12px 0 24px;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #6b7684;
+}
+
+.legendItem i {
+  display: block;
+  width: 16px;
+  height: 2px;
+  border-radius: 1px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.table th,
+.table td {
+  text-align: left;
+  padding: 7px 10px;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.table th {
+  color: #9aa6b8;
+  font-weight: 500;
+  font-size: 11.5px;
+}
+
+.table td:not(:first-child) {
+  font-variant-numeric: tabular-nums;
+  color: #4a5666;
+}
+
+.note {
+  font-size: 11.5px;
+  color: #9aa6b8;
+  margin-top: 10px;
+}

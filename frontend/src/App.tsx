@@ -7,6 +7,7 @@ import { OutputPage } from "./pages/OutputPage/OutputPage";
 import { TrainPage } from "./pages/TrainPage/TrainPage";
 import { SettingsPage } from "./pages/SettingsPage/SettingsPage";
 import { RemotePage } from "./pages/RemotePage/RemotePage";
+import { DebugConductPage } from "./pages/DebugConductPage/DebugConductPage";
 import { useAppStore } from "./state/store";
 
 const PAGES = {
@@ -28,9 +29,24 @@ function remoteRoomFromUrl(): string | null {
   return room && room.trim() ? room.trim().toUpperCase() : null;
 }
 
+/**
+ * /?debug=conduct 打开手势解析调试页。仿照上面 ?conduct= 的做法走 query 分支，
+ * 不进侧栏也不动 store 里的 PageId —— 它是开发工具，不是产品页面。
+ * 只在开发模式下可达，生产构建里这个分支恒为 false。
+ */
+function isDebugConduct(): boolean {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).get("debug") === "conduct";
+}
+
 export function App() {
   const activePage = useAppStore((s) => s.activePage);
   const Page = PAGES[activePage];
+
+  // DEV 判断必须内联在这里，不能藏进 isDebugConduct()：Vite 会把 import.meta.env.DEV
+  // 替换成字面量 false，整个分支才会被判成死代码、DebugConductPage 才摇得掉。
+  // 写成 if (isDebugConduct()) 的话 Rollup 证明不了它恒为假，调试页会被打进生产包。
+  if (import.meta.env.DEV && isDebugConduct()) return <DebugConductPage />;
 
   const remoteRoom = remoteRoomFromUrl();
   if (remoteRoom) return <RemotePage roomId={remoteRoom} />;
