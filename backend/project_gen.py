@@ -71,7 +71,7 @@ async def generate_instrument(project: dict, instrument_id: str, backend: Genera
 
     common = dict(
         bpm=project["bpm"], key=project["key"], time_signature=project["time_signature"],
-        duration=project["segment_duration"], lora_path=lora_path,
+        duration=projectlib.total_duration(project), lora_path=lora_path,
         instrument_hint=instrument["library_key"],
     )
 

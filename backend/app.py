@@ -385,8 +385,12 @@ class CreateProjectRequest(BaseModel):
     key: str = "D major"
     bpm: int = 80
     time_signature: str = "4/4"
+    # total_duration 是 M4d 起的正式字段；segment_duration 保留为兼容入参，
+    # 两者都收，projectlib.set_duration 会一起写。
+    total_duration: Optional[float] = None
     segment_duration: float = 16.0
     name: str = ""
+    generation_mode: str = "multitrack"
 
 
 class UpdateProjectRequest(BaseModel):
@@ -394,13 +398,19 @@ class UpdateProjectRequest(BaseModel):
     key: Optional[str] = None
     bpm: Optional[int] = None
     time_signature: Optional[str] = None
+    total_duration: Optional[float] = None
     segment_duration: Optional[float] = None
     name: Optional[str] = None
+    generation_mode: Optional[str] = None
+    formation: Optional[dict] = None
+    generation_order: Optional[list] = None
 
 
 class AddInstrumentRequest(BaseModel):
     library_key: str
     display_name: Optional[str] = None
+    role: Optional[str] = None
+    family: Optional[str] = None
 
 
 class GenerateInstrumentRequest(BaseModel):
@@ -437,8 +447,9 @@ async def get_instrument_library():
 async def create_project_endpoint(req: CreateProjectRequest):
     project = projectlib.create_project(
         style_description=req.style_description, key=req.key, bpm=req.bpm,
-        time_signature=req.time_signature, segment_duration=req.segment_duration,
-        name=req.name,
+        time_signature=req.time_signature,
+        segment_duration=req.total_duration if req.total_duration is not None else req.segment_duration,
+        name=req.name, generation_mode=req.generation_mode,
     )
     return _serialize_project(project)
 
@@ -501,7 +512,9 @@ async def add_instrument_endpoint(project_id: str, req: AddInstrumentRequest):
     if req.library_key not in INSTRUMENT_LIBRARY:
         # 允许完全自定义乐器名（get_instrument_spec 会退化成通用模板）
         logger.info("adding custom instrument not in library: %s", req.library_key)
-    instrument = projectlib.add_instrument(project, req.library_key, req.display_name)
+    instrument = projectlib.add_instrument(
+        project, req.library_key, req.display_name, role=req.role, family=req.family,
+    )
     return instrument
 
 
