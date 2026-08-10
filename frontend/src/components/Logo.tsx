@@ -1,32 +1,38 @@
-/** MaestrWave 的 logo：一条指挥棒（直线，棒尖是个光点）斜切过一道波浪，
- * 呼应"指挥"和"声波/波形"两个主题。放在侧栏文件图标正上方。 */
+/**
+ * MaestrWave 的字标：斜切的 M/W 折线，既是首字母也是波形，
+ * 与 `public/icon.svg`（favicon / 应用图标）是同一份图形，改一处要同步另一处。
+ *
+ * 底色写死为海军蓝→黑的渐变，不走主题 token —— 它是品牌标识，
+ * 需要在侧栏、浏览器标签、桌面图标等不同背景下保持一致。
+ */
 export function Logo({ size = 28 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 28 28" fill="none">
+    <svg width={size} height={size} viewBox="0 0 512 512" fill="none" aria-hidden="true">
       <defs>
-        <linearGradient id="logo-bg" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="var(--surface-3)" />
-          <stop offset="100%" stopColor="var(--bg)" />
+        {/* id 带 logo- 前缀，避免和页面里同时出现的 icon.svg 撞号 */}
+        <linearGradient id="logo-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#1B2E55" />
+          <stop offset="0.5" stopColor="#0A1428" />
+          <stop offset="1" stopColor="#02040A" />
         </linearGradient>
-        <linearGradient id="logo-wave" x1="3" y1="20" x2="25" y2="12" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="var(--wave-2)" />
-          <stop offset="100%" stopColor="var(--accent)" />
+        <linearGradient id="logo-ink" x1="0" y1="0" x2="0.35" y2="1">
+          <stop offset="0" stopColor="#FFFFFF" />
+          <stop offset="1" stopColor="#C7D3E6" />
         </linearGradient>
       </defs>
 
-      <rect width="28" height="28" rx="7" fill="url(#logo-bg)" />
+      {/* rx 120 ≈ 28px 显示尺寸下的 6.6px 圆角，和侧栏其他图标按钮的圆角量级一致 */}
+      <rect width="512" height="512" rx="120" fill="url(#logo-bg)" />
 
-      <path
-        d="M4,18 C7,14.5 9.5,20 12.5,16.5 C15.5,13 18,18.5 24,13.5"
-        stroke="url(#logo-wave)"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        fill="none"
-        opacity="0.85"
-      />
-
-      <line x1="6.5" y1="22" x2="21.5" y2="6.5" stroke="var(--ink)" strokeWidth="1.4" strokeLinecap="round" />
-      <circle cx="21.5" cy="6.5" r="2.1" fill="var(--accent)" />
+      <g transform="translate(92.56,187.70) scale(1.2197)">
+        <g transform="translate(0,56.0) skewX(-8) translate(0,-56.0)">
+          <path
+            d="M22.500,0.000 L43.500,0.000 L10.500,112.000 L-10.500,112.000 Z M22.500,0.000 L43.500,0.000 L76.500,112.000 L55.500,112.000 Z M88.500,0.000 L109.500,0.000 L76.500,112.000 L55.500,112.000 Z M88.500,0.000 L109.500,0.000 L142.500,112.000 L121.500,112.000 Z M125.500,0.000 L146.500,0.000 L179.500,112.000 L158.500,112.000 Z M191.500,0.000 L212.500,0.000 L179.500,112.000 L158.500,112.000 Z M191.500,0.000 L212.500,0.000 L245.500,112.000 L224.500,112.000 Z M257.500,0.000 L278.500,0.000 L245.500,112.000 L224.500,112.000 Z"
+            fill="url(#logo-ink)"
+            fillRule="nonzero"
+          />
+        </g>
+      </g>
     </svg>
   );
 }

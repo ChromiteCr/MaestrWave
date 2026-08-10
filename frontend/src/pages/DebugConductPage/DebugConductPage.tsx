@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { GestureInterpreter, type GestureParams, type InstrumentRole } from "../../lib/gesture";
 import type { SensorSample } from "../../lib/sensor";
 import styles from "./DebugConductPage.module.css";
+import { canvasFont } from "../../lib/canvasFont";
 
 /**
  * 手势解析的调试回放页（仅开发环境，见 App.tsx 的 ?debug=conduct 分支）。
@@ -157,7 +158,7 @@ function Chart({ frames }: { frames: Frame[] }) {
       ctx.strokeStyle = "#e3e8f0";
       ctx.lineWidth = 1;
       ctx.fillStyle = "#9aa6b8";
-      ctx.font = "11px system-ui, sans-serif";
+      ctx.font = canvasFont(11);
       for (const v of [0, 0.5, 1]) {
         ctx.beginPath();
         ctx.moveTo(0, y(v));

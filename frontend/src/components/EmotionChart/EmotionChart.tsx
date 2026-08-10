@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { FormationSection } from "../../lib/api";
 import { emotionBars, sectionStarts, sectionsSpan } from "../../lib/formation";
 import styles from "./EmotionChart.module.css";
+import { canvasFont } from "../../lib/canvasFont";
 
 /**
  * 乐曲情绪柱状图：横轴时间、纵轴情绪强度。高潮时间的高、一般时间的低。
@@ -93,7 +94,7 @@ export function EmotionChart({
       ctx.strokeStyle = grid;
       ctx.fillStyle = label;
       ctx.lineWidth = 1;
-      ctx.font = "10px system-ui, sans-serif";
+      ctx.font = canvasFont(10);
       for (const v of [0, 0.5, 1]) {
         ctx.beginPath();
         ctx.moveTo(PAD_L, y(v));
@@ -133,7 +134,7 @@ export function EmotionChart({
       });
       ctx.setLineDash([]);
 
-      ctx.font = "11px system-ui, sans-serif";
+      ctx.font = canvasFont(11);
       sections.forEach((s, i) => {
         const cx = x(starts[i] + s.duration / 2);
         const tw = ctx.measureText(s.label).width;
@@ -152,7 +153,7 @@ export function EmotionChart({
 
       // 时间刻度
       ctx.fillStyle = label;
-      ctx.font = "10px system-ui, sans-serif";
+      ctx.font = canvasFont(10);
       ctx.fillText("0s", PAD_L, PAD_T - 4);
       const tt = fmtTime(total);
       ctx.fillText(tt, w - PAD_R - ctx.measureText(tt).width, PAD_T - 4);

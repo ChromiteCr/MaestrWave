@@ -1,11 +1,20 @@
-@import "@fontsource/space-grotesk/500.css";
-@import "@fontsource/space-grotesk/600.css";
-@import "@fontsource/space-grotesk/700.css";
-@import "@fontsource/inter/400.css";
-@import "@fontsource/inter/500.css";
-@import "@fontsource/inter/600.css";
-@import "@fontsource/ibm-plex-mono/500.css";
-@import "@fontsource/ibm-plex-mono/600.css";
+/*
+  M6：UI 全部改为衬线体。
+  必须同时引入 CJK 衬线（Noto Serif SC）—— 界面以中文为主，只换拉丁字体的话
+  中文会掉到系统默认（macOS 上是黑体系），中英文一衬线一无衬线会很割裂。
+  @fontsource 的 CJK 包按 unicode-range 分片，浏览器只下载实际用到的区段。
+*/
+@import "@fontsource/source-serif-4/400.css";
+@import "@fontsource/source-serif-4/500.css";
+@import "@fontsource/source-serif-4/600.css";
+/*
+  CJK 只引 400/600 两档。@fontsource 的中文包按 unicode-range 切成一百多个分片，
+  每多一档字重，产物 CSS 就多几十 KB（gzip 后）—— 而 CSS 是阻塞渲染的。
+  界面里只用到 400/500/600 三档，500 的场合（.mono-chip / .field-label / .eyebrow）
+  中文极少，交给浏览器回退到 400 看不出差别。700 全项目没用到。
+*/
+@import "@fontsource/noto-serif-sc/400.css";
+@import "@fontsource/noto-serif-sc/600.css";
 
 /*
   调色板 —— 暖炭黑的深色基底 + 浅一点的水蓝主色，像月光下的水面：
@@ -30,9 +39,20 @@
   --wave-3: #3a6ea8;
   --wave-4: #bcdcf7;
 
-  --font-display: "Space Grotesk", system-ui, sans-serif;
-  --font-body: "Inter", system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  /*
+    三个字体 token 全部走衬线。CJK 排在拉丁之后 —— 浏览器按字形覆盖逐字回退，
+    拉丁字符命中 Source Serif 4，中文命中 Noto Serif SC。
+  */
+  --font-display: "Source Serif 4", "Noto Serif SC", Georgia, serif;
+  --font-body: "Source Serif 4", "Noto Serif SC", Georgia, serif;
+  /*
+    --font-mono 现在也是衬线体（按「UI 全部改 Serif」的要求）。代价是数字不再等宽，
+    情绪柱状图刻度、时间码、.mono-chip 这些地方的数字会参差 —— DOM 里靠
+    font-variant-numeric: tabular-nums 补救（见下方 .mono-chip），canvas 里补救不了。
+    觉得不合适时把这一行改回 "IBM Plex Mono", ui-monospace, monospace 即可，
+    其余代码全都引用 token，不用动。
+  */
+  --font-mono: "Source Serif 4", "Noto Serif SC", Georgia, serif;
 
   color-scheme: dark;
 }
@@ -94,6 +114,8 @@ body {
 
 .mono-chip {
   font-family: var(--font-mono);
+  /* 衬线体的数字默认是比例宽度，chip 里常放时长/数量，等宽才不跳 */
+  font-variant-numeric: tabular-nums;
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.04em;

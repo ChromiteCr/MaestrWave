@@ -1,6 +1,40 @@
-/** 手绘线性图标，统一 20x20、1.6 描边，不依赖图标库——侧栏只用图标不用文字。 */
+/** 手绘线性图标，统一 20x20、1.6 描边，不依赖图标库。 */
 type IconProps = { size?: number };
 const base = { fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+
+/** 指挥教学（一级）：摊开的书。 */
+export function TeachIcon({ size = 20 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 20 20" {...base}>
+      <path d="M10 5.5C8.5 4 6 3.5 2.5 4v11c3.5-.5 6 0 7.5 1.5 1.5-1.5 4-2 7.5-1.5V4c-3.5-.5-6 0-7.5 1.5Z" />
+      <path d="M10 5.5v11" />
+    </svg>
+  );
+}
+
+/** 指挥体验（一级）：一根指挥棒 —— 斜线 + 棒尖的点，和 Logo 里的意象一致。 */
+export function PerformIcon({ size = 20 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 20 20" {...base}>
+      <path d="M3.5 16.5 14 6" />
+      <circle cx="15.5" cy="4.5" r="2.2" />
+      <path d="M2 18.2 4.6 15.4" strokeWidth={2.4} />
+    </svg>
+  );
+}
+
+/** 课程：图形拍型的四拍轨迹（下→左→右→上），拍点处有个记号。 */
+export function LessonIcon({ size = 20 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 20 20" {...base}>
+      <path d="M10 2.5v11" />
+      <path d="M10 13.5 4 9.5" />
+      <path d="M4 9.5 16 13" />
+      <path d="M16 13V4" />
+      <circle cx="10" cy="13.5" r="1.3" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
 
 /** 构型：高低不等的柱子 —— 就是这一页的签名视觉「乐曲情绪柱状图」。 */
 export function FormationIcon({ size = 20 }: IconProps) {

@@ -1,46 +1,114 @@
+/*
+  M6：从 64px 纯图标栏改成 196px 带文字的两级导航。
+  加宽的理由是一级项「指挥教学 / 指挥体验」光靠图标分不清，
+  而这两项是整个应用的分岔口，认错了就走错路。
+*/
 .rail {
-  width: 64px;
-  flex: 0 0 64px;
+  width: 196px;
+  flex: 0 0 196px;
   height: 100%;
   background: var(--surface);
   border-right: 1px solid var(--line);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 18px 0;
+  padding: 18px 12px;
+  overflow-y: auto;
 }
 
-.mark {
-  width: 28px;
-  height: 28px;
-  border-radius: 7px;
-  margin-bottom: 22px;
-  flex: 0 0 auto;
+.brand {
   display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 6px;
+  margin-bottom: 20px;
+  flex: 0 0 auto;
+}
+
+.brandName {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  color: var(--ink);
 }
 
 .group {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  width: 100%;
-  align-items: center;
+  gap: 2px;
 }
 
 .spacer {
   flex: 1;
+  min-height: 12px;
 }
 
-.item {
-  position: relative;
-  width: 44px;
-  height: 44px;
+/* ---- 一级 ---- */
+
+.section {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
   border-radius: 9px;
   border: none;
   background: transparent;
+  text-align: left;
+  color: color-mix(in srgb, var(--ink) 50%, transparent);
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.section:hover {
+  color: var(--ink);
+  background: var(--surface-2);
+}
+
+/*
+  展开态用「浅色描边 + 微亮底」而不是二级那种实心高亮：
+  一级和二级同时用实心块的话，视线分不出层级，反而更乱。
+*/
+.sectionOpen {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+.sectionOpen:hover {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.sectionText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sectionLabel {
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.sectionHint {
+  font-size: 10.5px;
+  line-height: 1.3;
+  color: color-mix(in srgb, var(--ink) 40%, transparent);
+  white-space: nowrap;
+}
+
+/* ---- 二级与底部工具页 ---- */
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  text-align: left;
   color: color-mix(in srgb, var(--ink) 45%, transparent);
   transition: color 0.15s ease, background 0.15s ease;
 }
@@ -50,19 +118,20 @@
   background: var(--surface-2);
 }
 
-.itemActive {
-  color: var(--bg);
-  background: var(--accent);
-}
-
+.itemActive,
 .itemActive:hover {
   color: var(--bg);
   background: var(--accent);
 }
 
+.itemLabel {
+  font-size: 13px;
+  letter-spacing: 0.01em;
+}
+
 .divider {
-  width: 28px;
   height: 1px;
   background: var(--line-strong);
-  margin: 10px 0;
+  margin: 10px 6px;
+  flex: 0 0 auto;
 }

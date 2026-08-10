@@ -22,6 +22,10 @@ MaestrWave 是一个面向“AI 生成管弦乐素材 + 体感指挥演绎”的
 
 | 版本 | 日期 | 变更内容 | 类型 |
 |------|------|----------|------|
+| M6b1 | 2026-08-10 | gitignore 掉 `frontend/node_modules/` 与 `frontend/dist/`（含全部 @fontsource 字体文件），从索引移除 3846 个依赖/构建产物，仓库仅保留源码与文档 | chore |
+| M6b | 2026-08-10 | 导航改为两级：一级「指挥教学 / 指挥体验」，原有七页归入「指挥体验」，侧栏加宽到 196px 带文字；一级归属由 `activePage` 推导而非另存一份 | feat |
+| M6a1 | 2026-08-10 | 新增 `docs/USER_GUIDE.md` 用户使用指南，为 GitHub 项目文档准备 | chore |
+| M6 | 2026-08-10 | UI 全面改为衬线体（Source Serif 4 + Noto Serif SC，canvas 刻度统一走 `--font-mono` token），品牌图标更换为 MW 字标 + 海军蓝→黑渐变，补上 favicon 与 apple-touch-icon | milestone |
 | M5 | 2026-08-10 | 摄像头指挥：MediaPipe 手部追踪 + 按指挥法标准的双手分工（打拍手管拍点与速度、表情手管力度与声部平衡），「输出」页新增第三种模式 | feat |
 | M4d | 2026-08-05 | 新增「构型」页（BYOK 语言模型 + 乐曲情绪柱状图 + 5 个模版），项目数据加 schema 版本与惰性迁移，`total_duration` 成为正式字段 | feat |
 | M4c1 | 2026-07-29 | 参数集中到 gestureConstants.ts，新增手势解析调试页（/?debug=conduct），修正起播基线收敛与收势重复触发，文档同步 | chore |
@@ -101,6 +105,14 @@ M4 之前的记录见下方历史条目。
   - **实测性能**：稳态推理中位 **4.6ms**（首帧 163ms 是 GPU shader 预热）。摄像头本身的 30fps 才是瓶颈，推理不是。此前调研里那个「190ms 同步偏差」来自一个特定的 LSTM 实现，规则式方案在关键点上几乎零成本。
   - 合成信号验证 15 项全通过：拍点数与理论值一致、力度随拍型单调上升（0.25→0.69→1.00）、抬手渐强、席位分区准确、停手平滑落到保持音量（单帧最大跌幅 0.04）、单手退化可用。
   - 尚未完成：DTW 图形拍型识别（识别当前在打 2/3/4 拍，做成可插拔接口以便后续替换成训练好的分类器）、教学模式。
+- 🚧 **M6** 两级导航 + 指挥教学（进行中，已完成字体、图标与导航）：
+  - **UI 全面改衬线体**（Source Serif 4 + Noto Serif SC）。界面以中文为主，只换拉丁字体的话中文会掉回系统黑体，中英一衬一非衬会很割裂，所以 CJK 衬线是必需的而不是锦上添花。CJK 只引 400/600 两档字重：`@fontsource` 的中文包按 unicode-range 切成一百多个分片，每多一档字重产物 CSS 就多几十 KB，而 CSS 阻塞渲染（引全 4 档时 CSS 是 525KB，砍到两档后 281KB）。
+    - canvas 里的刻度文字原本各自写死 `system-ui, sans-serif`，换字体时会被整片漏掉。新增 `lib/canvasFont.ts` 从 computed style 读 `--font-mono`，情绪柱状图、摄像头预览、调试页统一走它。
+    - 代价是衬线体数字不等宽。DOM 里用 `font-variant-numeric: tabular-nums` 补救（见 `.mono-chip`），canvas 里补救不了。三个字体 token 相互独立，觉得 mono 不合适时改 `global.css` 一行即可退回等宽体，其余代码不用动。
+  - **品牌图标更换**为 MW 字标 + 海军蓝→黑的自上而下渐变，同一份图形同时是侧栏 logo（`components/Logo.tsx`）与 favicon（`public/icon.svg`），改一处要同步另一处。补上 `apple-touch-icon.png` —— 手机端 `?conduct=` 会被存到主屏当遥控器用，而 iOS 不读 SVG favicon。
+  - **导航改为两级**：一级「指挥教学 / 指挥体验」，原有七个页面归入「指挥体验」，训练与设置是不属于任何一级的工具页、固定在底部。侧栏从 64px 纯图标栏加宽到 196px 带文字 —— 两个一级项是整个应用的分岔口，光靠图标分不清，认错了就走错路。
+    - **一级归属由 `activePage` 推导，不另存一份 `section`。** 存两份就得让每一处 `setActivePage` 都记得同步，而跨页跳转有好几处（打开项目、构型应用到生成页、浏览页编辑乐器），少一处就是一个「侧栏高亮和内容对不上」的 bug。侧栏另存一个 `navSection` 只用于「展开哪一级的二级列表」，跳到训练/设置时刻意不变，否则从「输出」点「设置」就回不去了。
+  - 尚未完成：课程数据与讲解/示范、练习曲端点 `/api/practice/generate`、录制层与六维评分、手机传感器兜底。
 
 ## 用云端 API 生成（不占本机显存）
 
@@ -149,9 +161,10 @@ uvicorn app:app --host 0.0.0.0 --port 3000
   - config.py：配置项与乐器目录
 - frontend
   - src/App.tsx：页面路由与侧栏入口
-  - src/pages：文件、生成、浏览、输出、训练、设置六个页面，外加手机端遥控页 RemotePage
-  - src/components：波形、侧栏、提示面板、二维码等 UI 组件
-  - src/lib：音频引擎、传感器源、手势解析、指挥链路（conductLink）与 API 封装
+  - src/pages：「指挥体验」下的文件、构型、生成、浏览、输出五页，「指挥教学」下的 TeachPage，以及不属于任何一级的训练、设置；外加手机端遥控页 RemotePage
+  - src/components：波形、侧栏（两级导航）、情绪柱状图、摄像头预览、提示面板、二维码等 UI 组件
+  - src/lib：音频引擎、传感器源、手势解析、摄像头指挥（camera/）、指挥链路（conductLink）与 API 封装
+  - src/styles/global.css：设计 token（配色、三个字体 token）；canvas 里的字体经 src/lib/canvasFont.ts 读同一份 token
 - scripts
   - dev-certs.sh：生成开发用 HTTPS 证书（iOS 传感器权限需要）
 - output

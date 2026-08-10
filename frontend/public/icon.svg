@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- 海军蓝 → 黑，自上而下。中间停靠点偏上（0.5），让上半段留住可辨认的蓝，
+         下半段快速沉到近黑，图标缩到 16px 时仍是「深色底 + 亮色字标」的对比关系。 -->
+    <linearGradient id="mw-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1B2E55"/>
+      <stop offset="0.5" stop-color="#0A1428"/>
+      <stop offset="1" stop-color="#02040A"/>
+    </linearGradient>
+    <linearGradient id="mw-ink" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#C7D3E6"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#mw-bg)"/>
+  <g transform="translate(92.56,187.70) scale(1.2197)">
+    <g transform="translate(0,56.0) skewX(-8) translate(0,-56.0)">
+      <path d="M22.500,0.000 L43.500,0.000 L10.500,112.000 L-10.500,112.000 Z M22.500,0.000 L43.500,0.000 L76.500,112.000 L55.500,112.000 Z M88.500,0.000 L109.500,0.000 L76.500,112.000 L55.500,112.000 Z M88.500,0.000 L109.500,0.000 L142.500,112.000 L121.500,112.000 Z M125.500,0.000 L146.500,0.000 L179.500,112.000 L158.500,112.000 Z M191.500,0.000 L212.500,0.000 L179.500,112.000 L158.500,112.000 Z M191.500,0.000 L212.500,0.000 L245.500,112.000 L224.500,112.000 Z M257.500,0.000 L278.500,0.000 L245.500,112.000 L224.500,112.000 Z" fill="url(#mw-ink)" fill-rule="nonzero"/>
+    </g>
+  </g>
+</svg>

@@ -1,5 +1,6 @@
 import { Sidebar } from "./components/Sidebar/Sidebar";
 import { WaveBackdrop } from "./components/WaveBackdrop/WaveBackdrop";
+import { TeachPage } from "./pages/TeachPage/TeachPage";
 import { FilePage } from "./pages/FilePage/FilePage";
 import { FormationPage } from "./pages/FormationPage/FormationPage";
 import { GeneratePage } from "./pages/GeneratePage/GeneratePage";
@@ -12,6 +13,7 @@ import { DebugConductPage } from "./pages/DebugConductPage/DebugConductPage";
 import { useAppStore } from "./state/store";
 
 const PAGES = {
+  teach: TeachPage,
   file: FilePage,
   formation: FormationPage,
   generate: GeneratePage,

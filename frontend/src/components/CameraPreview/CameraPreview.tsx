@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { CameraIntentSource } from "../../lib/camera/cameraIntentSource";
 import styles from "./CameraPreview.module.css";
+import { canvasFont } from "../../lib/canvasFont";
 
 /**
  * 摄像头指挥的实时预览：画面 + 双手标记 + 拍点闪烁。
@@ -58,7 +59,7 @@ export function CameraPreview({ source, swapHands, height = 260 }: Props) {
       ctx.clearRect(0, 0, w, h);
 
       // 席位分区参考线（画面已镜像，所以直接用指挥自己的左右）
-      ctx.font = "11px system-ui, sans-serif";
+      ctx.font = canvasFont(11);
       ZONES.forEach((z) => {
         const x = z.center * w;
         ctx.strokeStyle = "rgba(243,237,221,0.14)";
@@ -88,7 +89,7 @@ export function CameraPreview({ source, swapHands, height = 260 }: Props) {
         ctx.arc(x, y, 9, 0, Math.PI * 2);
         ctx.fill();
         ctx.fillStyle = "rgba(21,19,15,0.9)";
-        ctx.font = "10px system-ui, sans-serif";
+        ctx.font = canvasFont(10);
         const tw = ctx.measureText(label).width;
         ctx.fillText(label, x - tw / 2, y + 3.5);
       };

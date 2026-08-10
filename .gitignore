@@ -7,6 +7,10 @@ env/
 # macOS
 .DS_Store
 
+# Node 依赖与构建产物（可再生产物，不进仓库）
+frontend/node_modules/
+frontend/dist/
+
 # Output audio
 /output/sessions/
 

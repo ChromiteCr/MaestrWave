@@ -1,0 +1,50 @@
+.body {
+  padding: 32px 40px 64px;
+  max-width: 1040px;
+}
+
+.intro {
+  margin: 0 0 28px;
+  max-width: 640px;
+  font-size: 14.5px;
+  line-height: 1.75;
+  color: color-mix(in srgb, var(--ink) 68%, transparent);
+}
+
+.units {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px;
+}
+
+.unit {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 22px 24px 24px;
+}
+
+.unitTitle {
+  margin: 6px 0 16px;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+.lessons {
+  margin: 0;
+  padding-left: 1.2em;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--ink) 62%, transparent);
+}
+
+.note {
+  margin: 28px 0 0;
+  font-size: 13px;
+  color: color-mix(in srgb, var(--ink) 42%, transparent);
+}
