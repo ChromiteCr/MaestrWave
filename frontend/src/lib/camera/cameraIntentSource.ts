@@ -6,14 +6,35 @@
  */
 import type { ConductIntent } from "../gesture";
 import type { IntentSource, IntentSourceKind } from "../intentSource";
+import type { Point } from "../teaching/patterns";
 import { ConductingModel, type CameraModelOptions } from "./conductingModel";
 import { HandTracker, type HandFrame } from "./handTracker";
+
+/**
+ * 一帧的完整产出。
+ *
+ * `IntentSource` 的 `onIntent` 只给 ConductIntent —— 混音只需要这些。但录制与评分
+ * 还要坐标和「这一帧是不是拍点」，而 ConductIntent 里没有时间戳、轨迹也是 private。
+ * 所以另开一条 `onSample`，混音路径完全不受影响。
+ */
+export interface ConductSample {
+  /** performance.now()，和 HandFrame.t 同源。 */
+  t: number;
+  intent: ConductIntent;
+  /** 指挥视角坐标（x 左→右、y 下→上），与 lib/teaching/patterns.ts 同坐标系。 */
+  beat: Point | null;
+  expr: Point | null;
+  /** 这一帧是否落在拍点上。 */
+  ictus: boolean;
+}
 
 export class CameraIntentSource implements IntentSource {
   readonly kind: IntentSourceKind = "camera";
   readonly tracker = new HandTracker();
   readonly model: ConductingModel;
   private listeners: ((i: ConductIntent) => void)[] = [];
+  private sampleListeners: ((s: ConductSample) => void)[] = [];
+  private lastSeenIctusAt = 0;
   /** 最近一帧的手部数据，供 UI 画骨架/状态用。 */
   lastFrame: HandFrame | null = null;
 
@@ -38,6 +59,17 @@ export class CameraIntentSource implements IntentSource {
       if (!frame.left && !frame.right) return;
       const intent = this.model.read(frame);
       this.listeners.forEach((cb) => cb(intent));
+
+      if (this.sampleListeners.length) {
+        // 拍点靠 lastIctusAt 变没变来判断，不是靠 beatPulse 的大小 ——
+        // 脉冲有 200ms 衰减尾巴，用阈值判会把同一个拍点连报好几帧。
+        const ictus = this.model.lastIctusAt > 0 && this.model.lastIctusAt !== this.lastSeenIctusAt;
+        if (ictus) this.lastSeenIctusAt = this.model.lastIctusAt;
+        const view = this.model.lastView;
+        this.sampleListeners.forEach((cb) =>
+          cb({ t: frame.t, intent, beat: view.beat, expr: view.expr, ictus }),
+        );
+      }
     });
   }
 
@@ -45,10 +77,17 @@ export class CameraIntentSource implements IntentSource {
     this.tracker.stop();
     this.model.reset();
     this.listeners = [];
+    this.sampleListeners = [];
+    this.lastSeenIctusAt = 0;
     this.lastFrame = null;
   }
 
   onIntent(cb: (intent: ConductIntent) => void): void {
     this.listeners.push(cb);
+  }
+
+  /** 录制与评分用。混音只关心 ConductIntent，那条路走 onIntent。 */
+  onSample(cb: (s: ConductSample) => void): void {
+    this.sampleListeners.push(cb);
   }
 }

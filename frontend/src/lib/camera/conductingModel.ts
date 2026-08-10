@@ -26,6 +26,7 @@ import {
   ACTIVE_FLOOR, MAX_BEAT_INTERVAL_MS, MIN_ACTIVE_MS, MIN_BEAT_INTERVAL_MS,
   PULSE_TAU_MS, QUIET_HOLD_MS, RELEASE_MS, SUSTAIN_FLOOR,
 } from "../gestureConstants";
+import type { Point } from "../teaching/patterns";
 import type { HandFrame, HandPoint } from "./handTracker";
 
 // ---- 摄像头专用参数 ----
@@ -104,6 +105,12 @@ export class ConductingModel {
 
   /** 最近一次识别到拍点的时刻，供 UI 打点用。 */
   lastIctusAt = 0;
+  /**
+   * 最近一帧两只手的**指挥视角**坐标（x 左→右，y 下→上），与
+   * `lib/teaching/patterns.ts` 同一坐标系。录制层直接取这个，
+   * 不要自己再算一遍镜像与左右手交换 —— 算错了评分会整体镜像，还很难发现。
+   */
+  lastView: { beat: Point | null; expr: Point | null } = { beat: null, expr: null };
 
   constructor(opts: CameraModelOptions = {}) {
     this.opts = { swapHands: !!opts.swapHands, mirrored: !!opts.mirrored };
@@ -145,6 +152,12 @@ export class ConductingModel {
     } else {
       this.traj = this.traj.filter((p) => now - p.t <= TRAJ_WINDOW_MS);
     }
+
+    const exprView = expr ? toConductorView(expr, this.opts.mirrored) : null;
+    this.lastView = {
+      beat: beat ? { x: this.traj[this.traj.length - 1].x, y: this.traj[this.traj.length - 1].y } : null,
+      expr: exprView ? { x: exprView.ux, y: exprView.h } : null,
+    };
 
     const box = this.boundingBox(TRAJ_WINDOW_MS, now);
     const still = !beat || this.boundingBox(STILL_WINDOW_MS, now).diag < STILL_BOX;
@@ -285,14 +298,30 @@ export class ConductingModel {
     return { melody: zone(0.16), harmony: zone(0.5), bass: zone(0.84) };
   }
 
+  /**
+   * 回到刚 new 出来的状态。
+   *
+   * 教学与考试要反复重练，漏掉任何一个字段，上一次的状态就会带进下一次 ——
+   * 尤其是 `lastBeatAt`：不清它的话，重练的第一下会和上一次的最后一拍算间隔，
+   * 得出一个荒谬的 BPM 混进平滑里；`bpm` 不清则第二次一开始的 tempoRatio 是上次的余温。
+   * 这两样都会直接污染评分。**新增私有状态时必须同步加到这里。**
+   */
   reset(): void {
     this.traj = [];
     this.lastT = 0;
+    this.bpm = this.baseBpm;
+    this.lastBeatAt = 0;
     this.beatPulse = 0;
     this.lastVy = 0;
+    this.lastY = 0;
     this.smoothDiag = 0;
     this.active = false;
+    this.activeSince = 0;
     this.quietSince = 0;
+    this.releaseSince = 0;
+    this.releaseFrom = SUSTAIN_FLOOR;
     this.lastEffort = SUSTAIN_FLOOR;
+    this.lastIctusAt = 0;
+    this.lastView = { beat: null, expr: null };
   }
 }

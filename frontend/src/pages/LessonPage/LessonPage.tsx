@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { BeatPatternDemo } from "../../components/BeatPatternDemo/BeatPatternDemo";
 import { Button } from "../../components/Button/Button";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
+import { PracticeRunner } from "../../components/PracticeRunner/PracticeRunner";
 import { DIMENSIONS, findLesson, lessonIndex, LESSONS } from "../../lib/teaching/curriculum";
 import { PATTERNS, type Meter } from "../../lib/teaching/patterns";
 import { useAppStore } from "../../state/store";
@@ -150,18 +151,25 @@ export function LessonPage() {
               <p className={styles.demoHint}>这一课练的是姿势本身，没有图形拍型可以示范。</p>
             </section>
           )}
+
+          {/* 跟练放主列而不是侧栏：摄像头画面和讲评都需要宽度，320px 的侧栏挤不下 */}
+          <section className={styles.card}>
+            <p className="eyebrow">跟练</p>
+            {lesson.meters.length > 0 ? (
+              <>
+                <p className={styles.todo}>
+                  跟着节拍器打 {meter} 拍，结束后按标准给你打分。练习曲还在开发中
+                  （M6 第 4 步），节拍器是采样级精确的严格网格，先用它练完全够。
+                </p>
+                <PracticeRunner meter={meter} bpm={bpm} rubric={lesson.rubric} />
+              </>
+            ) : (
+              <p className={styles.todo}>这一课练的是姿势本身，没有可打分的拍型，照着要点对镜子调整。</p>
+            )}
+          </section>
         </div>
 
         <aside className={styles.side}>
-          <section className={styles.card}>
-            <p className="eyebrow">跟练</p>
-            <p className={styles.todo}>
-              {lesson.meters.length > 0
-                ? "摄像头跟练与练习曲生成还在开发中。现在可以先对着示范空手比划，把拍型走顺再上摄像头。"
-                : "摄像头跟练与练习曲生成还在开发中。这一课先照着要点对镜子调整姿势。"}
-            </p>
-          </section>
-
           <section className={styles.card}>
             <p className="eyebrow">本课评什么</p>
             <ul className={styles.rubric}>
