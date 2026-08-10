@@ -12,12 +12,16 @@ import { ScoreReport } from "../ScoreReport/ScoreReport";
 import styles from "./PracticeRunner.module.css";
 
 /**
- * 跟练：摄像头 + 节拍器 + 录制 + 打分，一整轮。
+ * 跟练：采集 + 节拍器 + 录制 + 打分，一整轮。
  *
  * 用节拍器而不是练习曲，是因为练习曲端点还没做（M6 第 4 步）—— 但这不是凑合：
  * 节拍器是采样级精确的严格网格，拍网格的原点就是我们自己写下的时刻，
  * 不需要再去检测音频起始点，评分反而比接了音乐更干净。音乐接上之后，
  * 这个组件换掉声源即可，录制与评分一行都不用动。
+ *
+ * **只走摄像头**。六个评分维度里有三个（拍型、平面、拍点清晰度）需要手在空间里的
+ * 位置，加速度计给不出来，手机兜底能评的只剩两维 —— 分数会失真到没有参考价值，
+ * 所以教学与考试都不做手机模式（见 docs/M6_PLAN.md）。
  */
 
 interface Props {
@@ -45,12 +49,6 @@ export function PracticeRunner({ meter, bpm, rubric, targetBars = 8, countInBars
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [, force] = useState(0);
 
-  const envProblem = !HandTracker.isSupported()
-    ? "这个浏览器不支持摄像头采集。"
-    : !HandTracker.isSecureContextOk()
-      ? "摄像头需要安全上下文。用 localhost 访问，或以 HTTPS 启动（npm run dev:https）。"
-      : "";
-
   const cleanup = () => {
     if (tickRef.current) clearInterval(tickRef.current);
     tickRef.current = null;
@@ -62,7 +60,7 @@ export function PracticeRunner({ meter, bpm, rubric, targetBars = 8, countInBars
   };
 
   useEffect(() => cleanup, []);
-  // 换课时把上一课的结果清掉，否则会看着别人的分数练这一课
+  // 换课时清掉上一次的结果，否则会看着上一课的分数练这一课
   useEffect(() => {
     cleanup();
     setPhase("idle");
@@ -143,6 +141,11 @@ export function PracticeRunner({ meter, bpm, rubric, targetBars = 8, countInBars
   // 数拍期间 beat 是负的，换算成「还有几拍开始」
   const countdown = beat !== null && beat < 0 ? -beat : 0;
 
+  const envProblem = !HandTracker.isSupported()
+    ? "这个浏览器不支持摄像头采集。"
+    : !HandTracker.isSecureContextOk()
+      ? "摄像头需要安全上下文。用 localhost 访问，或以 HTTPS 启动（npm run dev:https）。"
+      : "";
   if (envProblem) return <p className={styles.error}>{envProblem}</p>;
 
   return (

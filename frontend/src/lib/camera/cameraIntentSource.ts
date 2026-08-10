@@ -11,11 +11,14 @@ import { ConductingModel, type CameraModelOptions } from "./conductingModel";
 import { HandTracker, type HandFrame } from "./handTracker";
 
 /**
- * 一帧的完整产出。
+ * 一帧的完整产出，给录制与评分用。
  *
- * `IntentSource` 的 `onIntent` 只给 ConductIntent —— 混音只需要这些。但录制与评分
+ * `IntentSource` 的 `onIntent` 只给 ConductIntent —— 混音需要的就是这些。但评分
  * 还要坐标和「这一帧是不是拍点」，而 ConductIntent 里没有时间戳、轨迹也是 private。
  * 所以另开一条 `onSample`，混音路径完全不受影响。
+ *
+ * 只有摄像头源产出它：评分的六个维度里有三个需要手的位置，加速度计给不出来，
+ * 所以教学与考试都只走摄像头（见 docs/M6_PLAN.md 里第 6 步为什么被砍掉）。
  */
 export interface ConductSample {
   /** performance.now()，和 HandFrame.t 同源。 */
