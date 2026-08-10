@@ -27,6 +27,7 @@ try:
     from .tunnel import manager as tunnel_manager
     from . import llm as llmlib
     from . import configuration as configlib
+    from . import agent as agentlib
 except Exception:
     from stems import StemGenerator, list_sessions
     from config import (
@@ -42,6 +43,7 @@ except Exception:
     from tunnel import manager as tunnel_manager
     import llm as llmlib
     import configuration as configlib
+    import agent as agentlib
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -494,6 +496,23 @@ async def get_llm_config():
 async def set_llm_config(req: LLMConfigRequest):
     llmlib.save_config(base_url=req.base_url, model=req.model, api_key=req.api_key)
     return llmlib.public_status()
+
+
+class AgentChatRequest(BaseModel):
+    """messages 只接受 user/assistant，system 由服务端拼（见 agent.sanitize_history）。"""
+    messages: list[dict]
+    context: Optional[dict] = None
+
+
+@app.post("/api/agent/chat")
+async def agent_chat(req: AgentChatRequest, x_mw_token: Optional[str] = Header(default=None)):
+    """对话式 Agent。和构型页共用一条 BYOK 通路，因此同样受隧道令牌与限流保护。"""
+    _guard_llm(x_mw_token)
+    try:
+        reply = await agentlib.answer(req.messages, req.context)
+    except llmlib.LLMError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+    return {"reply": reply}
 
 
 @app.get("/api/formation/templates")

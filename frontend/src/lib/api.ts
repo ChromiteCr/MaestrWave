@@ -98,6 +98,25 @@ export interface FormationSkeleton {
 }
 
 /** 「设置」页看到的 BYOK 状态。**永远不含明文 key。** */
+// ---------------- 对话式 Agent ----------------
+
+export interface AgentMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+/**
+ * 随每次提问带上的上下文。**服务端不另存一份指挥知识库** ——
+ * 课程数据是 TS 写的（lib/teaching/curriculum.ts），后端再抄一份 Python 版必然漂移，
+ * 结果就是「Agent 教的和课程教的不一样」。所以由前端把摘要传上去。
+ */
+export interface AgentContext {
+  /** 课程摘要：每课的标题、目标、标准依据。 */
+  curriculum?: unknown;
+  /** 用户此刻在哪一页、项目是什么样子。 */
+  state?: unknown;
+}
+
 export interface LLMStatus {
   has_key: boolean;
   key_masked: string;
@@ -298,6 +317,15 @@ export const api = {
   llmConfig: () => req<LLMStatus>("/api/llm/config"),
   saveLlmConfig: (body: { base_url?: string; model?: string; api_key?: string }) =>
     req<LLMStatus>("/api/llm/config", { method: "POST", body: JSON.stringify(body) }),
+
+  // ---- 对话式 Agent ----
+  /** 和构型页共用同一条 BYOK 通路，所以同样要带隧道令牌。 */
+  agentChat: (messages: AgentMessage[], context: AgentContext, token?: string) =>
+    req<{ reply: string }>("/api/agent/chat", {
+      method: "POST",
+      body: JSON.stringify({ messages, context }),
+      headers: token ? { "X-MW-Token": token } : undefined,
+    }),
 
   // ---- 构型 ----
   formationTemplates: () =>

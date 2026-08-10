@@ -198,3 +198,33 @@
   line-height: 1.6;
   color: color-mix(in srgb, var(--ink) 40%, transparent);
 }
+
+/* ---- 内嵌的问助手 ---- */
+
+.askHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.askSub {
+  margin: 5px 0 0;
+  font-size: 12.5px;
+  color: color-mix(in srgb, var(--ink) 45%, transparent);
+}
+
+.askClear {
+  border: none;
+  background: none;
+  padding: 4px 6px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--accent);
+  border-radius: 5px;
+}
+
+.askClear:hover {
+  background: var(--surface-2);
+}

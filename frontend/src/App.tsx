@@ -1,3 +1,4 @@
+import { AgentPanel } from "./components/AgentPanel/AgentPanel";
 import { Sidebar } from "./components/Sidebar/Sidebar";
 import { WaveBackdrop } from "./components/WaveBackdrop/WaveBackdrop";
 import { TeachPage } from "./pages/TeachPage/TeachPage";
@@ -62,12 +63,14 @@ export function App() {
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
       <Sidebar />
-      <main style={{ flex: 1, overflowY: "auto", position: "relative" }}>
+      <main style={{ flex: 1, overflowY: "auto", position: "relative", minWidth: 0 }}>
         <WaveBackdrop />
         <div style={{ position: "relative", zIndex: 1 }}>
           <Page />
         </div>
       </main>
+      {/* 常驻在这一层：切页时对话不能丢，而且它不属于左侧任何一个一级导航 */}
+      <AgentPanel />
     </div>
   );
 }

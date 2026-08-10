@@ -23,6 +23,16 @@ export function PerformIcon({ size = 20 }: IconProps) {
   );
 }
 
+/** 助手：一个对话气泡。 */
+export function AgentIcon({ size = 20 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 20 20" {...base}>
+      <path d="M17 11.5a2 2 0 0 1-2 2H8l-4 3.2V13.5a2 2 0 0 1-1-1.7v-6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z" />
+      <path d="M7 7.5h6M7 10h4" />
+    </svg>
+  );
+}
+
 /** 考试：一块打了勾的评分板。 */
 export function ExamIcon({ size = 20 }: IconProps) {
   return (

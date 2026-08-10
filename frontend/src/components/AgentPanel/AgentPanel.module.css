@@ -1,0 +1,91 @@
+/* 收起态：一条竖着的窄条，文字竖排。占 40px 而不是浮一个圆钮，
+   是为了让「这里有个东西」始终可见，又不遮挡内容。 */
+.rail {
+  width: 40px;
+  flex: 0 0 40px;
+  height: 100%;
+  border: none;
+  border-left: 1px solid var(--line);
+  background: var(--surface);
+  color: color-mix(in srgb, var(--ink) 50%, transparent);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding-top: 20px;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.rail:hover {
+  color: var(--ink);
+  background: var(--surface-2);
+}
+
+.railText {
+  writing-mode: vertical-rl;
+  font-size: 12px;
+  letter-spacing: 0.22em;
+}
+
+.panel {
+  width: 340px;
+  flex: 0 0 340px;
+  height: 100%;
+  border-left: 1px solid var(--line);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--line);
+  flex: 0 0 auto;
+}
+
+.sub {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: color-mix(in srgb, var(--ink) 42%, transparent);
+}
+
+.headActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.iconBtn {
+  border: none;
+  background: none;
+  color: color-mix(in srgb, var(--ink) 45%, transparent);
+  border-radius: 5px;
+  padding: 5px;
+  display: flex;
+}
+
+.iconBtn:hover {
+  color: var(--ink);
+  background: var(--surface-2);
+}
+
+/* 「清空」按钮。和 AgentChat 里的同名类是两份 —— CSS Module 各自作用域，
+   共用得抽第三个文件，为一个 24px 的文字按钮不值得。 */
+.textBtn {
+  border: none;
+  background: none;
+  padding: 4px 6px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--accent);
+  border-radius: 5px;
+}
+
+.textBtn:hover {
+  background: var(--surface-2);
+}

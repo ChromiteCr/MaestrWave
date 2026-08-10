@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { BeatPatternDemo } from "../../components/BeatPatternDemo/BeatPatternDemo";
 import { Button } from "../../components/Button/Button";
+import { AgentChat } from "../../components/AgentChat/AgentChat";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
 import { PracticeRunner } from "../../components/PracticeRunner/PracticeRunner";
-import { DIMENSIONS, findLesson, lessonIndex, LESSONS } from "../../lib/teaching/curriculum";
+import { DIMENSIONS, findLesson, lessonIndex, LESSONS, type Lesson } from "../../lib/teaching/curriculum";
 import { PATTERNS, type Meter } from "../../lib/teaching/patterns";
 import { useAppStore } from "../../state/store";
 import styles from "./LessonPage.module.css";
@@ -14,10 +15,32 @@ import styles from "./LessonPage.module.css";
  * 讲解与示范刻意做成**不依赖后端、不依赖摄像头**：没配天琴密钥、没插摄像头的人
  * 也应该能把一课看完。练习曲与打分是加分项，不是前置条件。
  */
+/**
+ * 本课的建议问题。用课程数据拼，不写死 —— 写死的话加一课就得回来改一次，
+ * 而且必然有人忘。第一条永远指向「常见错误」：那是学的人最想问、教材上又最少
+ * 展开讲的部分。
+ */
+function lessonQuestions(lesson: Lesson): string[] {
+  const qs = [
+    `《${lesson.title}》最常见的错误怎么改？`,
+    // 刻意不把 goal 拼进问句 —— goal 是完整的一句话，塞进「为什么要…？」里语法很别扭
+    "这一课的标准依据是什么意思？举个例子。",
+  ];
+  if (lesson.meters.length > 1) {
+    qs.push(`${lesson.meters.join("、")} 拍的拍型分别往哪些方向走？`);
+  } else if (lesson.meters.length === 1) {
+    qs.push(`${lesson.meters[0]} 拍拍型每一拍往哪个方向走？`);
+  }
+  qs.push("我练的时候该先注意什么？");
+  return qs;
+}
+
 export function LessonPage() {
   const lessonId = useAppStore((s) => s.activeLessonId);
   const setActivePage = useAppStore((s) => s.setActivePage);
   const openLesson = useAppStore((s) => s.openLesson);
+  const hasAgentMessages = useAppStore((s) => s.agentMessages.length > 0);
+  const clearAgent = useAppStore((s) => s.clearAgent);
   const lesson = findLesson(lessonId);
 
   const [meter, setMeter] = useState<Meter>(4);
@@ -170,6 +193,26 @@ export function LessonPage() {
         </div>
 
         <aside className={styles.side}>
+          {/*
+            课程页内嵌的问答入口。和右侧侧栏是**同一段对话**（状态在 store 里），
+            放在这里是因为看讲解时最容易冒出问题，让人先去右边展开侧栏就打断了。
+            Agent 的上下文里会自动带上当前这一课的全文，所以可以直接问「这一课」。
+          */}
+          <section className={styles.card}>
+            <div className={styles.askHead}>
+              <div>
+                <p className="eyebrow">问助手</p>
+                <p className={styles.askSub}>关于《{lesson.title}》，随时问</p>
+              </div>
+              {hasAgentMessages && (
+                <button type="button" className={styles.askClear} onClick={clearAgent}>
+                  清空
+                </button>
+              )}
+            </div>
+            <AgentChat suggestions={lessonQuestions(lesson)} maxHeight={280} />
+          </section>
+
           <section className={styles.card}>
             <p className="eyebrow">本课评什么</p>
             <ul className={styles.rubric}>

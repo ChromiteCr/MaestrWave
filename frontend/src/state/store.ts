@@ -1,5 +1,13 @@
 import { create } from "zustand";
-import { api, type HealthInfo, type Instrument, type InstrumentLibrary, type Project } from "../lib/api";
+import { buildAgentContext } from "../lib/agentContext";
+import {
+  api,
+  type AgentMessage,
+  type HealthInfo,
+  type Instrument,
+  type InstrumentLibrary,
+  type Project,
+} from "../lib/api";
 
 export type PageId =
   | "teach"
@@ -37,6 +45,8 @@ export const PAGE_SECTION: Record<PageId, Section> = {
   settings: "global",
 };
 
+const AGENT_OPEN_KEY = "mw.agent.open";
+
 /** 点一级导航时落到哪一页。 */
 export const SECTION_HOME: Record<Exclude<Section, "global">, PageId> = {
   teach: "teach",
@@ -55,6 +65,22 @@ interface AppState {
   /** 当前打开的课程（`teach-lesson` 页读它）。 */
   activeLessonId: string | null;
   openLesson: (id: string) => void;
+
+  /**
+   * 对话式 Agent。
+   *
+   * 状态放 store 而不是组件里，是因为它有**两个入口**：右侧常驻侧栏，和课程页里
+   * 内嵌的那一块。两处必须是同一段对话 —— 各存一份的话，用户会想不起来刚才那句
+   * 是在哪儿问的，「清空」也会只清掉一半。
+   */
+  agentOpen: boolean;
+  setAgentOpen: (open: boolean) => void;
+  agentMessages: AgentMessage[];
+  agentBusy: boolean;
+  agentError: string;
+  /** 返回是否成功。失败时调用方可以把问题原文放回输入框。 */
+  askAgent: (question: string) => Promise<boolean>;
+  clearAgent: () => void;
 
   project: Project | null;
   setProject: (project: Project | null) => void;
@@ -87,6 +113,44 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   activeLessonId: null,
   openLesson: (id) => set({ activeLessonId: id, activePage: "teach-lesson", navSection: "teach" }),
+
+  // 折叠状态是个长期偏好，记在 localStorage，别每次刷新都弹回来
+  agentOpen: typeof localStorage !== "undefined" && localStorage.getItem(AGENT_OPEN_KEY) === "1",
+  setAgentOpen: (open) => {
+    try {
+      localStorage.setItem(AGENT_OPEN_KEY, open ? "1" : "0");
+    } catch {
+      // 隐私模式下 localStorage 会抛，折叠状态不值得为此中断
+    }
+    set({ agentOpen: open });
+  },
+  agentMessages: [],
+  agentBusy: false,
+  agentError: "",
+  askAgent: async (question) => {
+    const q = question.trim();
+    const s = get();
+    if (!q || s.agentBusy) return false;
+
+    const next: AgentMessage[] = [...s.agentMessages, { role: "user", content: q }];
+    set({ agentMessages: next, agentBusy: true, agentError: "" });
+    try {
+      // 上下文在这里现算：用户可能问到一半切了页，要以**发问那一刻**的位置为准
+      const ctx = buildAgentContext(s.activePage, s.project, s.activeLessonId);
+      const { reply } = await api.agentChat(next, ctx);
+      set({ agentMessages: [...next, { role: "assistant", content: reply }], agentBusy: false });
+      return true;
+    } catch (e) {
+      // 失败就把这一轮整个撤回，别在对话里留一句没人回答的话
+      set({
+        agentMessages: s.agentMessages,
+        agentBusy: false,
+        agentError: e instanceof Error ? e.message : String(e),
+      });
+      return false;
+    }
+  },
+  clearAgent: () => set({ agentMessages: [], agentError: "" }),
 
   project: null,
   setProject: (project) => set({ project, selectedInstrumentId: project?.instruments[0]?.id ?? null }),

@@ -222,11 +222,11 @@ def _extract_json(text: str) -> dict:
     raise ValueError("模型输出里找不到 JSON")
 
 
-async def chat_json(system: str, user: str, *, temperature: float = 0.35) -> dict:
-    """要一段 JSON 回来。失败重试至多 MAX_JSON_RETRIES 次，仍失败就明确报错。
+def _prepare_call() -> tuple[dict, str]:
+    """校验配置 + 限流 + 拼出 chat/completions 地址。
 
-    绝不「猜测拼接」—— 构型数据会直接决定生成什么音乐，宁可报错让用户重试，
-    也不要把一个半残的结构悄悄落盘。
+    每条 LLM 通路都必须走这里，尤其是 `_check_host` 和 `_check_rate_limit`：
+    绕过前者等于把用户的 key 发给任意主机，绕过后者等于给白嫖开一扇窗。
     """
     cfg = load_config()
     if not cfg["api_key"]:
@@ -241,6 +241,55 @@ async def chat_json(system: str, user: str, *, temperature: float = 0.35) -> dic
     url = cfg["base_url"].rstrip("/")
     if not url.endswith("/chat/completions"):
         url = f"{url}/chat/completions"
+    return cfg, url
+
+
+async def chat_text(messages: list[dict], *, temperature: float = 0.4,
+                    max_tokens: int = 900) -> str:
+    """自由对话，返回纯文本。Agent 侧栏用。
+
+    和 `chat_json` 的区别不只是要不要 JSON：这里**不做重试**。对话失败让用户自己
+    再问一次就行，而构型那边失败会导致落盘一个半残结构，才值得自动重试。
+    """
+    cfg, url = _prepare_call()
+
+    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+        try:
+            resp = await client.post(
+                url,
+                json={
+                    "model": cfg["model"],
+                    "messages": messages,
+                    "temperature": temperature,
+                    "max_tokens": max_tokens,
+                },
+                headers={"Authorization": f"Bearer {cfg['api_key']}",
+                         "Content-Type": "application/json"},
+            )
+            resp.raise_for_status()
+            content = resp.json()["choices"][0]["message"]["content"]
+            return (content or "").strip()
+        except httpx.HTTPStatusError as e:
+            body = _scrub(e.response.text[:300], cfg["api_key"])
+            code = e.response.status_code
+            if code in (401, 403):
+                raise LLMError(f"鉴权失败，请检查 API key。（HTTP {code}）") from None
+            if code == 404:
+                raise LLMError(f"接口不存在，请检查 base_url 与模型名。（HTTP {code}）") from None
+            raise LLMError(f"语言模型返回 HTTP {code}：{body}") from None
+        except httpx.RequestError as e:
+            raise LLMError(f"连不上语言模型：{type(e).__name__}: {e}") from None
+        except (ValueError, KeyError, json.JSONDecodeError) as e:
+            raise LLMError(f"语言模型返回的内容无法解析：{type(e).__name__}: {e}") from None
+
+
+async def chat_json(system: str, user: str, *, temperature: float = 0.35) -> dict:
+    """要一段 JSON 回来。失败重试至多 MAX_JSON_RETRIES 次，仍失败就明确报错。
+
+    绝不「猜测拼接」—— 构型数据会直接决定生成什么音乐，宁可报错让用户重试，
+    也不要把一个半残的结构悄悄落盘。
+    """
+    cfg, url = _prepare_call()
 
     messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
     last_err = ""
