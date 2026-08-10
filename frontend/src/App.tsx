@@ -2,6 +2,7 @@ import { Sidebar } from "./components/Sidebar/Sidebar";
 import { WaveBackdrop } from "./components/WaveBackdrop/WaveBackdrop";
 import { TeachPage } from "./pages/TeachPage/TeachPage";
 import { LessonPage } from "./pages/LessonPage/LessonPage";
+import { ExamPage } from "./pages/ExamPage/ExamPage";
 import { FilePage } from "./pages/FilePage/FilePage";
 import { FormationPage } from "./pages/FormationPage/FormationPage";
 import { GeneratePage } from "./pages/GeneratePage/GeneratePage";
@@ -16,6 +17,7 @@ import { useAppStore } from "./state/store";
 const PAGES = {
   teach: TeachPage,
   "teach-lesson": LessonPage,
+  "teach-exam": ExamPage,
   file: FilePage,
   formation: FormationPage,
   generate: GeneratePage,

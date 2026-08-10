@@ -23,6 +23,17 @@ export function PerformIcon({ size = 20 }: IconProps) {
   );
 }
 
+/** 考试：一块打了勾的评分板。 */
+export function ExamIcon({ size = 20 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 20 20" {...base}>
+      <path d="M6 3.5H4.5a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-12a1 1 0 0 0-1-1H14" />
+      <path d="M7 2.5h6v2.6H7z" />
+      <path d="m7 11.5 2 2 4-4.5" />
+    </svg>
+  );
+}
+
 /** 课程：图形拍型的四拍轨迹（下→左→右→上），拍点处有个记号。 */
 export function LessonIcon({ size = 20 }: IconProps) {
   return (

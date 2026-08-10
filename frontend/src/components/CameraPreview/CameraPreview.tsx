@@ -24,9 +24,16 @@ interface Props {
   /** 打拍手与表情手是否互换，只影响标记的文字。 */
   swapHands: boolean;
   height?: number;
+  /** 摄像头没开时显示什么。默认是「输出」页的说法，考试页那边的按钮叫别的名字。 */
+  placeholder?: string;
 }
 
-export function CameraPreview({ source, swapHands, height = 260 }: Props) {
+export function CameraPreview({
+  source,
+  swapHands,
+  height = 260,
+  placeholder = "点「开始指挥」后打开摄像头",
+}: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef(0);
@@ -116,7 +123,7 @@ export function CameraPreview({ source, swapHands, height = 260 }: Props) {
   return (
     <div className={styles.wrap} ref={wrapRef} style={{ height }}>
       <canvas ref={canvasRef} className={styles.overlay} />
-      {!source && <div className={styles.placeholder}>点「开始指挥」后打开摄像头</div>}
+      {!source && <div className={styles.placeholder}>{placeholder}</div>}
     </div>
   );
 }

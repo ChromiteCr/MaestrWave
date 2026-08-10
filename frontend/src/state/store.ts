@@ -4,6 +4,7 @@ import { api, type HealthInfo, type Instrument, type InstrumentLibrary, type Pro
 export type PageId =
   | "teach"
   | "teach-lesson"
+  | "teach-exam"
   | "file"
   | "formation"
   | "generate"
@@ -26,6 +27,7 @@ export type Section = "teach" | "perform" | "global";
 export const PAGE_SECTION: Record<PageId, Section> = {
   teach: "teach",
   "teach-lesson": "teach",
+  "teach-exam": "teach",
   file: "perform",
   formation: "perform",
   generate: "perform",

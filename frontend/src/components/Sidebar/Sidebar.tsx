@@ -1,6 +1,7 @@
 import { PAGE_SECTION, SECTION_HOME, useAppStore, type PageId, type Section } from "../../state/store";
 import {
   BrowseIcon,
+  ExamIcon,
   FileIcon,
   FormationIcon,
   GenerateIcon,
@@ -26,7 +27,10 @@ const SECTIONS: { id: Exclude<Section, "global">; label: string; hint: string; i
 
 /** 二级：按各自一级下的实际流程顺序排。 */
 const PAGES: Record<Exclude<Section, "global">, Item[]> = {
-  teach: [{ id: "teach", label: "课程", icon: LessonIcon, also: ["teach-lesson"] }],
+  teach: [
+    { id: "teach", label: "课程", icon: LessonIcon, also: ["teach-lesson"] },
+    { id: "teach-exam", label: "考试", icon: ExamIcon },
+  ],
   perform: [
     { id: "file", label: "文件", icon: FileIcon },
     { id: "formation", label: "构型", icon: FormationIcon },
