@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
 import { Button } from "../../components/Button/Button";
-import { api, type LokrOption } from "../../lib/api";
+import { api, type LokrOption, type LLMStatus } from "../../lib/api";
 import { useAppStore } from "../../state/store";
 import styles from "./SettingsPage.module.css";
 
@@ -14,15 +14,92 @@ export function SettingsPage() {
   const [lokrOptions, setLokrOptions] = useState<LokrOption[]>([]);
   const caps = health?.capabilities;
 
+  // BYOK 语言模型。key 只存后端，这里拿到的永远是掩码，没有明文。
+  const [llm, setLlm] = useState<LLMStatus | null>(null);
+  const [baseUrl, setBaseUrl] = useState("");
+  const [model, setModel] = useState("");
+  const [apiKey, setApiKey] = useState("");
+  const [llmToken, setLlmToken] = useState(() => localStorage.getItem("mw_llm_token") || "");
+  const [llmSaving, setLlmSaving] = useState(false);
+  const [llmError, setLlmError] = useState<string | null>(null);
+
   useEffect(() => {
     refreshHealth();
     api.lokrOptions().then((r) => setLokrOptions(r.options));
+    api.llmConfig().then((s) => {
+      setLlm(s);
+      setBaseUrl(s.base_url);
+      setModel(s.model);
+    }).catch(() => {});
   }, [refreshHealth]);
+
+  const saveLlm = async () => {
+    setLlmSaving(true);
+    setLlmError(null);
+    try {
+      // api_key 传空字符串 = 保持原 key 不动，这样可以只改 base_url 不必重填
+      const s = await api.saveLlmConfig({ base_url: baseUrl, model, api_key: apiKey });
+      setLlm(s);
+      setApiKey("");
+      if (!s.host_allowed) setLlmError(s.host_reason);
+    } catch (e) {
+      setLlmError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLlmSaving(false);
+    }
+  };
 
   return (
     <div>
       <PageHeader eyebrow="MaestrWave" title="设置" />
       <div className={styles.body}>
+        <div className={styles.card}>
+          <p className={styles.cardTitle}>语言模型（构型页用）</p>
+          <p className={styles.note}>
+            自带 API key，用来把你的意图翻译成段落结构与乐器编配。只支持 <strong>OpenAI 兼容</strong>
+            的端点（DeepSeek、智谱、Kimi、OpenRouter、Ollama、OpenAI 都可以，换 base_url 即用）。
+            <br />
+            key <strong>只存在后端</strong>、文件权限 600、不进仓库、任何接口都不会回显明文 ——
+            这个项目的隧道功能会把服务暴露到公网，存在浏览器里等于直接泄露。
+          </p>
+
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>base_url</span>
+            <input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)}
+              placeholder="https://api.deepseek.com/v1" />
+          </label>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>模型名</span>
+            <input value={model} onChange={(e) => setModel(e.target.value)} placeholder="deepseek-chat" />
+          </label>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>
+              API key {llm?.has_key && <span className={styles.masked}>已配置：{llm.key_masked}</span>}
+            </span>
+            <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)}
+              placeholder={llm?.has_key ? "留空表示不修改" : "sk-…"} />
+          </label>
+
+          {llm?.tunnel_running && (
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>本机令牌（隧道运行中才需要）</span>
+              <input value={llmToken}
+                onChange={(e) => { setLlmToken(e.target.value); localStorage.setItem("mw_llm_token", e.target.value); }}
+                placeholder="见后端启动日志" />
+            </label>
+          )}
+
+          {llmError && <p className={styles.errorNote}>{llmError}</p>}
+
+          <div className={styles.statRow}>
+            <span className={styles.statLabel}>
+              <span className={`${styles.dot} ${llm?.ready ? styles.dotOk : styles.dotErr}`} />
+              {llm?.ready ? "已就绪" : "未配置完整"}
+            </span>
+            <Button onClick={saveLlm} disabled={llmSaving}>{llmSaving ? "保存中…" : "保存"}</Button>
+          </div>
+        </div>
+
         <div className={styles.card}>
           <p className={styles.cardTitle}>状态</p>
           <div className={styles.statRow}>

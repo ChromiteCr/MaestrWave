@@ -1,6 +1,7 @@
 import { Sidebar } from "./components/Sidebar/Sidebar";
 import { WaveBackdrop } from "./components/WaveBackdrop/WaveBackdrop";
 import { FilePage } from "./pages/FilePage/FilePage";
+import { FormationPage } from "./pages/FormationPage/FormationPage";
 import { GeneratePage } from "./pages/GeneratePage/GeneratePage";
 import { BrowsePage } from "./pages/BrowsePage/BrowsePage";
 import { OutputPage } from "./pages/OutputPage/OutputPage";
@@ -12,6 +13,7 @@ import { useAppStore } from "./state/store";
 
 const PAGES = {
   file: FilePage,
+  formation: FormationPage,
   generate: GeneratePage,
   browse: BrowsePage,
   output: OutputPage,

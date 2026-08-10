@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Header, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
 from pydantic import BaseModel
@@ -25,6 +25,8 @@ try:
     from .conduct import hub as conduct_hub
     from .netinfo import network_info
     from .tunnel import manager as tunnel_manager
+    from . import llm as llmlib
+    from . import configuration as configlib
 except Exception:
     from stems import StemGenerator, list_sessions
     from config import (
@@ -38,6 +40,8 @@ except Exception:
     from conduct import hub as conduct_hub
     from netinfo import network_info
     from tunnel import manager as tunnel_manager
+    import llm as llmlib
+    import configuration as configlib
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -441,6 +445,170 @@ def _serialize_project(project: dict) -> dict:
 async def get_instrument_library():
     """给「生成」页的乐器 tab 选择器用：默认三个 tab + 完整可选乐器目录。"""
     return {"default_instruments": DEFAULT_INSTRUMENTS, "library": INSTRUMENT_LIBRARY}
+
+
+# ---------------- BYOK 语言模型 ----------------
+
+class LLMConfigRequest(BaseModel):
+    base_url: Optional[str] = None
+    model: Optional[str] = None
+    # 空字符串 = 保持原 key 不动（这样可以只改 base_url 而不必重填 key）
+    api_key: Optional[str] = None
+
+
+class FormationSkeletonRequest(BaseModel):
+    style_description: Optional[str] = None
+    mood_tags: Optional[list] = None
+    ensemble_size: Optional[str] = None
+    climax_hint: Optional[str] = None
+    template_id: Optional[str] = None
+
+
+class FormationRefineRequest(BaseModel):
+    instruction: str
+    scope: Optional[str] = None
+
+
+def _guard_llm(token: Optional[str]) -> None:
+    """隧道开着时才要求令牌 —— 隧道没开说明只有本机能访问，不设门槛。
+
+    针对的实际风险：隧道把后端暴露到公网后，拿到链接的人可以直接调用 LLM 接口白嫖
+    用户的 key 额度。房间码只保护 WebSocket 指挥通道，不保护 REST。
+    """
+    running = bool(tunnel_manager.status().get("running"))
+    try:
+        llmlib.check_access(running, token)
+    except llmlib.LLMError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
+
+@app.get("/api/llm/config")
+async def get_llm_config():
+    """「设置」页读它。**只回 has_key 与掩码，绝不回显明文 key。**"""
+    status = llmlib.public_status()
+    status["tunnel_running"] = bool(tunnel_manager.status().get("running"))
+    return status
+
+
+@app.post("/api/llm/config")
+async def set_llm_config(req: LLMConfigRequest):
+    llmlib.save_config(base_url=req.base_url, model=req.model, api_key=req.api_key)
+    return llmlib.public_status()
+
+
+@app.get("/api/formation/templates")
+async def get_formation_templates():
+    """模版列表。纯本地，没配 key 也能用 —— 这是构型页的保底路径。"""
+    return {"templates": configlib.list_templates()}
+
+
+def _load_or_404(project_id: str) -> dict:
+    try:
+        return projectlib.load_project(project_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="project not found")
+
+
+@app.post("/api/projects/{project_id}/formation/template")
+async def apply_formation_template(project_id: str, template_id: str):
+    project = _load_or_404(project_id)
+    try:
+        formation = configlib.apply_template(template_id, project)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    projectlib.update_settings(project, formation=formation)
+    return formation
+
+
+@app.post("/api/projects/{project_id}/formation/generate")
+async def generate_formation_endpoint(project_id: str, req: FormationSkeletonRequest,
+                                       x_mw_token: Optional[str] = Header(default=None)):
+    _guard_llm(x_mw_token)
+    project = _load_or_404(project_id)
+    formation = await configlib.generate_formation(project, req.model_dump(exclude_none=True))
+    projectlib.update_settings(project, formation=formation)
+    return formation
+
+
+@app.post("/api/projects/{project_id}/formation/refine")
+async def refine_formation_endpoint(project_id: str, req: FormationRefineRequest,
+                                     x_mw_token: Optional[str] = Header(default=None)):
+    _guard_llm(x_mw_token)
+    project = _load_or_404(project_id)
+    formation = project.get("formation")
+    if not formation:
+        raise HTTPException(status_code=400, detail="这个项目还没有构型")
+    try:
+        updated = await configlib.refine_formation(project, formation, req.instruction, req.scope)
+    except llmlib.LLMError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+    projectlib.update_settings(project, formation=updated)
+    return updated
+
+
+@app.put("/api/projects/{project_id}/formation")
+async def save_formation(project_id: str, formation: dict):
+    """保存用户在构型页手工编辑后的结果。不调模型，但仍走一遍校验修复。"""
+    project = _load_or_404(project_id)
+    repaired = configlib.validate_and_repair(
+        formation, project, created_by="manual",
+        template_id=formation.get("source_template_id"),
+    )
+    repaired["dirty"] = True
+    repaired["revision"] = int(formation.get("revision") or 0)
+    projectlib.update_settings(project, formation=repaired)
+    return repaired
+
+
+@app.post("/api/projects/{project_id}/formation/apply")
+async def apply_formation_to_project(project_id: str):
+    """「应用到生成页」：写回项目设置 + 按构型创建乐器 tab。
+
+    显式动作而不是自动同步 —— 用户在构型页改了东西不该立刻把生成页已生成的 tab 洗掉。
+    """
+    project = _load_or_404(project_id)
+    formation = project.get("formation")
+    if not formation:
+        raise HTTPException(status_code=400, detail="这个项目还没有构型")
+
+    g = formation["global"]
+    projectlib.update_settings(
+        project, key=g["key"], bpm=g["bpm"], time_signature=g["time_signature"],
+        total_duration=g["total_duration"],
+        # 全局提示词写进 style_description：project_gen._build_prompt 里
+        # spec["prompt"].format(style=...) 会自动让它全程生效，后端一行不用改。
+        style_description=g["global_prompt"],
+    )
+
+    # 已有乐器按 library_key 匹配保留（连同已生成的 take），只更新 role
+    existing = {i["library_key"]: i for i in project["instruments"]}
+    order: list[str] = []
+    created = 0
+    for fi in formation["instruments"]:
+        hit = existing.get(fi["library_key"])
+        if hit:
+            hit["role"] = fi["role"]
+            hit["participation"] = list(fi["participation"])
+            hit["tier"] = fi["tier"]
+            order.append(hit["id"])
+        else:
+            inst = projectlib.add_instrument(
+                project, fi["library_key"], fi["display_name"],
+                role=fi["role"], family=fi.get("family"),
+                participation=list(fi["participation"]), tier=fi["tier"],
+            )
+            order.append(inst["id"])
+            created += 1
+
+    formation["revision"] = int(formation.get("revision") or 0) + 1
+    projectlib.update_settings(project, formation=formation, generation_order=order)
+    extra = [i for i in project["instruments"] if i["id"] not in order]
+    return {
+        "project": _serialize_project(project),
+        "created": created,
+        # 构型里没有的多余乐器不自动删，交给用户决定
+        "unmatched": [{"id": i["id"], "display_name": i["display_name"]} for i in extra],
+    }
 
 
 @app.post("/api/projects")

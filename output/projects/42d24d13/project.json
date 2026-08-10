@@ -7,5 +7,12 @@
   "bpm": 92,
   "time_signature": "4/4",
   "segment_duration": 16.0,
-  "instruments": []
+  "instruments": [],
+  "schema_version": 2,
+  "generation_mode": "multitrack",
+  "total_duration": 16.0,
+  "formation": null,
+  "generation_order": [],
+  "master": null,
+  "stems": []
 }

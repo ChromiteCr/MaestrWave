@@ -12,3 +12,11 @@ env/
 
 # M4：本地开发用 HTTPS 证书，不进仓库
 frontend/certs/
+
+# M4d：BYOK 语言模型配置，里面有明文 API key，绝不能进仓库
+/.secrets/
+
+# M5：MediaPipe WASM 运行时由 npm install 提供，predev/prebuild 自动从 node_modules
+# 复制过来（见 frontend/scripts/sync-mediapipe-wasm.mjs），不需要进仓库。
+# 模型文件 public/mediapipe/models/ 则要进仓库 —— npm 不提供它。
+frontend/public/mediapipe/wasm/

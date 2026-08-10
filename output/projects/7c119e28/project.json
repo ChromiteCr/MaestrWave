@@ -32,7 +32,19 @@
           }
         }
       ],
-      "current_take_id": "07a8f435"
+      "current_take_id": "07a8f435",
+      "participation": [],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
     }
-  ]
+  ],
+  "schema_version": 2,
+  "generation_mode": "multitrack",
+  "total_duration": 16.0,
+  "formation": null,
+  "generation_order": [],
+  "master": null,
+  "stems": []
 }

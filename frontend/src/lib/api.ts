@@ -77,6 +77,39 @@ export interface FormationWarning {
   message: string;
 }
 
+export interface FormationTemplate {
+  id: string;
+  name: string;
+  description: string;
+  key: string;
+  bpm: number;
+  time_signature: string;
+  instrument_count: number;
+  has_climax: boolean;
+}
+
+/** 用户填的骨架。语言模型在模版基线上按它调整，而不是从零构建。 */
+export interface FormationSkeleton {
+  style_description?: string;
+  mood_tags?: string[];
+  ensemble_size?: string;
+  climax_hint?: string;
+  template_id?: string;
+}
+
+/** 「设置」页看到的 BYOK 状态。**永远不含明文 key。** */
+export interface LLMStatus {
+  has_key: boolean;
+  key_masked: string;
+  base_url: string;
+  model: string;
+  host_allowed: boolean;
+  host_reason: string;
+  ready: boolean;
+  allowed_hosts: string[];
+  tunnel_running?: boolean;
+}
+
 export interface MusicFormation {
   schema_version: 1;
   /** 每次「应用到生成页」+1。take.params 记录当时的 revision，
@@ -260,6 +293,42 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ lora_path: loraPath || null }),
     }),
+
+  // ---- BYOK 语言模型 ----
+  llmConfig: () => req<LLMStatus>("/api/llm/config"),
+  saveLlmConfig: (body: { base_url?: string; model?: string; api_key?: string }) =>
+    req<LLMStatus>("/api/llm/config", { method: "POST", body: JSON.stringify(body) }),
+
+  // ---- 构型 ----
+  formationTemplates: () =>
+    req<{ templates: FormationTemplate[] }>("/api/formation/templates"),
+  applyFormationTemplate: (projectId: string, templateId: string) =>
+    req<MusicFormation>(
+      `/api/projects/${projectId}/formation/template?template_id=${encodeURIComponent(templateId)}`,
+      { method: "POST" },
+    ),
+  generateFormation: (projectId: string, skeleton: FormationSkeleton, token?: string) =>
+    req<MusicFormation>(`/api/projects/${projectId}/formation/generate`, {
+      method: "POST",
+      body: JSON.stringify(skeleton),
+      headers: token ? { "X-MW-Token": token } : undefined,
+    }),
+  refineFormation: (projectId: string, instruction: string, scope?: string, token?: string) =>
+    req<MusicFormation>(`/api/projects/${projectId}/formation/refine`, {
+      method: "POST",
+      body: JSON.stringify({ instruction, scope }),
+      headers: token ? { "X-MW-Token": token } : undefined,
+    }),
+  saveFormation: (projectId: string, formation: MusicFormation) =>
+    req<MusicFormation>(`/api/projects/${projectId}/formation`, {
+      method: "PUT",
+      body: JSON.stringify(formation),
+    }),
+  applyFormation: (projectId: string) =>
+    req<{ project: Project; created: number; unmatched: Array<{ id: string; display_name: string }> }>(
+      `/api/projects/${projectId}/formation/apply`,
+      { method: "POST" },
+    ),
 
   repaintInstrument: (
     projectId: string,

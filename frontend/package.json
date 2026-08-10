@@ -4,18 +4,23 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/sync-mediapipe-wasm.mjs",
     "dev": "vite",
     "dev:https": "MW_HTTPS=1 vite",
     "dev:tunnel": "MW_TUNNEL=1 vite",
     "certs": "bash ../scripts/dev-certs.sh",
+    "prebuild": "node scripts/sync-mediapipe-wasm.mjs",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "predev:https": "node scripts/sync-mediapipe-wasm.mjs",
+    "predev:tunnel": "node scripts/sync-mediapipe-wasm.mjs"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.1.0",
     "@fontsource/inter": "^5.1.0",
     "@fontsource/space-grotesk": "^5.1.0",
+    "@mediapipe/tasks-vision": "^1.0.1",
     "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

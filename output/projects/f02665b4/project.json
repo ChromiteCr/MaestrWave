@@ -32,7 +32,12 @@
           }
         }
       ],
-      "current_take_id": "6795cbaa"
+      "current_take_id": "6795cbaa",
+      "participation": [],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
     },
     {
       "id": "fe7f1cd6",
@@ -60,7 +65,12 @@
           }
         }
       ],
-      "current_take_id": "880d1460"
+      "current_take_id": "880d1460",
+      "participation": [],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
     },
     {
       "id": "4a38e07f",
@@ -89,7 +99,182 @@
           }
         }
       ],
-      "current_take_id": "1f419340"
+      "current_take_id": "1f419340",
+      "participation": [],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
     }
-  ]
+  ],
+  "schema_version": 2,
+  "generation_mode": "multitrack",
+  "total_duration": 30.0,
+  "formation": {
+    "schema_version": 1,
+    "revision": 0,
+    "created_by": "template",
+    "source_template_id": "epic_cinematic",
+    "updated_at": "2026-08-10T07:18:10.217795Z",
+    "dirty": false,
+    "global": {
+      "total_duration": 30.0,
+      "key": "D minor",
+      "bpm": 88,
+      "time_signature": "4/4",
+      "style_description": "史诗级的电影配乐，有慷慨激昂的旋律，开头所有乐器都出声，然后木管主旋律铜管伴奏",
+      "global_prompt": "epic cinematic orchestral score, dark and heroic, wide dynamics",
+      "mood_tags": [
+        "庄严",
+        "悲壮",
+        "希望"
+      ],
+      "ensemble_size": "cinematic",
+      "dynamic_range": "wide"
+    },
+    "sections": [
+      {
+        "id": "e2d34ee4",
+        "kind": "intro",
+        "label": "引入",
+        "duration": 4.5,
+        "intensity": 0.2,
+        "shape": "rise",
+        "is_climax": false
+      },
+      {
+        "id": "a3e61b46",
+        "kind": "build",
+        "label": "推进",
+        "duration": 7.5,
+        "intensity": 0.5,
+        "shape": "rise",
+        "is_climax": false
+      },
+      {
+        "id": "2b6ad67d",
+        "kind": "climax",
+        "label": "高潮",
+        "duration": 10.5,
+        "intensity": 0.95,
+        "shape": "arch",
+        "is_climax": true
+      },
+      {
+        "id": "f2fe2078",
+        "kind": "outro",
+        "label": "收束",
+        "duration": 7.5,
+        "intensity": 0.3,
+        "shape": "fall",
+        "is_climax": false
+      }
+    ],
+    "instruments": [
+      {
+        "id": "664293d3",
+        "library_key": "strings",
+        "display_name": "弦乐",
+        "role": "melody",
+        "family": "strings",
+        "tier": "core",
+        "prominence": 0.8,
+        "participation": [
+          0.7,
+          0.9,
+          1.0,
+          0.6
+        ],
+        "instrument_prompt": "String section, orchestral, legato, expressive, epic cinematic orchestral score, dark and heroic, wide dynamics",
+        "resolution": {
+          "matched": "exact",
+          "llm_raw_name": "strings"
+        }
+      },
+      {
+        "id": "6bc4690e",
+        "library_key": "cello",
+        "display_name": "大提琴",
+        "role": "bass",
+        "family": "strings",
+        "tier": "core",
+        "prominence": 0.72,
+        "participation": [
+          0.6,
+          0.8,
+          1.0,
+          0.5
+        ],
+        "instrument_prompt": "Cello section, orchestral bass and harmony, rich warm tone, epic cinematic orchestral score, dark and heroic, wide dynamics",
+        "resolution": {
+          "matched": "exact",
+          "llm_raw_name": "cello"
+        }
+      },
+      {
+        "id": "1f16dc36",
+        "library_key": "timpani",
+        "display_name": "定音鼓",
+        "role": "rhythm",
+        "family": "percussion",
+        "tier": "core",
+        "prominence": 0.42,
+        "participation": [
+          0.0,
+          0.5,
+          1.0,
+          0.2
+        ],
+        "instrument_prompt": "Timpani, orchestral rhythmic punctuation and low-end impact, epic cinematic orchestral score, dark and heroic, wide dynamics",
+        "resolution": {
+          "matched": "exact",
+          "llm_raw_name": "timpani"
+        }
+      },
+      {
+        "id": "9a0b1672",
+        "library_key": "brass",
+        "display_name": "铜管",
+        "role": "harmony",
+        "family": "brass",
+        "tier": "climax",
+        "prominence": 0.4,
+        "participation": [
+          0.0,
+          0.2,
+          1.0,
+          0.4
+        ],
+        "instrument_prompt": "Brass section, warm and cohesive ensemble blend, epic cinematic orchestral score, dark and heroic, wide dynamics",
+        "resolution": {
+          "matched": "exact",
+          "llm_raw_name": "brass"
+        }
+      },
+      {
+        "id": "77cf4248",
+        "library_key": "french_horn",
+        "display_name": "圆号",
+        "role": "harmony",
+        "family": "brass",
+        "tier": "climax",
+        "prominence": 0.4,
+        "participation": [
+          0.0,
+          0.4,
+          0.9,
+          0.3
+        ],
+        "instrument_prompt": "French horn, mellow sustained brass harmony, epic cinematic orchestral score, dark and heroic, wide dynamics",
+        "resolution": {
+          "matched": "exact",
+          "llm_raw_name": "french_horn"
+        }
+      }
+    ],
+    "warnings": []
+  },
+  "generation_order": [],
+  "master": null,
+  "stems": []
 }

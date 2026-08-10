@@ -2,6 +2,15 @@
 type IconProps = { size?: number };
 const base = { fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
 
+/** 构型：高低不等的柱子 —— 就是这一页的签名视觉「乐曲情绪柱状图」。 */
+export function FormationIcon({ size = 20 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 20 20" {...base}>
+      <path d="M3 14v3M6.5 11v6M10 5v12M13.5 8v9M17 13v4" />
+    </svg>
+  );
+}
+
 export function FileIcon({ size = 20 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 20 20" {...base}>

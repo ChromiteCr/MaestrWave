@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { api, type HealthInfo, type Instrument, type InstrumentLibrary, type Project } from "../lib/api";
 
-export type PageId = "file" | "generate" | "browse" | "output" | "train" | "settings";
+export type PageId = "file" | "formation" | "generate" | "browse" | "output" | "train" | "settings";
 
 interface AppState {
   activePage: PageId;

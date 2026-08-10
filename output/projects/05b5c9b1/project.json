@@ -15,7 +15,12 @@
       "family": "brass",
       "role": "harmony",
       "takes": [],
-      "current_take_id": null
+      "current_take_id": null,
+      "participation": [],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
     },
     {
       "id": "7b8c5892",
@@ -24,7 +29,19 @@
       "family": "woodwind",
       "role": "harmony",
       "takes": [],
-      "current_take_id": null
+      "current_take_id": null,
+      "participation": [],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
     }
-  ]
+  ],
+  "schema_version": 2,
+  "generation_mode": "multitrack",
+  "total_duration": 60.0,
+  "formation": null,
+  "generation_order": [],
+  "master": null,
+  "stems": []
 }

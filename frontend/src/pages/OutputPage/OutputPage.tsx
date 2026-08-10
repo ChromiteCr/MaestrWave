@@ -3,7 +3,11 @@ import { PageHeader } from "../../components/PageHeader/PageHeader";
 import { QrCode } from "../../components/QrCode/QrCode";
 import { useConductor } from "../../lib/useConductor";
 import { ConductLink, newRoomCode, type LinkStatus } from "../../lib/conductLink";
-import { LocalSensorSource, RemoteSensorSource, type SensorSource } from "../../lib/sensorSource";
+import { LocalSensorSource, RemoteSensorSource } from "../../lib/sensorSource";
+import { ImuIntentSource, type IntentSource } from "../../lib/intentSource";
+import { CameraIntentSource } from "../../lib/camera/cameraIntentSource";
+import { HandTracker } from "../../lib/camera/handTracker";
+import { CameraPreview } from "../../components/CameraPreview/CameraPreview";
 import type { InstrumentRole } from "../../lib/gesture";
 import { api, type NetworkInfo, type TunnelStatus } from "../../lib/api";
 import { useAppStore } from "../../state/store";
@@ -26,7 +30,16 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 /** 单机 = 手机自己采自己放；电脑 = 手机采、这台电脑放。 */
-type ConductMode = "solo" | "stage";
+type ConductMode = "solo" | "stage" | "camera";
+
+const MODES: { id: ConductMode; label: string; hint: string }[] = [
+  { id: "solo", label: "单机模式",
+    hint: "用手机打开本页面，手机自己采集手势并出声。零延迟、不依赖网络。" },
+  { id: "stage", label: "电脑模式",
+    hint: "手机扫码当指挥棒，声音从这台电脑放出。手机可以走局域网，也可以走公网隧道。" },
+  { id: "camera", label: "摄像头模式",
+    hint: "不用手机，直接对着电脑摄像头指挥。能识别双手 —— 打拍手控制拍点与速度，表情手控制力度与声部平衡。" },
+];
 
 /** 电脑模式下手机怎么连过来：同一局域网，还是走公网隧道。 */
 type PairMethod = "lan" | "tunnel";
@@ -50,6 +63,9 @@ export function OutputPage() {
   const { status, roleActivation, dynamics, start, stop } = useConductor();
 
   const [mode, setMode] = useState<ConductMode>("solo");
+  // 摄像头模式：交换双手职能（左撇子指挥）。教材明确说持棒手左右都可以。
+  const [swapHands, setSwapHands] = useState(false);
+  const cameraRef = useRef<CameraIntentSource | null>(null);
   const [roomId] = useState(() => newRoomCode());
   const [linkStatus, setLinkStatus] = useState<LinkStatus>("idle");
   const [remoteCount, setRemoteCount] = useState(0);
@@ -252,13 +268,17 @@ export function OutputPage() {
     }
     if (!project) return;
     setError(null);
-    let source: SensorSource;
-    if (mode === "stage") {
+    let source: IntentSource;
+    if (mode === "camera") {
+      const cam = new CameraIntentSource({ swapHands, mirrored: true });
+      cameraRef.current = cam;
+      source = cam;
+    } else if (mode === "stage") {
       const link = linkRef.current;
       if (!link) return;
-      source = new RemoteSensorSource(link);
+      source = new ImuIntentSource(new RemoteSensorSource(link));
     } else {
-      source = new LocalSensorSource();
+      source = new ImuIntentSource(new LocalSensorSource());
     }
     try {
       await start(project, source);
@@ -287,26 +307,45 @@ export function OutputPage() {
       ) : (
         <div className={styles.body}>
           <div className={styles.modeToggle}>
-            <button
-              type="button"
-              className={`${styles.modeBtn} ${mode === "solo" ? styles.modeActive : ""}`}
-              onClick={() => switchMode("solo")}
-            >
-              单机模式
-            </button>
-            <button
-              type="button"
-              className={`${styles.modeBtn} ${mode === "stage" ? styles.modeActive : ""}`}
-              onClick={() => switchMode("stage")}
-            >
-              电脑模式
-            </button>
+            {MODES.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                className={`${styles.modeBtn} ${mode === m.id ? styles.modeActive : ""}`}
+                onClick={() => switchMode(m.id)}
+              >
+                {m.label}
+              </button>
+            ))}
           </div>
-          <p className={styles.modeHint}>
-            {mode === "solo"
-              ? "用手机打开本页面，手机自己采集手势并出声。零延迟、不依赖网络。"
-              : "手机扫码当指挥棒，声音从这台电脑放出。手机可以走局域网，也可以走公网隧道。"}
-          </p>
+          <p className={styles.modeHint}>{MODES.find((m) => m.id === mode)?.hint}</p>
+
+          {mode === "camera" && (
+            <div className={styles.card}>
+              {!HandTracker.isSecureContextOk() && (
+                <p className={styles.warnLine}>
+                  摄像头需要安全上下文。用 localhost 访问，或以 HTTPS 启动（npm run dev:https）。
+                </p>
+              )}
+              <CameraPreview source={running ? cameraRef.current : null} swapHands={swapHands} />
+              <label className={styles.swapRow}>
+                <input
+                  type="checkbox"
+                  checked={swapHands}
+                  onChange={(e) => {
+                    setSwapHands(e.target.checked);
+                    cameraRef.current?.setOptions({ swapHands: e.target.checked });
+                  }}
+                />
+                左手打拍（左撇子指挥）
+              </label>
+              <p className={styles.modeHint}>
+                按指挥法的标准分工：打拍手画图形拍型控制拍点与速度，拍型越大力度越强；
+                表情手抬高是渐强、落下是渐弱，横向位置按乐队席位决定强调哪个声部。
+                只伸一只手时，这只手同时管两者。
+              </p>
+            </div>
+          )}
 
           {mode === "stage" && (
             <>

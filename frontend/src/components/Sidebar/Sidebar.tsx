@@ -1,10 +1,11 @@
 import { useAppStore, type PageId } from "../../state/store";
-import { BrowseIcon, FileIcon, GenerateIcon, OutputIcon, SettingsIcon, TrainIcon } from "../icons";
+import { BrowseIcon, FileIcon, FormationIcon, GenerateIcon, OutputIcon, SettingsIcon, TrainIcon } from "../icons";
 import { Logo } from "../Logo";
 import styles from "./Sidebar.module.css";
 
 const TOP: { id: PageId; label: string; icon: (props: { size?: number }) => JSX.Element }[] = [
   { id: "file", label: "文件", icon: FileIcon },
+  { id: "formation", label: "构型", icon: FormationIcon },
   { id: "generate", label: "生成", icon: GenerateIcon },
   { id: "browse", label: "浏览", icon: BrowseIcon },
   { id: "output", label: "输出", icon: OutputIcon },

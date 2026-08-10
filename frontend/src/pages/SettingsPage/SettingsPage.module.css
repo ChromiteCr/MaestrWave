@@ -83,3 +83,52 @@
   line-height: 1.65;
   color: var(--wine);
 }
+
+/* ---- M4d：BYOK 语言模型卡片 ---- */
+.note {
+  margin: 0 0 4px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: color-mix(in srgb, var(--ink) 46%, transparent);
+}
+
+.note strong {
+  color: color-mix(in srgb, var(--ink) 78%, transparent);
+  font-weight: 600;
+}
+
+.fieldLabel {
+  font-size: 12px;
+  color: color-mix(in srgb, var(--ink) 55%, transparent);
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.masked {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: color-mix(in srgb, var(--ink) 40%, transparent);
+}
+
+.field input {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 11px;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.field input:focus {
+  outline: none;
+  border-color: var(--accent-dim);
+}
+
+.errorNote {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--wine);
+}

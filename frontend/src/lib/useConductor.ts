@@ -1,8 +1,8 @@
 import { useRef, useState } from "react";
 import type { Project } from "./api";
 import { sharedAudioEngine } from "./audioEngine";
-import { GestureInterpreter, type GestureParams, type InstrumentRole } from "./gesture";
-import type { SensorSource } from "./sensorSource";
+import { mixIntent, type GestureParams, type InstrumentRole } from "./gesture";
+import type { IntentSource } from "./intentSource";
 import { currentTake } from "../state/store";
 
 export type ConductorStatus = "idle" | "requesting" | "waiting" | "active" | "nodata" | "error";
@@ -27,8 +27,7 @@ export function useConductor() {
     melody: 0, harmony: 0, bass: 0, rhythm: 0,
   });
   const [dynamics, setDynamics] = useState(0);
-  const gestureRef = useRef<GestureInterpreter | null>(null);
-  const sourceRef = useRef<SensorSource | null>(null);
+  const sourceRef = useRef<IntentSource | null>(null);
   const noDataTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gotSampleRef = useRef(false);
 
@@ -57,7 +56,7 @@ export function useConductor() {
     sharedAudioEngine.setPlaybackRate(params.tempo);
   };
 
-  const start = async (project: Project, source: SensorSource) => {
+  const start = async (project: Project, source: IntentSource) => {
     setStatus("requesting");
     await sharedAudioEngine.init();
     await sharedAudioEngine.resume();
@@ -67,6 +66,7 @@ export function useConductor() {
       if (take) await sharedAudioEngine.loadTrack(inst.id, take.url, ROLE_PAN[inst.role] ?? 0);
     }
 
+    source.setBaseBpm(project.bpm);
     try {
       await source.start();
     } catch (e) {
@@ -74,10 +74,6 @@ export function useConductor() {
       throw e;
     }
     sourceRef.current = source;
-
-    const gesture = new GestureInterpreter();
-    gesture.baseBpm = project.bpm;
-    gestureRef.current = gesture;
 
     setStatus("waiting");
     sharedAudioEngine.playAll();
@@ -90,9 +86,9 @@ export function useConductor() {
       if (!gotSampleRef.current) setStatus("nodata");
     }, NO_DATA_TIMEOUT_MS);
 
-    source.onSample((sample) => {
+    source.onIntent((intent) => {
       gotSampleRef.current = true;
-      const params = gesture.process(sample);
+      const params = mixIntent(intent);
       setStatus("active");
       setRoleActivation(params.roles);
       setDynamics(params.dynamics);
