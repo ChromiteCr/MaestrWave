@@ -1,0 +1,200 @@
+.body {
+  padding: 32px 40px 64px;
+  max-width: 1240px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 22px;
+  align-items: start;
+}
+
+/* 讲解与示范是主线，评分说明是参考 —— 窄屏时后者退到下面而不是挤压主线 */
+@media (max-width: 1000px) {
+  .body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  min-width: 0;
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.pager {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 24px 26px 26px;
+}
+
+.goal {
+  margin: 8px 0 0;
+  font-family: var(--font-display);
+  font-size: 19px;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+.standard {
+  margin: 8px 0 0;
+  font-size: 14px;
+  line-height: 1.8;
+  color: color-mix(in srgb, var(--ink) 72%, transparent);
+  border-left: 2px solid var(--accent-dim);
+  padding-left: 14px;
+}
+
+.points {
+  margin: 10px 0 0;
+  padding-left: 1.3em;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.75;
+  color: color-mix(in srgb, var(--ink) 78%, transparent);
+}
+
+.pitfalls {
+  margin: 10px 0 0;
+  padding-left: 1.3em;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: color-mix(in srgb, var(--ink) 55%, transparent);
+}
+
+.pitfalls li::marker {
+  color: var(--wine);
+}
+
+.demoHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.demoHint {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  color: color-mix(in srgb, var(--ink) 48%, transparent);
+}
+
+.demoControls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tabs {
+  display: flex;
+  gap: 2px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 2px;
+}
+
+.tab {
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: color-mix(in srgb, var(--ink) 50%, transparent);
+}
+
+.tab:hover {
+  color: var(--ink);
+}
+
+.tabActive,
+.tabActive:hover {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.speed {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.speed input {
+  flex: 1;
+  padding: 0;
+  background: transparent;
+  border: none;
+  accent-color: var(--accent);
+}
+
+.todo,
+.empty {
+  margin: 8px 0 0;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: color-mix(in srgb, var(--ink) 50%, transparent);
+}
+
+.empty {
+  margin-bottom: 16px;
+}
+
+.rubric {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.rubricHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.rubricLabel {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.rubricHow {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--ink) 62%, transparent);
+}
+
+.rubricBasis {
+  margin: 5px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--ink) 40%, transparent);
+}

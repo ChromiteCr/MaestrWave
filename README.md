@@ -18,10 +18,45 @@ MaestrWave 是一个面向“AI 生成管弦乐素材 + 体感指挥演绎”的
 - 生成后端可切换：本机 ACE-Step，或腾讯音乐天琴云端 API（不占本机显存）
 - 当 ACE-Step 不可用时，自动回退到程序化占位音频，便于本地验证
 
+## 一键启动包（GitHub Actions 自动构建）
+
+通过 `.github/workflows/release-build.yml`，GitHub Actions 会把项目自动打包成
+**解压即用、双击启动**的绿色发布包（内置 Python/Node 运行时，无需安装环境、无需命令行）：
+
+- **手动触发**：仓库 Actions 页 → `Build & Publish Startup Package` → Run workflow，
+  生成 `MaestrWave-macOS.zip` 与 `MaestrWave-Windows.zip`（可在 Actions 页下载）。
+- **打 tag 自动发布**：推送 `v*` 标签（如 `v1.0.0`）时自动构建并发布到 GitHub Releases。
+
+发布包结构：
+
+```
+MaestrWave-{平台}.zip
+├── MaestrWave/                  # PyInstaller 打包的后端（FastAPI + uvicorn）
+├── frontend/dist/               # 前端构建产物（vite build）
+├── output/                      # 运行时数据（生成的项目与音频）
+├── config.env                   # 可选配置（TME 密钥 / 端口）
+├── Start-MaestrWave.command(.bat)  # 双击启动，自动打开浏览器
+└── README.txt
+```
+
+使用方式：解压 → 双击 `Start-MaestrWave.command`（macOS）/ `Start-MaestrWave.bat`
+（Windows）→ 浏览器自动打开 `http://localhost:3000`。
+
+音频生成后端在发布包里默认使用占位音频（演示链路完整可用）；如需腾讯天琴云端真实
+生成，用文本编辑器在 `config.env` 填入 `TME_APP_ID` / `TME_APP_KEY` 并将
+`GENERATION_BACKEND` 设为 `tme` 即可——同样不需要命令行。若仓库为私有且信任下载者，
+也可在手动触发时勾选 `tme_inject`，由 Actions 从仓库 Secrets 注入密钥。
+
+> 实现要点：后端打包由 `scripts/package/entry.py` + `maestrwave.spec` 完成，前端
+> dist 在入口脚本中显式重定向给 `backend.app`（不改动任何业务代码）；CI 里带一次
+> 真启动冒烟测试（HTTP 200），确保发布包开箱即用。
+
 ## 版本记录
 
 | 版本 | 日期 | 变更内容 | 类型 |
 |------|------|----------|------|
+| M6d | 2026-08-10 | 指挥教学的课程与示范：11 课静态课程数据（单元一二三）、标准图形拍型几何、按 BPM 走的拍型动画、课程列表与单课页；M6 计划书进仓库 `docs/M6_PLAN.md` | feat |
+| M6c | 2026-08-10 | GitHub Actions 一键打包发布：PyInstaller 打包后端 + vite 前端，生成 macOS/Windows 双击启动包，手动触发或打 tag 自动发 Releases；TME 密钥可经 Secrets 注入 | feat |
 | M6b1 | 2026-08-10 | gitignore 掉 `frontend/node_modules/` 与 `frontend/dist/`（含全部 @fontsource 字体文件），从索引移除 3846 个依赖/构建产物，仓库仅保留源码与文档 | chore |
 | M6b | 2026-08-10 | 导航改为两级：一级「指挥教学 / 指挥体验」，原有七页归入「指挥体验」，侧栏加宽到 196px 带文字；一级归属由 `activePage` 推导而非另存一份 | feat |
 | M6a1 | 2026-08-10 | 新增 `docs/USER_GUIDE.md` 用户使用指南，为 GitHub 项目文档准备 | chore |
@@ -112,7 +147,13 @@ M4 之前的记录见下方历史条目。
   - **品牌图标更换**为 MW 字标 + 海军蓝→黑的自上而下渐变，同一份图形同时是侧栏 logo（`components/Logo.tsx`）与 favicon（`public/icon.svg`），改一处要同步另一处。补上 `apple-touch-icon.png` —— 手机端 `?conduct=` 会被存到主屏当遥控器用，而 iOS 不读 SVG favicon。
   - **导航改为两级**：一级「指挥教学 / 指挥体验」，原有七个页面归入「指挥体验」，训练与设置是不属于任何一级的工具页、固定在底部。侧栏从 64px 纯图标栏加宽到 196px 带文字 —— 两个一级项是整个应用的分岔口，光靠图标分不清，认错了就走错路。
     - **一级归属由 `activePage` 推导，不另存一份 `section`。** 存两份就得让每一处 `setActivePage` 都记得同步，而跨页跳转有好几处（打开项目、构型应用到生成页、浏览页编辑乐器），少一处就是一个「侧栏高亮和内容对不上」的 bug。侧栏另存一个 `navSection` 只用于「展开哪一级的二级列表」，跳到训练/设置时刻意不变，否则从「输出」点「设置」就回不去了。
-  - 尚未完成：课程数据与讲解/示范、练习曲端点 `/api/practice/generate`、录制层与六维评分、手机传感器兜底。
+  - **课程数据与讲解/示范**（`lib/teaching/`）：单元一二三共 11 课，按 ConductIT 的单元顺序编排 —— 先把右手拍型练到不用想，再谈两只手的独立性，最后才是力度与速度。全部是静态数据，**不配天琴密钥、不插摄像头也能把一课看完**，练习曲与打分是加分项而不是前置条件。每课含标准依据、要点、常见错误、练习曲提示词（强制 BPM 准确 + 含打击乐 + 开头一小节数拍）与评分权重。
+    - **标准图形拍型的几何单独成模块**（`lib/teaching/patterns.ts`），一物三用：示范动画、跟练时的参考叠加、之后 DTW 的模板。坐标系与 `camera/conductingModel.ts` 的 `toConductorView()` 完全一致（x 是指挥自己的左→右，y 是下→上），DTW 模板可以直接和摄像头输出比对，中间不用换算。
+    - **所有拍点在同一水平面上**（conducting plane）。口诀「下 → 左 → 右 → 上」说的是每一拍动作把手带向哪里，不是拍点的高低 —— 所以口诀不标在拍点上（第 4 拍叫「上」，它的拍点却在平面上），改标在两个拍点之间的箭头旁。
+    - **拍与拍之间不是匀速**：离开拍点快、反弹顶点慢、再加速砸向下一个拍点。这个加速正是拍点清晰的来源，匀速走一遍看起来像机械臂，学的人也学不到「要加速下去」。
+    - 修掉一个自己埋的坑：`rebound` 写着是「反弹顶点」，实现里却当二次贝塞尔的**控制点**用，而贝塞尔不经过控制点 —— 标 0.84 的顶点实际只到 0.48。把画出来的曲线量了一遍才发现，现在反解控制点让曲线真的经过它，并加了断言。
+    - 示范画布上多画一条**身体中线**：二拍与三拍只在中线右侧活动，四拍才跨到左边。不画这条线的话，三拍图看起来像是「整个挤到右边去了」的排版事故。
+  - 尚未完成：练习曲端点 `/api/practice/generate`、录制层与六维评分、手机传感器兜底、右侧可折叠的对话式 Agent 入口（计划见 `docs/M6_PLAN.md`）。
 
 ## 用云端 API 生成（不占本机显存）
 
@@ -163,8 +204,11 @@ uvicorn app:app --host 0.0.0.0 --port 3000
   - src/App.tsx：页面路由与侧栏入口
   - src/pages：「指挥体验」下的文件、构型、生成、浏览、输出五页，「指挥教学」下的 TeachPage，以及不属于任何一级的训练、设置；外加手机端遥控页 RemotePage
   - src/components：波形、侧栏（两级导航）、情绪柱状图、摄像头预览、提示面板、二维码等 UI 组件
-  - src/lib：音频引擎、传感器源、手势解析、摄像头指挥（camera/）、指挥链路（conductLink）与 API 封装
+  - src/lib：音频引擎、传感器源、手势解析、摄像头指挥（camera/）、教学课程与图形拍型（teaching/）、指挥链路（conductLink）与 API 封装
   - src/styles/global.css：设计 token（配色、三个字体 token）；canvas 里的字体经 src/lib/canvasFont.ts 读同一份 token
+- docs
+  - M6_PLAN.md：M6（两级导航 + 指挥教学）的实施计划与进度
+  - USER_GUIDE.md：用户使用指南
 - scripts
   - dev-certs.sh：生成开发用 HTTPS 证书（iOS 传感器权限需要）
 - output

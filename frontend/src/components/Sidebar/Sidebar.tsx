@@ -15,7 +15,8 @@ import { Logo } from "../Logo";
 import styles from "./Sidebar.module.css";
 
 type Icon = (props: { size?: number }) => JSX.Element;
-type Item = { id: PageId; label: string; hint?: string; icon: Icon };
+/** `also` 是「停在这些页面时本项也算选中」—— 课程详情页没有自己的侧栏入口。 */
+type Item = { id: PageId; label: string; icon: Icon; also?: PageId[] };
 
 /** 一级：两条并列的路径，不是父子关系 —— 想学的进教学，想玩的进体验。 */
 const SECTIONS: { id: Exclude<Section, "global">; label: string; hint: string; icon: Icon }[] = [
@@ -25,7 +26,7 @@ const SECTIONS: { id: Exclude<Section, "global">; label: string; hint: string; i
 
 /** 二级：按各自一级下的实际流程顺序排。 */
 const PAGES: Record<Exclude<Section, "global">, Item[]> = {
-  teach: [{ id: "teach", label: "课程", icon: LessonIcon }],
+  teach: [{ id: "teach", label: "课程", icon: LessonIcon, also: ["teach-lesson"] }],
   perform: [
     { id: "file", label: "文件", icon: FileIcon },
     { id: "formation", label: "构型", icon: FormationIcon },
@@ -46,18 +47,21 @@ export function Sidebar() {
   const navSection = useAppStore((s) => s.navSection);
   const setActivePage = useAppStore((s) => s.setActivePage);
 
-  const renderItem = (item: Item) => (
-    <button
-      key={item.id}
-      type="button"
-      aria-current={activePage === item.id}
-      className={`${styles.item} ${activePage === item.id ? styles.itemActive : ""}`}
-      onClick={() => setActivePage(item.id)}
-    >
-      <item.icon />
-      <span className={styles.itemLabel}>{item.label}</span>
-    </button>
-  );
+  const renderItem = (item: Item) => {
+    const on = activePage === item.id || (item.also?.includes(activePage) ?? false);
+    return (
+      <button
+        key={item.id}
+        type="button"
+        aria-current={on}
+        className={`${styles.item} ${on ? styles.itemActive : ""}`}
+        onClick={() => setActivePage(item.id)}
+      >
+        <item.icon />
+        <span className={styles.itemLabel}>{item.label}</span>
+      </button>
+    );
+  };
 
   return (
     <nav className={styles.rail}>

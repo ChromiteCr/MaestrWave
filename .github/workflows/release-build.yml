@@ -1,0 +1,148 @@
+name: Build & Publish Startup Package
+
+# 一键发布「双击即用」启动包：
+#   - 手动触发（Actions 页 → Run workflow）可直接生成 macOS / Windows 两个 zip 作为 artifact
+#   - 打 tag v* （如 v1.0.0）时自动构建并发布到 GitHub Releases
+#
+# 产物：MaestrWave-macOS.zip / MaestrWave-Windows.zip —— 解压后双击
+# Start-MaestrWave.command(.bat) 即可启动，无需安装 Python/Node、无需命令行。
+
+on:
+  workflow_dispatch:
+    inputs:
+      tme_inject:
+        description: >-
+          把仓库 Secrets 中的 TME_APP_ID / TME_APP_KEY 注入发布包 config.env
+          （⚠️ 仅限私有仓库且信任下载者；公开仓库勾选会泄露密钥）
+        type: boolean
+        default: false
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write # 发布 Release 需要
+
+concurrency:
+  group: release-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build ${{ matrix.artifact }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            artifact: MaestrWave-macOS
+            launcher: Start-MaestrWave.command
+          - os: windows-latest
+            artifact: MaestrWave-Windows
+            launcher: Start-MaestrWave.bat
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ---------- 前端：vite build ----------
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      # ---------- 后端：PyInstaller 打包 ----------
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install backend deps & PyInstaller
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          pip install -r backend/requirements.txt
+
+      - name: PyInstaller build
+        run: pyinstaller scripts/package/maestrwave.spec --noconfirm
+
+      # ---------- 冒烟测试：真启动一次后端，验证打包正确 ----------
+      - name: Smoke test (launch backend, check HTTP)
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          PORT: 3199
+          OUTPUT_DIR: /tmp/mw-smoke/sessions
+          PROJECTS_DIR: /tmp/mw-smoke/projects
+        run: |
+          cp -R frontend/dist "dist/MaestrWave/frontend-dist-tmp"
+          # 组装冒烟环境：模拟发布包布局（解压根/frontend/dist）
+          mv "dist/MaestrWave/frontend-dist-tmp" "dist/MaestrWave/frontend-dist"
+          ./dist/MaestrWave/MaestrWave > /tmp/mw-smoke.log 2>&1 &
+          BGPID=$!
+          CODE=""
+          for _ in $(seq 1 30); do
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3199/" || true)
+            [ "$CODE" = "200" ] && break
+            sleep 1
+          done
+          kill $BGPID 2>/dev/null || true
+          echo "HTTP status: $CODE"
+          test "$CODE" = "200" || { echo "!! 冒烟测试失败，日志如下："; cat /tmp/mw-smoke.log; exit 1; }
+          rm -rf "dist/MaestrWave/frontend-dist"
+
+      # ---------- 组装发布包并压缩 ----------
+      - name: Assemble package
+        shell: bash
+        run: bash scripts/package/assemble.sh "${{ matrix.artifact }}" "${{ matrix.launcher }}"
+
+      # ---------- 可选：注入 TME 密钥（仅手动勾选且设置了 Secrets） ----------
+      # 注意：secrets 上下文不能出现在 if: 里，所以放到步骤内判断；
+      # 经 env 传入并由 GitHub 自动打码，日志不会泄露密钥。
+      - name: Inject TME secrets into config.env (optional)
+        if: >-
+          github.event_name == 'workflow_dispatch' &&
+          github.event.inputs.tme_inject == 'true'
+        env:
+          TME_APP_ID: ${{ secrets.TME_APP_ID }}
+          TME_APP_KEY: ${{ secrets.TME_APP_KEY }}
+        shell: bash
+        run: |
+          if [ -n "$TME_APP_ID" ] && [ -n "$TME_APP_KEY" ]; then
+            CFG="dist-pkg/${{ matrix.artifact }}/config.env"
+            {
+              echo "GENERATION_BACKEND=tme"
+              echo "TME_APP_ID=$TME_APP_ID"
+              echo "TME_APP_KEY=$TME_APP_KEY"
+            } >> "$CFG"
+            echo "✔ 已注入 TME 密钥到 $CFG"
+          else
+            echo "⚠️  仓库未设置 TME_APP_ID / TME_APP_KEY Secrets，跳过注入"
+          fi
+
+      # ---------- 上传 artifact（手动触发时也可在 Actions 页面下载） ----------
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist-pkg/${{ matrix.artifact }}.zip
+          if-no-files-found: error
+
+      # ---------- 打 tag 时发布到 Releases ----------
+      - name: Publish to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist-pkg/*.zip
+          generate_release_notes: true

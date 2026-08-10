@@ -11,6 +11,11 @@ env/
 frontend/node_modules/
 frontend/dist/
 
+# 本地打包产物（PyInstaller 与 assemble.sh 的输出；CI 里由 workflow 生成并发布）
+/build/
+/dist/
+/dist-pkg/
+
 # Output audio
 /output/sessions/
 

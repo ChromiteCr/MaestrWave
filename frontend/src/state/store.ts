@@ -1,7 +1,16 @@
 import { create } from "zustand";
 import { api, type HealthInfo, type Instrument, type InstrumentLibrary, type Project } from "../lib/api";
 
-export type PageId = "teach" | "file" | "formation" | "generate" | "browse" | "output" | "train" | "settings";
+export type PageId =
+  | "teach"
+  | "teach-lesson"
+  | "file"
+  | "formation"
+  | "generate"
+  | "browse"
+  | "output"
+  | "train"
+  | "settings";
 
 /**
  * 一级导航。「指挥教学」教你怎么指挥，「指挥体验」是原有的建项目→构型→生成→浏览→输出。
@@ -16,6 +25,7 @@ export type Section = "teach" | "perform" | "global";
  */
 export const PAGE_SECTION: Record<PageId, Section> = {
   teach: "teach",
+  "teach-lesson": "teach",
   file: "perform",
   formation: "perform",
   generate: "perform",
@@ -39,6 +49,10 @@ interface AppState {
    * 「设置」再看侧栏，二级列表还应该是指挥体验那五项，否则回不去。
    */
   navSection: Exclude<Section, "global">;
+
+  /** 当前打开的课程（`teach-lesson` 页读它）。 */
+  activeLessonId: string | null;
+  openLesson: (id: string) => void;
 
   project: Project | null;
   setProject: (project: Project | null) => void;
@@ -68,6 +82,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     const section = PAGE_SECTION[page];
     set(section === "global" ? { activePage: page } : { activePage: page, navSection: section });
   },
+
+  activeLessonId: null,
+  openLesson: (id) => set({ activeLessonId: id, activePage: "teach-lesson", navSection: "teach" }),
 
   project: null,
   setProject: (project) => set({ project, selectedInstrumentId: project?.instruments[0]?.id ?? null }),
