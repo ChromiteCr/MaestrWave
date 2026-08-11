@@ -18,17 +18,27 @@
   transform: scaleX(-1);
 }
 
+/*
+  必须显式压在视频上面。
+
+  视频元素是 `wrap.appendChild(video)` 塞进来的，也就是**排在 canvas 后面**；
+  两者都 `position: absolute` 且都没有 z-index 时，绘制顺序就是 DOM 顺序 ——
+  视频会把整层标记严严实实地盖住。表现是「摄像头一开，光迹、光点、席位分区线
+  全部消失」，而且完全不报错，只有真的开着摄像头才看得出来。
+*/
 .overlay {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
+  z-index: 1;
 }
 
 .placeholder {
   position: absolute;
   inset: 0;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;

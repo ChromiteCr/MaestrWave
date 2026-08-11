@@ -265,13 +265,21 @@ export function CameraPreview({
         ctx.fillText("表情手", x + 8, y + 3.5);
       }
 
-      // 一只手都没认到时明说，别让人对着黑屏猜
-      if (!beatHand && !exprHand) {
+      // 认不到手时明说是哪一种情况，别让人对着画面猜。
+      //
+      // 「只认到表情手」要单独说：这时画面上只有一个小绿点、既没有光迹也没有
+      // 光点，看起来和「整个功能坏了」一模一样，而实际上只是打拍的那只手没进
+      // 画面（或者惯用手反了，该去把「交换双手」打开）。
+      const missing = !beatHand && !exprHand
+        ? "没认到手 —— 站远一点，让上半身和手都完整进画面"
+        : !beatHand
+          ? `只认到另一只手 —— 打拍的${swapHands ? "左" : "右"}手没进画面（惯用手相反的话，去把「交换双手」打开）`
+          : "";
+      if (missing) {
         ctx.font = canvasFont(12);
-        const msg = "没认到手 —— 站远一点，让手完整进画面";
-        const tw = ctx.measureText(msg).width;
-        ctx.fillStyle = withAlpha(colors.ink, 0.55);
-        ctx.fillText(msg, (w - tw) / 2, h / 2);
+        const tw = ctx.measureText(missing).width;
+        ctx.fillStyle = withAlpha(colors.ink, 0.62);
+        ctx.fillText(missing, Math.max(8, (w - tw) / 2), h / 2);
       }
     };
     draw();
