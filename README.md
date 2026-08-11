@@ -55,6 +55,9 @@ MaestrWave-{平台}.zip
 
 | 版本 | 日期 | 变更内容 | 类型 |
 |------|------|----------|------|
+| M7a1 | 2026-08-11 | 修复中文项目名下载一律 500：HTTP 头只能是 latin-1，`filename="接口验证.mid"` 会让 starlette 编码响应头时抛 UnicodeEncodeError。改用 RFC 5987 的 `filename*`。**zip 导出一直有这个 bug**，一并修掉 | fix |
+| M7a | 2026-08-11 | 写谱演奏模式接线：`score_gen.py`（蓝图带并发锁、生成、按小节重绘、MIDI 导出）、生成/重绘端点按 `generation_mode` 分流（URL 与返回结构不变）、`/score` 与 `/score.mid`、health 里的 `score` 块、新建项目时选生成方式；LLM 通路改用 `chat_text` 以便从被 `max_tokens` 截断的输出里抢救音符，任何失败都退回规则作曲并如实记录降级原因 | feat |
+| M7 | 2026-08-11 | 写谱演奏模式的地基：`score.py`（乐谱结构、调式与和弦解析、五条确定性修复）、`midi_out.py`（手写 SMF type-1）、`render.py`（fluidsynth + 纯 Python 两个渲染器，固定增益不归一化、各声部采样数严格一致、尾音叠回开头做无缝循环）、`composer.py` 的规则作曲器（声部进行、音区分离、participation 落地、管弦乐编制的打击乐）；124 条离线断言含拍网格反查与循环接缝 | feat |
 | M6h | 2026-08-11 | 新增首页并作为落地页：招牌用课程/评分共用的那份拍型轨迹画成指挥棒长曝光光迹，两扇门分别通向教学与体验（体验按五步流水线可直接点进任一步），内嵌助手与侧栏共享同一段对话；点侧栏品牌区回首页 | feat |
 | M6g3 | 2026-08-11 | 修复跟练**必崩**：节拍器把数拍排在网格原点之前，而每次 `start()` 都新建 AudioContext（`currentTime` 恒为 0），88 BPM 下第一个数拍落到 -2.6 秒，`osc.start()` 抛 "startTime must be a positive value"。原点改为让出整段数拍时长 | fix |
 | M6g2 | 2026-08-11 | 助手回复按 Markdown 渲染（自己拼 React 元素，不引 react-markdown、不碰 `dangerouslySetInnerHTML`——渲染的是模型输出）；接口错误改抠 FastAPI 的 `detail` 并带上状态码，404 直接提示「后端进程还是旧的，重启后端」而不是甩一句 `{"detail":"Not Found"}` | feat |
