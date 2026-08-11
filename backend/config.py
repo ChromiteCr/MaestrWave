@@ -70,6 +70,10 @@ SOUNDFONT_EXTENSIONS = (".sf2", ".sf3")
 # 采样（见那里的注释），22050 的轨混进 44100 的轨会变成噪音。
 SCORE_SAMPLE_RATE = 44100
 
+# 指挥练习曲 / 考试曲目的缓存目录（backend/practice.py）。
+# 和 projects 分开：练习曲不属于任何项目，删掉也只是下次重新渲染一遍。
+PRACTICE_DIR = Path(os.environ.get("PRACTICE_DIR", str(BASE_DIR / "output" / "practice")))
+
 
 # 用户在「设置」页选的渲染器/作曲器，落一个小 JSON。**不放环境变量**：
 # 双击启动包的用户没有改环境变量的入口，而这是个需要能随手切换的选项。

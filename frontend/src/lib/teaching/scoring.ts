@@ -83,9 +83,11 @@ export interface ScoreOptions {
   meter: Meter;
   rubric: RubricItem[];
   /**
-   * 每小节的音乐响度（0~1），用来评「力度对应」。
-   * 没有音频时不传 —— 那一维会标成「待接入」并把权重摊给其它维度，
-   * 而不是给个 0 分冤枉人。
+   * 乐曲每小节写下的力度（0~1），下标就是小节号（0 起，数拍不算），用来评
+   * 「力度对应」。来自 `backend/practice.py` 的 `loudness_per_bar`。
+   *
+   * 跟节拍器练时不传 —— 那一维会标成评不了并把权重摊给其它维度，而不是给个
+   * 0 分冤枉人。
    */
   loudnessPerBar?: number[];
 }
@@ -98,8 +100,8 @@ interface Matched {
   offsets: number[];
   /** 对上了的拍：网格上的第几拍 + 用户实际打的时刻。算拍间隔要用它，见下。 */
   hits: { beat: number; t: number }[];
-  /** 对上了、且落在小节第一拍的那些用户拍点时刻。按用户强拍切小节时用。 */
-  downbeats: number[];
+  /** 对上了、且落在小节第一拍的那些用户拍点。按用户强拍切小节时用。 */
+  downbeats: { bar: number; t: number }[];
 }
 
 function matchIctus(rec: Recording, ictus: number[]): Matched {
@@ -113,7 +115,7 @@ function matchIctus(rec: Recording, ictus: number[]): Matched {
   const pairs: Matched["pairs"] = [];
   const offsets: number[] = [];
   const hits: Matched["hits"] = [];
-  const downbeats: number[] = [];
+  const downbeats: Matched["downbeats"] = [];
   const used = new Set<number>();
 
   for (let b = Math.max(0, first); b <= last; b += 1) {
@@ -131,7 +133,9 @@ function matchIctus(rec: Recording, ictus: number[]): Matched {
       pairs.push({ beat: b, offsetMs: off });
       offsets.push(off);
       hits.push({ beat: b, t: ictus[bestI] });
-      if (b % rec.grid.meter === 0) downbeats.push(ictus[bestI]);
+      if (b % rec.grid.meter === 0) {
+        downbeats.push({ bar: b / rec.grid.meter, t: ictus[bestI] });
+      }
     } else {
       pairs.push({ beat: b, offsetMs: null });
     }
@@ -308,7 +312,7 @@ export function scoreSession(rec: Recording, opts: ScoreOptions): SessionScore {
 
   // 3. 拍型准确度
   if (bars.length >= 1) {
-    const dists = bars.map((b) => shapeDistance(b, opts.meter));
+    const dists = bars.map((b) => shapeDistance(b.points, opts.meter));
     const d = mean(dists);
     raw.set("patternShape", {
       score: ramp(d, SHAPE_PERFECT, SHAPE_ZERO),
@@ -354,7 +358,7 @@ export function scoreSession(rec: Recording, opts: ScoreOptions): SessionScore {
   const ictusHeights = rec.frames.filter((f) => f.ictus && f.beat).map((f) => (f.beat as Point).y);
   if (ictusHeights.length >= 4 && bars.length >= 1) {
     const heights = bars.map((b) => {
-      const ys = b.map((p) => p.y);
+      const ys = b.points.map((p) => p.y);
       return Math.max(...ys) - Math.min(...ys);
     });
     const patternHeight = mean(heights) || 1;
@@ -377,29 +381,57 @@ export function scoreSession(rec: Recording, opts: ScoreOptions): SessionScore {
     });
   }
 
-  // 6. 力度对应 —— 需要音乐的响度曲线，没音频时评不了
-  if (opts.loudnessPerBar && opts.loudnessPerBar.length >= 3 && bars.length >= 3) {
-    const sizes = bars.map((b) => {
-      const xs = b.map((p) => p.x);
-      const ys = b.map((p) => p.y);
+  // 6. 力度对应
+  //
+  // 力度曲线是练习曲**谱面上写下的**每小节力度（`backend/practice.py`），不是从
+  // 音频测的响度 —— 测出来的那个会被混响、配器、乃至这一小节恰好有没有镲声污染。
+  //
+  // 按 `bar.index` 取值，不按顺序对齐：用户漏掉开头两小节的话，顺序对齐会拿他
+  // 第 3 小节的动作去比第 1 小节的力度，算出来的相关系数纯属噪声。
+  const loud = opts.loudnessPerBar;
+  const paired = loud
+    ? bars.filter((b) => b.index >= 0 && b.index < loud.length)
+    : [];
+  if (loud && paired.length >= 3) {
+    const sizes = paired.map((b) => {
+      const xs = b.points.map((p) => p.x);
+      const ys = b.points.map((p) => p.y);
       return Math.hypot(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
     });
-    const n = Math.min(sizes.length, opts.loudnessPerBar.length);
-    const r = pearson(sizes.slice(0, n), opts.loudnessPerBar.slice(0, n));
-    raw.set("dynamicsMatch", {
-      score: clamp(((r + 1) / 2) * 100, 0, 100),
-      detail: `拍型大小与音乐响度的相关系数 ${r.toFixed(2)}`,
-      advice:
-        r > 0.6
-          ? "拍型大小跟着音乐走，对了。"
-          : "音乐变响时拍型要跟着变大，高度和宽度一起变 —— 只变高看起来像速度变了。",
-    });
+    const target = paired.map((b) => loud[b.index]);
+    // 力度全程不变的曲子（进行曲那一首）没有相关性可言 —— 这时候「拍型大小
+    // 也别变」才是对的，所以改成看稳定性：变异系数越小越好。
+    const spread = Math.max(...target) - Math.min(...target);
+    if (spread < 0.1) {
+      const m = mean(sizes);
+      const cv = m > 0 ? stdev(sizes) / m : 1;
+      raw.set("dynamicsMatch", {
+        score: ramp(cv, 0.08, 0.4),
+        detail: `这一首力度全程不变，你的拍型大小波动 ${(cv * 100).toFixed(0)}%`,
+        advice:
+          cv <= 0.08
+            ? "拍型大小很稳 —— 音乐没有力度变化时，拍型也不该忽大忽小。"
+            : "音乐的力度没变，拍型大小却在变 —— 乐队会以为你在要求渐强渐弱。",
+      });
+    } else {
+      const r = pearson(sizes, target);
+      raw.set("dynamicsMatch", {
+        score: clamp(((r + 1) / 2) * 100, 0, 100),
+        detail: `${paired.length} 个小节，拍型大小与谱面力度的相关系数 ${r.toFixed(2)}`,
+        advice:
+          r > 0.6
+            ? "拍型大小跟着音乐走，对了。"
+            : r > 0.2
+              ? "方向对了但跟得不够 —— 渐强要从第一小节就开始逐格变大，不能到高潮才突然放大。"
+              : "音乐变响时拍型要跟着变大，高度和宽度一起变 —— 只变高看起来像速度变了。",
+      });
+    }
   } else {
     raw.set("dynamicsMatch", {
       score: null,
-      detail: "需要练习曲/考试曲目的响度曲线",
-      advice: "接入音乐后这一维才能评。",
-      unavailable: "待接入音频",
+      detail: loud ? `只有 ${paired.length} 个小节能和乐谱对上` : "这一次没有练习曲，跟的是节拍器",
+      advice: loud ? "完整打满三小节以上才能评。" : "跟着练习曲或考试曲目打，这一维才评得了。",
+      unavailable: loud ? "小节不足" : "没有力度曲线",
     });
   }
 

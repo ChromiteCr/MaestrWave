@@ -6,14 +6,20 @@ import { PageHeader } from "../../components/PageHeader/PageHeader";
 import { PracticeRunner } from "../../components/PracticeRunner/PracticeRunner";
 import { DIMENSIONS, findLesson, lessonIndex, LESSONS, type Lesson } from "../../lib/teaching/curriculum";
 import { PATTERNS, type Meter } from "../../lib/teaching/patterns";
+import { buildSpec } from "../../lib/teaching/piece";
+import { usePracticePiece } from "../../lib/teaching/usePracticePiece";
 import { useAppStore } from "../../state/store";
 import styles from "./LessonPage.module.css";
 
 /**
- * 单课页：讲解 → 示范 → （跟练 → 评分，后两步待实现）。
+ * 单课页：讲解 → 示范 → 跟练 → 评分。
  *
  * 讲解与示范刻意做成**不依赖后端、不依赖摄像头**：没配天琴密钥、没插摄像头的人
- * 也应该能把一课看完。练习曲与打分是加分项，不是前置条件。
+ * 也应该能把一课看完。练习曲与打分是加分项，不是前置条件 —— 曲子没渲染好的时候
+ * 跟练照样能开始，只是跟的是节拍器。
+ *
+ * 练习曲在**进页面时就开始渲染**（M6 计划：用学习时间掩盖等待）。符号路线下
+ * 这件事很便宜：二十几秒的曲子五秒左右，而且渲染过一次就永久缓存。
  */
 /**
  * 本课的建议问题。用课程数据拼，不写死 —— 写死的话加一课就得回来改一次，
@@ -47,6 +53,17 @@ export function LessonPage() {
   const [bpm, setBpm] = useState(88);
   const [playing, setPlaying] = useState(true);
   const [beat, setBeat] = useState(1);
+
+  // 进页面就开始渲染本课的练习曲。拍号是可切的，切了就是另一首 —— 三拍和四拍
+  // 的练习曲不该是同一条旋律。
+  //
+  // 速度用**本课的** bpm，不用下面那个滑块：滑块是「示范速度」，拖一下就是一个
+  // 新的 spec，也就是一次新的渲染和一个新的缓存文件 —— 从 40 拖到 180 会留下
+  // 一百多首没人再听的曲子。练习曲该有的速度是课程定的那个。
+  const spec = lesson
+    ? buildSpec(lesson.music, { meter, bpm: lesson.bpm, id: lesson.id })
+    : null;
+  const practice = usePracticePiece(spec);
 
   // 换课时把示范参数拉回本课的默认值，否则会带着上一课的 168 BPM 进来
   useEffect(() => {
@@ -181,10 +198,20 @@ export function LessonPage() {
             {lesson.meters.length > 0 ? (
               <>
                 <p className={styles.todo}>
-                  跟着节拍器打 {meter} 拍，结束后按标准给你打分。练习曲还在开发中
-                  （M6 第 4 步），节拍器是采样级精确的严格网格，先用它练完全够。
+                  {practice.state === "ready"
+                    ? `跟着练习曲打 ${meter} 拍，${lesson.bpm} BPM，结束后按标准给你打分。曲子开头有一小节数拍。`
+                    : practice.state === "preparing"
+                      ? "练习曲正在生成 —— 先看讲解和示范，好了会自动换上。现在开始跟练的话跟的是节拍器。"
+                      : practice.state === "error"
+                        ? `练习曲没生成出来（${practice.error}），跟节拍器一样能练与打分，只是评不了「力度对应」。`
+                        : `跟着节拍器打 ${meter} 拍，结束后按标准给你打分。`}
                 </p>
-                <PracticeRunner meter={meter} bpm={bpm} rubric={lesson.rubric} />
+                <PracticeRunner
+                  meter={meter}
+                  bpm={lesson.bpm}
+                  rubric={lesson.rubric}
+                  piece={practice.piece}
+                />
               </>
             ) : (
               <p className={styles.todo}>这一课练的是姿势本身，没有可打分的拍型，照着要点对镜子调整。</p>

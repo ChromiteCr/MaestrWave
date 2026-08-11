@@ -61,10 +61,23 @@ def read_wav_samples(path: Union[str, Path]) -> tuple[List[float], int]:
     """读取 16-bit mono/stereo WAV，返回 (float 采样[-1,1] mono, sample_rate)。
     立体声会被降混为单声道。"""
     with wave.open(str(path), "rb") as wf:
-        sr = wf.getframerate()
-        n_channels = wf.getnchannels()
-        n_frames = wf.getnframes()
-        raw = wf.readframes(n_frames)
+        return _decode(wf)
+
+
+def read_wav_bytes(data: bytes) -> tuple[List[float], int]:
+    """同 `read_wav_samples`，但输入是内存里的 WAV 字节。
+
+    渲染器返回的就是字节。为了混音再落一趟临时文件是白白多两次磁盘 IO，
+    而练习曲一首要混五个声部。
+    """
+    with wave.open(io.BytesIO(data), "rb") as wf:
+        return _decode(wf)
+
+
+def _decode(wf: wave.Wave_read) -> tuple[List[float], int]:
+    sr = wf.getframerate()
+    n_channels = wf.getnchannels()
+    raw = wf.readframes(wf.getnframes())
     total = struct.unpack("<" + "h" * (len(raw) // 2), raw)
     if n_channels == 1:
         samples = [v / 32767.0 for v in total]

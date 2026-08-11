@@ -14,6 +14,7 @@
  */
 
 import type { Meter } from "./patterns";
+import type { PieceMusic } from "./piece";
 
 /** 评分维度。第 5 步实现打分时按这些维度算，这里先把「本课评什么」定下来。 */
 export type RubricDimension =
@@ -80,10 +81,14 @@ export interface Lesson {
   /** 练习曲与示范动画的默认速度。 */
   bpm: number;
   /**
-   * 生成练习曲的提示词（第 4 步用）。三条硬要求：BPM 必须准、要有打击乐、
-   * 开头要有一小节数拍。前两条是为了让初学者跟得上，第三条是为了让拍网格对得准。
+   * 本课练习曲怎么写。
+   *
+   * M7e 之前这里是一段喂给音频生成模型的提示词（`practicePrompt`），要求它
+   * 「BPM 必须准、要有打击乐、开头带一小节数拍」—— 三条都是**请求**，模型给不给
+   * 是另一回事，所以还得配一套能量起始点检测去猜拍网格在哪。现在练习曲是自己
+   * 写谱渲染的，这三条从请求变成了事实，那套检测也就不需要了。
    */
-  practicePrompt: string;
+  music: PieceMusic;
   rubric: RubricItem[];
 }
 
@@ -93,16 +98,8 @@ export const UNITS: { unit: 1 | 2 | 3; title: string; summary: string }[] = [
   { unit: 3, title: "把音乐讲出来", summary: "力度、速度变化 —— 让拍子变成音乐" },
 ];
 
-/** 每课练习曲提示词共用的硬性部分，避免十一处各写一遍、改的时候漏掉。 */
-function practice(desc: string, bpm: number, meter: Meter): string {
-  return [
-    `Orchestral practice piece for conducting students: ${desc}.`,
-    `Exactly ${bpm} BPM, ${meter}/4 time, strict steady tempo throughout, no rubato, no tempo drift.`,
-    "Start with one full bar of percussion count-in clicks before the music enters.",
-    "Include a clearly audible percussion part (drum kit or timpani) marking every beat, so the pulse is unmistakable.",
-    "Clean orchestral mix, no vocals.",
-  ].join(" ");
-}
+/** 一条平的力度曲线。绝大多数课不考力度，写成常量比每课抄一串数字清楚。 */
+const flat = (bars: number, level = 0.6): number[] => Array.from({ length: bars }, () => level);
 
 export const LESSONS: Lesson[] = [
   {
@@ -124,7 +121,7 @@ export const LESSONS: Lesson[] = [
     ],
     meters: [],
     bpm: 84,
-    practicePrompt: practice("calm sustained strings, simple and slow, for posture practice", 84, 4),
+    music: { style: "lyric", bars: 8, dynamics: flat(8, 0.5) },
     rubric: [
       { dimension: "planeConsistency", weight: 0.6 },
       { dimension: "ictusClarity", weight: 0.4 },
@@ -150,7 +147,7 @@ export const LESSONS: Lesson[] = [
     ],
     meters: [4, 3, 2],
     bpm: 88,
-    practicePrompt: practice("clear, march-like orchestral texture with an unmistakable downbeat on every bar", 88, 4),
+    music: { style: "march", bars: 8, dynamics: flat(8) },
     rubric: [
       { dimension: "patternShape", weight: 0.4 },
       { dimension: "ictusTiming", weight: 0.25 },
@@ -177,7 +174,8 @@ export const LESSONS: Lesson[] = [
     ],
     meters: [],
     bpm: 84,
-    practicePrompt: practice("distinct instrument sections entering one after another, so each entrance needs its own cue", 84, 4),
+    // 力度一路起伏，左手才有事可做 —— 这一课的 rubric 里「力度对应」占一半
+    music: { style: "lyric", bars: 8, dynamics: [0.3, 0.35, 0.55, 0.75, 0.75, 0.5, 0.4, 0.3] },
     rubric: [
       { dimension: "dynamicsMatch", weight: 0.5 },
       { dimension: "patternShape", weight: 0.3 },
@@ -199,7 +197,8 @@ export const LESSONS: Lesson[] = [
     pitfalls: ["一小节打一下之后速度开始飘 —— 因为唯一的时间参照只剩反弹曲线。"],
     meters: [3],
     bpm: 168,
-    practicePrompt: practice("fast scherzo-like triple meter, light and quick, one beat per bar feel", 168, 3),
+    // 168 BPM 的三拍一小节才 1.07 秒，8 小节太短，给到 16
+    music: { style: "waltz", bars: 16, dynamics: flat(16, 0.5) },
     rubric: [
       { dimension: "tempoStability", weight: 0.5 },
       { dimension: "ictusClarity", weight: 0.3 },
@@ -221,7 +220,7 @@ export const LESSONS: Lesson[] = [
     pitfalls: ["不管从第几拍入，预备拍一律往下挥，乐队会当成第 1 拍。"],
     meters: [],
     bpm: 88,
-    practicePrompt: practice("a melody with a clear pickup (anacrusis) before the first downbeat", 88, 4),
+    music: { style: "march", bars: 8, dynamics: flat(8), pickup: true },
     rubric: [
       { dimension: "ictusTiming", weight: 0.5 },
       { dimension: "patternShape", weight: 0.3 },
@@ -244,7 +243,8 @@ export const LESSONS: Lesson[] = [
     pitfalls: ["渐强时不自觉地越打越快 —— 力度和速度是两件事。"],
     meters: [4],
     bpm: 80,
-    practicePrompt: practice("a long orchestral crescendo from very quiet to full tutti and back down", 80, 4),
+    // 八小节从极弱推到齐奏再收回来，正是本课要用拍型大小表达的东西
+    music: { style: "lyric", bars: 8, dynamics: [0.12, 0.28, 0.44, 0.6, 0.78, 0.92, 0.6, 0.28] },
     rubric: [
       { dimension: "dynamicsMatch", weight: 0.5 },
       { dimension: "tempoStability", weight: 0.3 },
@@ -267,7 +267,8 @@ export const LESSONS: Lesson[] = [
     pitfalls: ["渐慢时只是把手停在半空等，没有把等待做成可读的动作。"],
     meters: [4, 3],
     bpm: 84,
-    practicePrompt: practice("a passage with a clear written ritardando and a later accelerando", 84, 4),
+    // 音乐速度固定，练的是「你能不能跟住」，见本课讲解最后一条
+    music: { style: "march", bars: 8, dynamics: flat(8) },
     rubric: [
       { dimension: "ictusTiming", weight: 0.4 },
       { dimension: "tempoStability", weight: 0.3 },

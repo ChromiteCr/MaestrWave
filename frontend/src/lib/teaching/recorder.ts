@@ -104,6 +104,18 @@ export function ictusTimes(rec: Recording): number[] {
   return out;
 }
 
+/**
+ * 切出来的一小节。
+ *
+ * 带上 `index`（网格上的第几小节，0 起）而不只是点集，是因为「力度对应」要拿
+ * 每一小节的拍型大小去比**乐曲那一小节写下的力度** —— 用户少打了开头两小节的话，
+ * 按顺序对齐就会拿第 3 小节的动作去比第 1 小节的力度，相关系数变成噪声。
+ */
+export interface Bar {
+  index: number;
+  points: Point[];
+}
+
 /** 一小节至少要有这么多帧才算数：30fps 下最短的一小节（2/4 @ 168BPM）也有 21 帧。 */
 const MIN_FRAMES_PER_BAR = 12;
 
@@ -121,7 +133,7 @@ function sliceBetween(rec: Recording, t0: number, t1: number): Point[] {
  * 只保留完整的小节：半截小节的形状和标准拍型比没有意义，DTW 会判它一个很差的
  * 分数，而用户其实只是在开头或结尾多录了一点。
  */
-export function splitBars(rec: Recording): Point[][] {
+export function splitBars(rec: Recording): Bar[] {
   const { grid } = rec;
   const barMs = (60000 / grid.bpm) * grid.meter;
   const withHand = rec.frames.filter((f) => f.beat);
@@ -130,11 +142,11 @@ export function splitBars(rec: Recording): Point[][] {
   const firstBar = Math.ceil((withHand[0].t - grid.originPerf) / barMs);
   const lastBar = Math.floor((withHand[withHand.length - 1].t - grid.originPerf) / barMs);
 
-  const bars: Point[][] = [];
+  const bars: Bar[] = [];
   for (let b = Math.max(0, firstBar); b < lastBar; b += 1) {
     const t0 = grid.originPerf + b * barMs;
-    const pts = sliceBetween(rec, t0, t0 + barMs);
-    if (pts.length >= MIN_FRAMES_PER_BAR) bars.push(pts);
+    const points = sliceBetween(rec, t0, t0 + barMs);
+    if (points.length >= MIN_FRAMES_PER_BAR) bars.push({ index: b, points });
   }
   return bars;
 }
@@ -146,15 +158,23 @@ export function splitBars(rec: Recording): Point[][] {
  * 都是被旋转过的拍型，DTW 距离自然差 —— 可他的形状其实是对的，晚不晚是
  * 「拍点准确度」那一维的事，在这里再罚一次就是重复计分。
  *
- * `downbeats` 是已经和网格对上、且落在小节第一拍的用户拍点时刻。
+ * `downbeats` 是已经和网格对上、且落在小节第一拍的用户拍点：`bar` 是它对上的
+ * 那个网格小节，`t` 是用户实际打下去的时刻。切片按 `t` 走（形状要按用户自己的
+ * 动作切），编号按 `bar` 走（力度要和乐曲的小节对上）。
+ *
  * 数量不足时返回 null，调用方回退到 `splitBars`。
  */
-export function splitBarsByDownbeat(rec: Recording, downbeats: number[]): Point[][] | null {
+export function splitBarsByDownbeat(
+  rec: Recording,
+  downbeats: { bar: number; t: number }[],
+): Bar[] | null {
   if (downbeats.length < 2) return null;
-  const bars: Point[][] = [];
+  const bars: Bar[] = [];
   for (let i = 0; i + 1 < downbeats.length; i += 1) {
-    const pts = sliceBetween(rec, downbeats[i], downbeats[i + 1]);
-    if (pts.length >= MIN_FRAMES_PER_BAR) bars.push(pts);
+    const points = sliceBetween(rec, downbeats[i].t, downbeats[i + 1].t);
+    if (points.length >= MIN_FRAMES_PER_BAR) {
+      bars.push({ index: downbeats[i].bar, points });
+    }
   }
   return bars.length ? bars : null;
 }

@@ -19,6 +19,10 @@ frontend/dist/
 # Output audio
 /output/sessions/
 
+# M7e：练习曲/考试曲目的渲染缓存。纯派生物 —— 规格在 exam.ts / curriculum.ts 里，
+# 删掉只是下次重新渲染几秒。而且一首几 MB，进仓库纯属浪费。
+/output/practice/
+
 # M4：本地开发用 HTTPS 证书，不进仓库
 frontend/certs/
 

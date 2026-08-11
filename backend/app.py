@@ -27,6 +27,7 @@ try:
     from . import composer as composerlib
     from . import render as renderlib
     from . import score_gen
+    from . import practice
     from .conduct import hub as conduct_hub
     from .netinfo import network_info
     from .tunnel import manager as tunnel_manager
@@ -47,6 +48,7 @@ except Exception:
     import composer as composerlib
     import render as renderlib
     import score_gen
+    import practice
     from conduct import hub as conduct_hub
     from netinfo import network_info
     from tunnel import manager as tunnel_manager
@@ -575,6 +577,109 @@ async def set_score_prefs(req: ScorePrefsRequest):
                        "确实要连公网服务的话，请用 SYMBOLIC_COMPOSER_URL 环境变量启动。")
     cfg.save_score_prefs(renderer=req.renderer, composer=req.composer, symbolic_url=url)
     return {**renderlib.renderer_status(), **composerlib.composer_status()}
+
+
+# ---------------- 指挥练习曲 / 考试曲目 ----------------
+
+class PracticeRequest(BaseModel):
+    """一首练习曲的完整定义。字段含义与边界见 `practice.PieceSpec`。
+
+    **spec 由前端给**，后端只是把它渲染出来。这样课程数据（`curriculum.ts`）
+    与考试曲目（`exam.ts`）保持单一真源 —— 后端再抄一份必然漂移，而考试曲目
+    一漂移就意味着两个人考的不是同一首。「固定」由 spec 是常量 + 渲染可复现
+    共同保证，不需要往仓库里塞音频文件。
+    """
+    style: str = "march"
+    meter: int = 4
+    bpm: int = 88
+    bars: int = 16
+    count_in_bars: int = 1
+    key: str = "C major"
+    dynamics: Optional[list[float]] = None
+    pickup: bool = False
+    seed: int = 0
+
+
+# piece_id → "rendering" | "ready" | 错误消息。只在内存里，进程重启后靠磁盘
+# 上的文件重新判断（`practice.is_ready`），不需要持久化。
+_practice_jobs: dict[str, str] = {}
+
+
+def _practice_status(pid: str) -> dict:
+    if practice.is_ready(pid):
+        meta = practice.load_meta(pid)
+        if meta:
+            return {"state": "ready", **meta}
+    state = _practice_jobs.get(pid)
+    if state in (None, "ready"):
+        # "ready" 但文件不在了（用户删了 output/practice）：当成没生成过
+        return {"piece_id": pid, "state": "missing"}
+    if state == "rendering":
+        return {"piece_id": pid, "state": "rendering"}
+    return {"piece_id": pid, "state": "error", "error": state}
+
+
+async def _render_practice(spec, pid: str) -> None:
+    try:
+        # 渲染是纯 CPU 的（几秒到十几秒），直接在事件循环里跑会把整个后端卡住 ——
+        # 摄像头指挥的 WebSocket 也在这个循环上。
+        await asyncio.to_thread(practice.render_piece, spec)
+        _practice_jobs[pid] = "ready"
+    except Exception as e:
+        logger.exception("练习曲渲染失败 %s", pid)
+        _practice_jobs[pid] = f"{type(e).__name__}: {e}"
+
+
+@app.post("/api/practice/generate")
+async def practice_generate(req: PracticeRequest):
+    """开始渲染一首练习曲，立刻返回 piece_id。已经渲染过的直接就绪。"""
+    try:
+        spec = practice.parse_spec(req.model_dump())
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    pid = practice.piece_id(spec)
+    if practice.is_ready(pid):
+        return _practice_status(pid)
+    if _practice_jobs.get(pid) != "rendering":
+        _practice_jobs[pid] = "rendering"
+        asyncio.create_task(_render_practice(spec, pid))
+    return {"piece_id": pid, "state": "rendering"}
+
+
+def _valid_piece_id(pid: str) -> str:
+    """piece_id 从 URL 上来，落到文件名之前必须校验 —— 否则 `../` 就能读任意文件。"""
+    if not practice.PIECE_ID_RE.match(pid):
+        raise HTTPException(status_code=400, detail="piece_id 格式不对")
+    return pid
+
+
+# 带后缀的两条必须写在 `/{piece_id}` **前面**：路径参数不匹配 `/` 但匹配 `.`，
+# 所以 `/api/practice/abc.wav` 会先被裸的那条吃掉，piece_id 变成 "abc.wav"。
+@app.get("/api/practice/{piece_id}.wav")
+async def practice_audio(piece_id: str):
+    pid = _valid_piece_id(piece_id)
+    path = practice.piece_dir() / f"{pid}.wav"
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="这首练习曲还没渲染好")
+    return FileResponse(path, media_type="audio/wav")
+
+
+@app.get("/api/practice/{piece_id}.mid")
+async def practice_midi(piece_id: str):
+    """练习曲的 MIDI。曲子本来就是写出来的，导出等于零成本 ——
+    想弄清「标准答案长什么样」的人可以直接拖进 MuseScore 看谱。"""
+    pid = _valid_piece_id(piece_id)
+    path = practice.piece_dir() / f"{pid}.mid"
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="这首练习曲还没渲染好")
+    return FileResponse(path, media_type="audio/midi",
+                        filename=f"practice-{pid}.mid")
+
+
+@app.get("/api/practice/{piece_id}")
+async def practice_status(piece_id: str):
+    return _practice_status(_valid_piece_id(piece_id))
 
 
 @app.get("/api/formation/templates")

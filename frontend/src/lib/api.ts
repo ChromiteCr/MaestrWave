@@ -228,6 +228,43 @@ export interface ProjectScore {
   parts: ScorePart[];
 }
 
+// ---------------- 指挥练习曲 / 考试曲目（backend/practice.py）----------------
+
+/**
+ * 一首练习曲的完整定义。**spec 就是曲子本身** —— 同一份 spec 在后端永远渲染出
+ * 同一份音频，所以「考试用固定曲目」不需要往仓库里塞音频文件，只要 spec 是常量。
+ */
+export interface PracticeSpec {
+  /** 织体与配器。march=进行曲，waltz=圆舞曲（蓬-恰-恰），lyric=抒情长句。 */
+  style: "march" | "waltz" | "lyric";
+  meter: 2 | 3 | 4;
+  bpm: number;
+  /** 正曲小节数，不含数拍。 */
+  bars: number;
+  count_in_bars: number;
+  key: string;
+  /** 每小节的目标力度 0~1。这是「力度对应」那一维的真值 —— 写下的，不是测出来的。 */
+  dynamics: number[];
+  /** 弱起：第一个强拍之前先出一个音。 */
+  pickup?: boolean;
+  seed?: number;
+}
+
+export interface PracticeStatus {
+  piece_id: string;
+  /** missing = 还没开始渲染（比如缓存被删了），rendering = 正在渲染。 */
+  state: "missing" | "rendering" | "ready" | "error";
+  error?: string;
+  /** 拍网格。offset 是音频开头到正曲第一拍的秒数，也就是整段数拍的长度。 */
+  grid?: { bpm: number; beats_per_bar: number; offset: number };
+  loudness_per_bar?: number[];
+  count_in_bars?: number;
+  music_bars?: number;
+  duration?: number;
+  renderer?: string;
+  instruments?: { library_key: string; kind: string; note_count: number }[];
+}
+
 export interface Instrument {
   id: string;
   library_key: string;
@@ -433,6 +470,18 @@ export const api = {
 
   /** 全部声部合成一个 MIDI 文件，各声部一个 track。丢进 MuseScore / DAW 里能直接开。 */
   scoreMidiUrl: (projectId: string) => `/api/projects/${projectId}/score.mid`,
+
+  // ---- 指挥练习曲 / 考试曲目 ----
+  /** 开始渲染。已经渲染过的会立刻返回 ready，同一份 spec 永远是同一首。 */
+  practiceGenerate: (spec: PracticeSpec) =>
+    req<PracticeStatus>("/api/practice/generate", {
+      method: "POST",
+      body: JSON.stringify(spec),
+    }),
+  practiceStatus: (pieceId: string) => req<PracticeStatus>(`/api/practice/${pieceId}`),
+  practiceAudioUrl: (pieceId: string) => `/api/practice/${pieceId}.wav`,
+  /** 练习曲的谱子。想看「标准答案」的人可以拖进 MuseScore。 */
+  practiceMidiUrl: (pieceId: string) => `/api/practice/${pieceId}.mid`,
 
   // ---- 对话式 Agent ----
   /** 和构型页共用同一条 BYOK 通路，所以同样要带隧道令牌。 */

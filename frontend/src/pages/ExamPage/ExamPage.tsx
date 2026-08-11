@@ -2,22 +2,31 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "../../components/Button/Button";
 import { CameraPreview } from "../../components/CameraPreview/CameraPreview";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
+import { PracticeRunner } from "../../components/PracticeRunner/PracticeRunner";
 import { CameraIntentSource } from "../../lib/camera/cameraIntentSource";
 import { HandTracker } from "../../lib/camera/handTracker";
 import { findLesson } from "../../lib/teaching/curriculum";
-import { EXAM_PIECES, GOOD_SCORE, PASS_SCORE, examDimensions, type ExamPiece } from "../../lib/teaching/exam";
+import {
+  EXAM_PIECES, GOOD_SCORE, PASS_SCORE, examDimensions, examDurationSec, type ExamPiece,
+} from "../../lib/teaching/exam";
+import { buildSpec } from "../../lib/teaching/piece";
+import type { SessionScore } from "../../lib/teaching/scoring";
+import { usePracticePiece } from "../../lib/teaching/usePracticePiece";
 import { useAppStore } from "../../state/store";
 import styles from "./ExamPage.module.css";
 
 /**
- * 「考试」：用固定的示例歌曲给用户打分，摄像头采集。
+ * 「考试」：用固定的曲目给用户打分，摄像头采集。
  *
- * 和「课程」里的跟练分开，是因为**可比性**：练习曲是现场生成的，每次都不一样，
- * 分数没法横向比；考试用同一批曲目、同一个速度，分数才有意义。
+ * 和「课程」里的跟练分开，是因为**可比性**：练习曲跟着本课的拍号速度走，换一课
+ * 就换一首，分数没法横向比；考试用同一批曲目、同一个速度，分数才有意义。
  *
- * 当前状态：曲目音频与打分尚未接入（M6 第 5 步），但**摄像头自检是真的**——
- * 环境检查、开摄像头、认手、看帧率都跑通了，考前该踩的坑现在就能踩完。
- * 页面明说哪部分没做好，而不是摆一个点了没反应的「开始考试」。
+ * 「固定」不是靠往仓库里塞音频文件，而是靠 `exam.ts` 里写死的曲目规格 +
+ * 后端可复现的写谱渲染（见 `backend/practice.py`）。所以这三首曲子不需要配密钥、
+ * 不需要联网，第一次考的时候渲染几秒，之后永远秒开。
+ *
+ * 考前**先自检再开考**：环境检查、开摄像头、认手、看帧率。考到一半发现摄像头
+ * 认不到手，那一次就白考了。
  */
 
 type CamState = "idle" | "starting" | "ready" | "error";
@@ -28,12 +37,19 @@ const CONFIRM_MS = 800;
 export function ExamPage() {
   const openLesson = useAppStore((s) => s.openLesson);
   const [selected, setSelected] = useState<ExamPiece>(EXAM_PIECES[0]);
+  const [examing, setExaming] = useState(false);
+  const [result, setResult] = useState<SessionScore | null>(null);
 
   const [cam, setCam] = useState<CamState>("idle");
   const [camError, setCamError] = useState("");
   const [hands, setHands] = useState({ left: false, right: false, fps: 0 });
   const sourceRef = useRef<CameraIntentSource | null>(null);
   const [, force] = useState(0);
+
+  // 选中哪一首就渲染哪一首。切曲目时上一首已经在缓存里，切回去是秒开。
+  const piece = usePracticePiece(
+    buildSpec(selected.music, { meter: selected.meter, bpm: selected.bpm, id: selected.id }),
+  );
 
   // 环境检查是同步的，不用开摄像头就知道结果 —— 先把「这台机器根本不行」挡在前面
   const envProblem = !HandTracker.isSupported()
@@ -93,7 +109,22 @@ export function ExamPage() {
     setCam("idle");
   };
 
+  const pickPiece = (p: ExamPiece) => {
+    if (examing) return; // 考到一半换卷子就没有可比性了
+    setSelected(p);
+    setResult(null);
+  };
+
+  const beginExam = () => {
+    // 自检占着摄像头，考试要自己开一路 —— 同一个设备开两次会失败
+    stopCamera();
+    setResult(null);
+    setExaming(true);
+  };
+
   const dims = examDimensions(selected);
+  const verdict =
+    result === null ? null : result.total >= GOOD_SCORE ? "优秀" : result.total >= PASS_SCORE ? "及格" : "不及格";
 
   return (
     <div>
@@ -110,9 +141,10 @@ export function ExamPage() {
 
       <div className={styles.body}>
         <p className={styles.intro}>
-          考试用固定的示例歌曲，所有人考同一首、同一个速度 —— 练习曲是现场生成的，
-          每次都不一样，分数没法比；考试曲目固定，分数才有意义。全程用摄像头采集，
-          按行业标准的几个维度给出具体数字与建议。
+          考试用固定的曲目，所有人考同一首、同一个速度 —— 练习曲跟着课程走，每一课
+          都不一样，分数没法比；考试曲目固定，分数才有意义。曲子由后端照着写死的规格
+          写谱渲染，同一份规格永远是同一首，所以不需要联网也不需要配密钥。
+          全程用摄像头采集，按行业标准的几个维度给出具体数字与建议。
         </p>
 
         <div className={styles.grid}>
@@ -123,8 +155,9 @@ export function ExamPage() {
                 <button
                   key={p.id}
                   type="button"
+                  disabled={examing && p.id !== selected.id}
                   className={`${styles.piece} ${selected.id === p.id ? styles.pieceActive : ""}`}
-                  onClick={() => setSelected(p)}
+                  onClick={() => pickPiece(p)}
                 >
                   <div className={styles.pieceHead}>
                     <span className={styles.pieceTitle}>{p.title}</span>
@@ -135,10 +168,7 @@ export function ExamPage() {
                     <span className="mono-chip">
                       {p.meter}/4 · {p.bpm} BPM
                     </span>
-                    <span className="mono-chip">{p.durationSec} 秒</span>
-                    <span className={`mono-chip ${styles.notReady}`}>
-                      {p.audio ? "曲目就绪" : "曲目未就绪"}
-                    </span>
+                    <span className="mono-chip">{p.music.bars} 小节 · {examDurationSec(p)} 秒</span>
                   </div>
                 </button>
               ))}
@@ -174,18 +204,53 @@ export function ExamPage() {
                 );
               })}
             </p>
+
+            {piece.state === "ready" && piece.piece && (
+              <p className={styles.covers}>
+                想看这首的谱子：
+                <a className={styles.link} href={piece.piece.midiUrl} download>
+                  下载 MIDI
+                </a>
+                —— 曲子本来就是写出来的，拖进 MuseScore 就能对着看。
+              </p>
+            )}
           </section>
 
           <section className={styles.col}>
-            <p className="eyebrow">摄像头自检</p>
-            <p className={styles.checkHint}>
-              考前先确认摄像头能认到手。站远一点，让上半身和两只手都进画面。
-            </p>
-
             {envProblem ? (
-              <p className={styles.error}>{envProblem}</p>
+              <>
+                <p className="eyebrow">摄像头自检</p>
+                <p className={styles.error}>{envProblem}</p>
+              </>
+            ) : examing ? (
+              <>
+                <p className="eyebrow">正在考试 · 《{selected.title}》</p>
+                <p className={styles.checkHint}>
+                  曲子开头有一小节数拍，跟着它进。打满 {selected.music.bars} 小节自动结束并出分。
+                </p>
+                <PracticeRunner
+                  meter={selected.meter}
+                  bpm={selected.bpm}
+                  rubric={selected.rubric}
+                  piece={piece.piece}
+                  onScored={setResult}
+                />
+                {verdict && (
+                  <p className={`${styles.verdict} ${result!.total >= PASS_SCORE ? styles.pass : styles.fail}`}>
+                    {verdict} · {result!.total} 分（及格 {PASS_SCORE}、优秀 {GOOD_SCORE}）
+                  </p>
+                )}
+                <div className={styles.camActions}>
+                  <Button onClick={() => setExaming(false)}>退出考试</Button>
+                </div>
+              </>
             ) : (
               <>
+                <p className="eyebrow">摄像头自检</p>
+                <p className={styles.checkHint}>
+                  考前先确认摄像头能认到手。站远一点，让上半身和两只手都进画面。
+                </p>
+
                 <CameraPreview
                   source={cam === "idle" || cam === "error" ? null : sourceRef.current}
                   swapHands={false}
@@ -197,6 +262,16 @@ export function ExamPage() {
                   <Check on={hands.right} label="看到打拍手（右手）" />
                   <Check on={hands.left} label="看到表情手（左手）" />
                   <Check on={hands.fps >= 20} label={`帧率 ${hands.fps} fps（需要 ≥ 20）`} />
+                  <Check
+                    on={piece.state === "ready"}
+                    label={
+                      piece.state === "ready"
+                        ? "曲目就绪"
+                        : piece.state === "error"
+                          ? `曲目没准备好：${piece.error}`
+                          : "曲目渲染中…"
+                    }
+                  />
                 </div>
 
                 {camError && <p className={styles.error}>{camError}</p>}
@@ -209,15 +284,23 @@ export function ExamPage() {
                   ) : (
                     <Button onClick={stopCamera}>关闭摄像头</Button>
                   )}
-                  <Button variant="primary" disabled title="曲目音频与打分尚未接入">
+                  <Button
+                    variant="primary"
+                    onClick={beginExam}
+                    disabled={piece.state !== "ready"}
+                    title={piece.state === "ready" ? undefined : "曲目还没渲染好"}
+                  >
                     开始考试
                   </Button>
+                  {piece.state === "error" && (
+                    <Button onClick={piece.retry}>重试渲染</Button>
+                  )}
                 </div>
 
                 <p className={styles.todo}>
-                  「开始考试」还点不了：示例歌曲的音频与打分（录制层、DTW 拍型识别、
-                  六个维度的计算）是 M6 第 5 步的内容，见 <code>docs/M6_PLAN.md</code>。
-                  自检本身是真的，现在就能确认设备行不行。
+                  挡住「开始考试」的只有曲目 —— 曲子没渲染完，考了也没有拍网格可对。
+                  摄像头那四项不挡：认不到手照样让你开，但强烈建议先看到绿点，
+                  不然一整轮打完只会得到一句「没录到任何画面」。
                 </p>
               </>
             )}

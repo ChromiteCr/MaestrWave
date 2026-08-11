@@ -85,10 +85,27 @@
   gap: 6px;
 }
 
-/* 「未就绪」用酒红，和其它中性 chip 区分开——这是个状态，不是参数 */
-.notReady {
+/* 及格与否。分数本身在 ScoreReport 里，这里只下结论，所以给足字号与留白 */
+.verdict {
+  margin: 18px 0 0;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+}
+
+.pass {
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--ink) 24%, transparent);
+  background: var(--surface-2);
+}
+
+/* 不及格用酒红，和其它中性状态区分开 */
+.fail {
   color: var(--wine);
   border-color: color-mix(in srgb, var(--wine) 45%, transparent);
+  background: color-mix(in srgb, var(--wine) 7%, transparent);
 }
 
 .dims {

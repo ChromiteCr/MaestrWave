@@ -43,7 +43,7 @@ export interface BeatGrid {
  * （只含渲染量子那一段，偏小但聊胜于无）；都没有就按 20ms 估 —— 桌面设备的
  * 典型值，比当 0 更接近事实。
  */
-function outputLatency(ctx: AudioContext): number {
+export function outputLatency(ctx: AudioContext): number {
   const o = (ctx as AudioContext & { outputLatency?: number }).outputLatency;
   if (typeof o === "number" && o > 0) return o;
   if (typeof ctx.baseLatency === "number" && ctx.baseLatency > 0) return ctx.baseLatency;
