@@ -1,0 +1,337 @@
+{
+  "project_id": "2c35baf8",
+  "name": "你好",
+  "created_at": "2026-08-11T06:17:37.049274Z",
+  "style_description": "epic orchestral score, dark and heroic, wide dynamics",
+  "key": "D minor",
+  "bpm": 88,
+  "time_signature": "4/4",
+  "instruments": [
+    {
+      "id": "d4742ce0",
+      "library_key": "strings",
+      "display_name": "弦乐组",
+      "family": "strings",
+      "role": "melody",
+      "takes": [],
+      "current_take_id": null,
+      "participation": [
+        0.7,
+        0.9,
+        1,
+        0.6
+      ],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
+    },
+    {
+      "id": "daae40cf",
+      "library_key": "cello",
+      "display_name": "大提琴",
+      "family": "strings",
+      "role": "bass",
+      "takes": [],
+      "current_take_id": null,
+      "participation": [
+        0.6,
+        0.8,
+        1,
+        0.5
+      ],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
+    },
+    {
+      "id": "c29dd1c9",
+      "library_key": "timpani",
+      "display_name": "定音鼓",
+      "family": "percussion",
+      "role": "rhythm",
+      "takes": [],
+      "current_take_id": null,
+      "participation": [
+        0,
+        0.5,
+        1,
+        0.2
+      ],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
+    },
+    {
+      "id": "56e76f8c",
+      "library_key": "brass",
+      "display_name": "铜管组",
+      "family": "brass",
+      "role": "harmony",
+      "takes": [],
+      "current_take_id": null,
+      "participation": [
+        0,
+        0.2,
+        1,
+        0.4
+      ],
+      "prompt_extra": "",
+      "tier": "climax",
+      "bound_stem_id": null,
+      "origin": "planned"
+    },
+    {
+      "id": "489afc02",
+      "library_key": "french_horn",
+      "display_name": "圆号",
+      "family": "brass",
+      "role": "harmony",
+      "takes": [],
+      "current_take_id": null,
+      "participation": [
+        0,
+        0.4,
+        0.9,
+        0.3
+      ],
+      "prompt_extra": "",
+      "tier": "climax",
+      "bound_stem_id": null,
+      "origin": "planned"
+    }
+  ],
+  "schema_version": 2,
+  "generation_mode": "score",
+  "total_duration": 16.3636,
+  "formation": {
+    "schema_version": 1,
+    "revision": 1,
+    "created_by": "manual",
+    "source_template_id": "epic_cinematic",
+    "updated_at": "2026-08-11T06:18:12.092436Z",
+    "dirty": true,
+    "global": {
+      "total_duration": 16.0,
+      "key": "D minor",
+      "bpm": 88,
+      "time_signature": "4/4",
+      "style_description": "",
+      "global_prompt": "epic orchestral score, dark and heroic, wide dynamics",
+      "mood_tags": [
+        "庄严",
+        "悲壮",
+        "希望"
+      ],
+      "ensemble_size": "orchestral",
+      "dynamic_range": "wide"
+    },
+    "sections": [
+      {
+        "id": "be58bd1b",
+        "kind": "intro",
+        "label": "引入",
+        "duration": 2.4,
+        "intensity": 0.2,
+        "shape": "rise",
+        "is_climax": false
+      },
+      {
+        "id": "a986f7b8",
+        "kind": "build",
+        "label": "推进",
+        "duration": 4.8,
+        "intensity": 0.5,
+        "shape": "rise",
+        "is_climax": false
+      },
+      {
+        "id": "5bcf176c",
+        "kind": "climax",
+        "label": "高潮",
+        "duration": 5.6,
+        "intensity": 0.95,
+        "shape": "arch",
+        "is_climax": true
+      },
+      {
+        "id": "abeded06",
+        "kind": "outro",
+        "label": "收束",
+        "duration": 3.2,
+        "intensity": 0.3,
+        "shape": "fall",
+        "is_climax": false
+      }
+    ],
+    "instruments": [
+      {
+        "id": "49b49639",
+        "library_key": "strings",
+        "display_name": "弦乐组",
+        "role": "melody",
+        "family": "strings",
+        "tier": "core",
+        "prominence": 0.8,
+        "participation": [
+          0.7,
+          0.9,
+          1,
+          0.6
+        ],
+        "instrument_prompt": "expressive legato strings carrying the main theme, soaring and warm",
+        "resolution": {
+          "matched": "exact",
+          "llm_raw_name": "strings"
+        }
+      },
+      {
+        "id": "b106599a",
+        "library_key": "cello",
+        "display_name": "大提琴",
+        "role": "bass",
+        "family": "strings",
+        "tier": "core",
+        "prominence": 0.72,
+        "participation": [
+          0.6,
+          0.8,
+          1,
+          0.5
+        ],
+        "instrument_prompt": "dark and resonant cello providing the bass foundation and emotional weight",
+        "resolution": {
+          "matched": "exact",
+          "llm_raw_name": "cello"
+        }
+      },
+      {
+        "id": "ffb5471f",
+        "library_key": "timpani",
+        "display_name": "定音鼓",
+        "role": "rhythm",
+        "family": "percussion",
+        "tier": "core",
+        "prominence": 0.42,
+        "participation": [
+          0,
+          0.5,
+          1,
+          0.2
+        ],
+        "instrument_prompt": "pulsing timpani rolls building tension and marking the climax",
+        "resolution": {
+          "matched": "exact",
+          "llm_raw_name": "timpani"
+        }
+      },
+      {
+        "id": "2dac483f",
+        "library_key": "brass",
+        "display_name": "铜管组",
+        "role": "harmony",
+        "family": "brass",
+        "tier": "climax",
+        "prominence": 0.4,
+        "participation": [
+          0,
+          0.2,
+          1,
+          0.4
+        ],
+        "instrument_prompt": "bold and heroic brass chords adding grandeur at the climax",
+        "resolution": {
+          "matched": "exact",
+          "llm_raw_name": "brass"
+        }
+      },
+      {
+        "id": "daf4c598",
+        "library_key": "french_horn",
+        "display_name": "圆号",
+        "role": "harmony",
+        "family": "brass",
+        "tier": "climax",
+        "prominence": 0.4,
+        "participation": [
+          0,
+          0.4,
+          0.9,
+          0.3
+        ],
+        "instrument_prompt": "mellow yet powerful french horn fills supporting the harmony",
+        "resolution": {
+          "matched": "exact",
+          "llm_raw_name": "french_horn"
+        }
+      }
+    ],
+    "warnings": []
+  },
+  "generation_order": [
+    "d4742ce0",
+    "daae40cf",
+    "c29dd1c9",
+    "56e76f8c",
+    "489afc02"
+  ],
+  "master": null,
+  "stems": [],
+  "score_blueprint": {
+    "schema_version": 1,
+    "revision": 1,
+    "bpm": 88,
+    "key": "D minor",
+    "time_signature": "4/4",
+    "beats_per_bar": 4,
+    "beat_unit": 4,
+    "bars": 6,
+    "exact_duration": 16.3636,
+    "sections": [
+      {
+        "id": "be58bd1b",
+        "label": "引入",
+        "start_bar": 1,
+        "end_bar": 1,
+        "intensity": 0.2,
+        "is_climax": false
+      },
+      {
+        "id": "a986f7b8",
+        "label": "推进",
+        "start_bar": 2,
+        "end_bar": 3,
+        "intensity": 0.5,
+        "is_climax": false
+      },
+      {
+        "id": "5bcf176c",
+        "label": "高潮",
+        "start_bar": 4,
+        "end_bar": 5,
+        "intensity": 0.95,
+        "is_climax": true
+      },
+      {
+        "id": "abeded06",
+        "label": "收束",
+        "start_bar": 6,
+        "end_bar": 6,
+        "intensity": 0.3,
+        "is_climax": false
+      }
+    ],
+    "chords": [
+      "Dm",
+      "Gm",
+      "A7",
+      "A#",
+      "A7",
+      "Dm"
+    ],
+    "created_by": "llm"
+  },
+  "segment_duration": 16.3636
+}
