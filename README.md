@@ -55,6 +55,8 @@ MaestrWave-{平台}.zip
 
 | 版本 | 日期 | 变更内容 | 类型 |
 |------|------|----------|------|
+| M7b1 | 2026-08-11 | 发布包内置 fluidsynth 与音源：`scripts/package/bundle_fluidsynth.py` 递归收全部依赖并把 `install_name` 改写成 `@loader_path` 相对引用（macOS 实测 19 文件 5.7MB，全部文件零残留绝对路径，剥离环境下实跑通过），启动器用 `SOUNDFONT_DIR` 指向包内音源；「设置」页加音源选择（自动 / 内置采样 / FluidSynth / 内置合成），选择存后端偏好文件而非环境变量——双击启动包的用户改不了 env | feat |
+| M7b | 2026-08-11 | **自带管弦乐音源，零安装出声**：`backend/sf2.py` 纯标准库的 SoundFont 解析与采样播放（分区选择、按音高重采样、循环点、音量包络、全局区继承），从 MIT 授权的 FluidR3_GM 裁出 33MB 只含本项目 12 个音色的 `orchestral.sf2` 进仓库（裁剪前后逐采样最大差 4.33e-07，低于 16-bit 量化噪声）；修掉两处会静默出错的问题——SF2 常用「硬左+硬右叠两层」写法，单声道直接叠加会响一倍，按 (L+R)/2 补上降混增益；音源缺鼓件时原本那一声凭空消失且不报错，加了替代链 | feat |
 | M7a1 | 2026-08-11 | 修复中文项目名下载一律 500：HTTP 头只能是 latin-1，`filename="接口验证.mid"` 会让 starlette 编码响应头时抛 UnicodeEncodeError。改用 RFC 5987 的 `filename*`。**zip 导出一直有这个 bug**，一并修掉 | fix |
 | M7a | 2026-08-11 | 写谱演奏模式接线：`score_gen.py`（蓝图带并发锁、生成、按小节重绘、MIDI 导出）、生成/重绘端点按 `generation_mode` 分流（URL 与返回结构不变）、`/score` 与 `/score.mid`、health 里的 `score` 块、新建项目时选生成方式；LLM 通路改用 `chat_text` 以便从被 `max_tokens` 截断的输出里抢救音符，任何失败都退回规则作曲并如实记录降级原因 | feat |
 | M7 | 2026-08-11 | 写谱演奏模式的地基：`score.py`（乐谱结构、调式与和弦解析、五条确定性修复）、`midi_out.py`（手写 SMF type-1）、`render.py`（fluidsynth + 纯 Python 两个渲染器，固定增益不归一化、各声部采样数严格一致、尾音叠回开头做无缝循环）、`composer.py` 的规则作曲器（声部进行、音区分离、participation 落地、管弦乐编制的打击乐）；124 条离线断言含拍网格反查与循环接缝 | feat |
@@ -245,14 +247,31 @@ export SCORE_COMPOSER=algorithmic   # 强制用本地规则，一次外部调用
 
 ### 音源
 
-默认走内置的纯 Python 合成，零安装但音色朴素。装上 fluidsynth 加任意 GM SoundFont 就会自动切成采样音源，同一份谱子不用重写：
+**开箱即用，不需要装任何东西。** 仓库自带一个 33MB 的管弦乐音源
+（`backend/soundfonts/orchestral.sf2`，从 MIT 授权的 FluidR3_GM 裁出来的），
+由 `backend/sf2.py` 直接读取播放 —— 那是个纯标准库的 SoundFont 解析器加采样
+播放器，没有任何外部可执行文件，源码跑和打包跑完全一致。
+
+| 音源 | 说明 |
+|---|---|
+| `sf2`（默认） | 自带的采样播放器，真实乐器录音 |
+| `fluidsynth` | 外部合成器，同一份音源，混响更丰富。装了才能选 |
+| `builtin` | 纯加法合成，连音源文件都不需要。音色朴素，是最后的保底 |
+
+在「设置」页可以随时切换，也可以用 `SCORE_RENDERER` 环境变量指定。
+`/api/health` 的 `score` 块会如实报告当前实际生效的是哪个。
+
+换自己的音源：把任意 `.sf2` 放进 `backend/soundfonts/` 即可（文件名随意，后端
+自己扫）。**只支持未压缩的 `.sf2`** —— `.sf3` 的样本是 Ogg Vorbis 压缩的，
+纯 Python 解不了。想换个更大的音源再裁一遍：
 
 ```bash
-brew install fluid-synth
-mkdir -p backend/soundfonts   # 把 .sf2 / .sf3 放进去即可，文件名随意
+python3 scripts/trim_soundfont.py 完整音源.sf2 backend/soundfonts/orchestral.sf2
 ```
 
-推荐 [MuseScore_General](https://musescore.org/en/handbook/2/soundfonts-and-sfz-files)（MIT 授权，sf3 压缩版约 36MB，fluidsynth 2.x 直接吃）。`/api/health` 的 `score` 块会如实报告当前用的是哪个作曲器和哪个音源。
+发布包里连 fluidsynth 一起带（macOS 实测 19 个文件 5.7MB，CI 会把库路径改写成
+`@loader_path` 相对引用，到没装 Homebrew 的机器上也能跑），所以双击启动的用户
+三种音源都能选。
 
 **打击乐限定为管弦乐编制** —— 大鼓、小军鼓、吊镲、三角铁，没有踩镲和嗵鼓（那是爵士鼓组）。定音鼓是有音高的乐器，走普通通道写主音／属音，不当鼓组音效。
 

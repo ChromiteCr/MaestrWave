@@ -132,3 +132,49 @@
   line-height: 1.6;
   color: var(--wine);
 }
+
+/* ---- 音源选择（写谱演奏模式）---- */
+
+.rendererList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 14px 0 16px;
+}
+
+.renderer {
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  border-radius: 10px;
+  padding: 10px 13px;
+  font: inherit;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.renderer:hover:not(:disabled) {
+  border-color: var(--accent-dim);
+}
+
+.rendererActive {
+  border-color: var(--accent);
+  background: var(--surface-3);
+}
+
+.renderer:disabled {
+  opacity: 0.42;
+}
+
+.rendererLabel {
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.rendererHint {
+  font-size: 12px;
+  line-height: 1.55;
+  color: color-mix(in srgb, var(--ink) 45%, transparent);
+}

@@ -1,0 +1,19 @@
+{
+  "project_id": "7b4a619c",
+  "name": "分谱测试",
+  "created_at": "2026-08-11T03:04:43.847749Z",
+  "style_description": "",
+  "key": "D major",
+  "bpm": 92,
+  "time_signature": "4/4",
+  "instruments": [],
+  "schema_version": 2,
+  "generation_mode": "score",
+  "total_duration": 16.0,
+  "formation": null,
+  "generation_order": [],
+  "master": null,
+  "stems": [],
+  "score_blueprint": null,
+  "segment_duration": 16.0
+}

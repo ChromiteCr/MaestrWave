@@ -20,6 +20,15 @@ export OUTPUT_DIR="$(pwd)/output/sessions"
 export PROJECTS_DIR="$(pwd)/output/projects"
 mkdir -p "$OUTPUT_DIR" "$PROJECTS_DIR"
 
+# 写谱演奏模式的音源与外部合成器。打包后 backend/config.py 的 __file__ 落在
+# _internal/ 里，靠它推不出这两个路径，所以由启动器显式指定。
+export SOUNDFONT_DIR="$(pwd)/soundfonts"
+export SCORE_PREFS_PATH="$(pwd)/output/score_prefs.json"
+if [ -x "$(pwd)/fluidsynth/fluidsynth" ]; then
+  export PATH="$(pwd)/fluidsynth:$PATH"
+  export DYLD_LIBRARY_PATH="$(pwd)/fluidsynth:${DYLD_LIBRARY_PATH:-}"
+fi
+
 echo "▶ 正在启动 MaestrWave 后端…"
 ./MaestrWave/MaestrWave &
 BACKEND_PID=$!

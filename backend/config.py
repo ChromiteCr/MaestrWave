@@ -71,6 +71,41 @@ SOUNDFONT_EXTENSIONS = (".sf2", ".sf3")
 SCORE_SAMPLE_RATE = 44100
 
 
+# 用户在「设置」页选的渲染器/作曲器，落一个小 JSON。**不放环境变量**：
+# 双击启动包的用户没有改环境变量的入口，而这是个需要能随手切换的选项。
+# 优先级：这个文件 > 环境变量 > auto。
+SCORE_PREFS_PATH = Path(os.environ.get(
+    "SCORE_PREFS_PATH", str(BASE_DIR / "output" / "score_prefs.json")))
+
+
+def load_score_prefs() -> dict:
+    import json
+    try:
+        return json.loads(SCORE_PREFS_PATH.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def save_score_prefs(**fields) -> dict:
+    import json
+    prefs = load_score_prefs()
+    for k in ("renderer", "composer"):
+        if fields.get(k) is not None:
+            prefs[k] = str(fields[k]).strip().lower()
+    SCORE_PREFS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    SCORE_PREFS_PATH.write_text(json.dumps(prefs, ensure_ascii=False, indent=2),
+                                encoding="utf-8")
+    return prefs
+
+
+def active_renderer_choice() -> str:
+    return load_score_prefs().get("renderer") or SCORE_RENDERER or "auto"
+
+
+def active_composer_choice() -> str:
+    return load_score_prefs().get("composer") or SCORE_COMPOSER or "auto"
+
+
 def find_soundfont() -> Optional[str]:
     """找一个可用的 SoundFont。显式配置优先，否则扫目录取第一个。"""
     if SOUNDFONT_PATH and Path(SOUNDFONT_PATH).is_file():

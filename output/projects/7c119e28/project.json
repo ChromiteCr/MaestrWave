@@ -46,5 +46,6 @@
   "formation": null,
   "generation_order": [],
   "master": null,
-  "stems": []
+  "stems": [],
+  "score_blueprint": null
 }

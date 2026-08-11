@@ -16,7 +16,7 @@ export interface Take {
   take_id: string;
   created_at: string;
   audio_file: string;
-  task_type_used: "text2music" | "lego" | "repaint";
+  task_type_used: "text2music" | "lego" | "repaint" | "score";
   params: Record<string, unknown>;
   url: string;
 }
@@ -166,7 +166,7 @@ export type GenerationMode = "multitrack" | "separate" | "score";
 
 /** 见 backend/render.py 与 backend/composer.py：符号乐谱模式当前用哪套流水线。 */
 export interface ScoreStatus {
-  renderer: "fluidsynth" | "builtin";
+  renderer: "sf2" | "fluidsynth" | "builtin";
   renderer_configured: string;
   fluidsynth_found: boolean;
   soundfont_found: boolean;
@@ -373,6 +373,11 @@ export const api = {
   llmConfig: () => req<LLMStatus>("/api/llm/config"),
   saveLlmConfig: (body: { base_url?: string; model?: string; api_key?: string }) =>
     req<LLMStatus>("/api/llm/config", { method: "POST", body: JSON.stringify(body) }),
+
+  // ---- 写谱演奏模式：音源与作曲器 ----
+  /** 选择在设置页做，落到后端的偏好文件；env 只作为默认值。 */
+  setScorePrefs: (body: { renderer?: string; composer?: string }) =>
+    req<ScoreStatus>("/api/score/prefs", { method: "POST", body: JSON.stringify(body) }),
 
   // ---- 对话式 Agent ----
   /** 和构型页共用同一条 BYOK 通路，所以同样要带隧道令牌。 */

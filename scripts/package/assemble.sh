@@ -29,20 +29,39 @@ cp -R "$ROOT/frontend/dist" "$PKG_DIR/frontend/dist"
 # netinfo.py 读 frontend/package.json 拿版本号，一并带上（读取失败也有兜底）
 cp "$ROOT/frontend/package.json" "$PKG_DIR/frontend/package.json"
 
-# 3) 运行时数据目录（启动器会在本机运行时创建，先放一个占位）
+# 3) 音源（写谱演奏模式的采样音色）。放在包内固定位置，启动器用
+#    SOUNDFONT_DIR 指过去 —— 打包后 backend/config.py 的 __file__ 落在
+#    _internal/ 里，靠它推路径会找不到。
+if [ -d "$ROOT/backend/soundfonts" ]; then
+  mkdir -p "$PKG_DIR/soundfonts"
+  cp -R "$ROOT/backend/soundfonts/." "$PKG_DIR/soundfonts/"
+  echo "==> 已带上音源：$(du -sh "$PKG_DIR/soundfonts" | cut -f1)"
+else
+  echo "⚠️  backend/soundfonts 不存在，发布包将只有内置合成音色"
+fi
+
+# 4) fluidsynth 及其依赖库（可选，由 CI 的 bundle-fluidsynth 步骤准备）
+if [ -d "$ROOT/dist-deps/fluidsynth" ]; then
+  mkdir -p "$PKG_DIR/fluidsynth"
+  cp -R "$ROOT/dist-deps/fluidsynth/." "$PKG_DIR/fluidsynth/"
+  chmod +x "$PKG_DIR/fluidsynth/fluidsynth" 2>/dev/null || true
+  echo "==> 已带上 fluidsynth：$(du -sh "$PKG_DIR/fluidsynth" | cut -f1)"
+fi
+
+# 5) 运行时数据目录（启动器会在本机运行时创建，先放一个占位）
 mkdir -p "$PKG_DIR/output"
 
-# 4) 启动器 / 配置模板 / 说明
+# 6) 启动器 / 配置模板 / 说明
 cp "$ROOT/scripts/package/$LAUNCHER" "$PKG_DIR/$LAUNCHER"
 cp "$ROOT/scripts/package/config.env" "$PKG_DIR/config.env"
 cp "$ROOT/scripts/package/PACKAGE_README.txt" "$PKG_DIR/README.txt"
 
-# 5) macOS 启动器需要可执行权限
+# 7) macOS 启动器需要可执行权限
 if [[ "$LAUNCHER" == *.command ]]; then
   chmod +x "$PKG_DIR/$LAUNCHER"
 fi
 
-# 6) 打包
+# 8) 打包
 cd "$ROOT/dist-pkg"
 zip -r -q "${ARTIFACT}.zip" "$ARTIFACT"
 echo "==> 完成：$ZIP_PATH"

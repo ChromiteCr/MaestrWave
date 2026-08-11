@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
 import { Button } from "../../components/Button/Button";
-import { api, type LokrOption, type LLMStatus } from "../../lib/api";
+import { api, type LokrOption, type LLMStatus, type ScoreStatus } from "../../lib/api";
 import { useAppStore } from "../../state/store";
 import styles from "./SettingsPage.module.css";
 
@@ -13,6 +13,25 @@ export function SettingsPage() {
 
   const [lokrOptions, setLokrOptions] = useState<LokrOption[]>([]);
   const caps = health?.capabilities;
+
+  // 写谱演奏模式的音源与作曲器。选择存后端（双击启动包的用户改不了环境变量）。
+  const [score, setScore] = useState<ScoreStatus | null>(null);
+  const [scoreSaving, setScoreSaving] = useState(false);
+  useEffect(() => {
+    if (health?.score) setScore(health.score);
+  }, [health?.score]);
+
+  const pickRenderer = async (renderer: string) => {
+    setScoreSaving(true);
+    try {
+      setScore(await api.setScorePrefs({ renderer }));
+      await refreshHealth();
+    } catch (e) {
+      alert("保存失败：" + (e as Error).message);
+    } finally {
+      setScoreSaving(false);
+    }
+  };
 
   // BYOK 语言模型。key 只存后端，这里拿到的永远是掩码，没有明文。
   const [llm, setLlm] = useState<LLMStatus | null>(null);
@@ -99,6 +118,58 @@ export function SettingsPage() {
             <Button onClick={saveLlm} disabled={llmSaving}>{llmSaving ? "保存中…" : "保存"}</Button>
           </div>
         </div>
+
+        {score && (
+          <div className={styles.card}>
+            <p className={styles.cardTitle}>音源（写谱演奏模式）</p>
+            <p className={styles.note}>
+              谱子是同一份，换音源只换演奏它的乐器音色。
+            </p>
+            <div className={styles.rendererList}>
+              {([
+                { id: "auto", label: "自动", hint: "有音源就用内置采样，否则内置合成" },
+                {
+                  id: "sf2", label: "内置采样音源",
+                  hint: score.soundfont_found
+                    ? `真实录音采样，随项目自带。${score.soundfont_path.split("/").pop()}`
+                    : "需要在 backend/soundfonts/ 放一个 .sf2",
+                  disabled: !score.soundfont_found,
+                },
+                {
+                  id: "fluidsynth", label: "FluidSynth",
+                  hint: score.fluidsynth_found
+                    ? "外部合成器，和内置采样同源，混响更丰富"
+                    : "没检测到 fluidsynth 可执行文件",
+                  disabled: !score.fluidsynth_found || !score.soundfont_found,
+                },
+                { id: "builtin", label: "内置合成", hint: "不用任何音源文件，音色朴素但到哪都能跑" },
+              ] as const).map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  disabled={scoreSaving || ("disabled" in r && r.disabled)}
+                  aria-pressed={score.renderer_configured === r.id}
+                  className={`${styles.renderer} ${
+                    score.renderer_configured === r.id ? styles.rendererActive : ""}`}
+                  onClick={() => pickRenderer(r.id)}
+                >
+                  <span className={styles.rendererLabel}>{r.label}</span>
+                  <span className={styles.rendererHint}>{r.hint}</span>
+                </button>
+              ))}
+            </div>
+            <div className={styles.statRow}>
+              <span className={styles.statLabel}>
+                <span className={`${styles.dot} ${styles.dotOk}`} />
+                实际生效
+              </span>
+              <span className={styles.statValue}>
+                {score.renderer === "sf2" ? "内置采样音源"
+                  : score.renderer === "fluidsynth" ? "FluidSynth" : "内置合成"}
+              </span>
+            </div>
+          </div>
+        )}
 
         <div className={styles.card}>
           <p className={styles.cardTitle}>状态</p>

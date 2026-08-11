@@ -542,6 +542,25 @@ async def agent_chat(req: AgentChatRequest, x_mw_token: Optional[str] = Header(d
     return {"reply": reply}
 
 
+class ScorePrefsRequest(BaseModel):
+    """「设置」页选的音源与作曲器。auto 表示按可用性自动挑。"""
+    renderer: Optional[str] = None
+    composer: Optional[str] = None
+
+
+@app.post("/api/score/prefs")
+async def set_score_prefs(req: ScorePrefsRequest):
+    valid_r = {"auto", "sf2", "fluidsynth", "builtin"}
+    valid_c = {"auto", "llm", "remote", "algorithmic"}
+    if req.renderer is not None and req.renderer not in valid_r:
+        raise HTTPException(status_code=400, detail=f"renderer 只能是 {sorted(valid_r)}")
+    if req.composer is not None and req.composer not in valid_c:
+        raise HTTPException(status_code=400, detail=f"composer 只能是 {sorted(valid_c)}")
+    from config import save_score_prefs
+    save_score_prefs(renderer=req.renderer, composer=req.composer)
+    return {**renderlib.renderer_status(), **composerlib.composer_status()}
+
+
 @app.get("/api/formation/templates")
 async def get_formation_templates():
     """模版列表。纯本地，没配 key 也能用 —— 这是构型页的保底路径。"""

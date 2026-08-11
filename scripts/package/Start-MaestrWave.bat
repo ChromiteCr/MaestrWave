@@ -15,6 +15,9 @@ rem Runtime data goes into the extracted folder for persistence
 if "%PORT%"=="" set "PORT=3000"
 set "OUTPUT_DIR=%CD%\output\sessions"
 set "PROJECTS_DIR=%CD%\output\projects"
+set "SOUNDFONT_DIR=%CD%\soundfonts"
+set "SCORE_PREFS_PATH=%CD%\output\score_prefs.json"
+if exist "%CD%\fluidsynth\fluidsynth.exe" set "PATH=%CD%\fluidsynth;%PATH%"
 if not exist "%OUTPUT_DIR%" mkdir "%OUTPUT_DIR%"
 if not exist "%PROJECTS_DIR%" mkdir "%PROJECTS_DIR%"
 

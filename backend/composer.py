@@ -675,7 +675,7 @@ class RemoteSymbolicComposer(Composer):
 
 def composer_status() -> dict:
     """给 /api/health 用。"""
-    choice = (config.SCORE_COMPOSER or "auto").strip().lower()
+    choice = config.active_composer_choice().strip().lower()
     llm_ready = bool(llmlib.public_status().get("ready"))
     if choice == "llm":
         active = "llm" if llm_ready else "algorithmic"

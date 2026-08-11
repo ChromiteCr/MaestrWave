@@ -102,6 +102,24 @@ jobs:
           test "$CODE" = "200" || { echo "!! 冒烟测试失败，日志如下："; cat /tmp/mw-smoke.log; exit 1; }
           rm -rf "dist/MaestrWave/frontend-dist"
 
+      # ---------- fluidsynth：收进发布包，让用户不必自己装 ----------
+      # 这是「音源」的可选第二条路：默认走 backend/sf2.py 的内置采样播放器
+      # （纯 Python，到哪都能跑），装了 fluidsynth 的人可以在设置页切过去。
+      - name: Bundle fluidsynth (macOS)
+        if: runner.os == 'macOS'
+        continue-on-error: true
+        run: |
+          brew install fluid-synth
+          python3 scripts/package/bundle_fluidsynth.py dist-deps/fluidsynth
+
+      - name: Bundle fluidsynth (Windows)
+        if: runner.os == 'Windows'
+        continue-on-error: true
+        shell: bash
+        run: |
+          choco install fluidsynth -y --no-progress || exit 0
+          python scripts/package/bundle_fluidsynth.py dist-deps/fluidsynth
+
       # ---------- 组装发布包并压缩 ----------
       - name: Assemble package
         shell: bash

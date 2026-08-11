@@ -30,11 +30,13 @@ try:
     from . import config
     from . import midi_out
     from . import score as scorelib
+    from . import sf2
     from .audio_utils import read_wav_samples, to_wav_bytes
 except Exception:
     import config
     import midi_out
     import score as scorelib
+    import sf2
     from audio_utils import read_wav_samples, to_wav_bytes
 
 logger = logging.getLogger(__name__)
@@ -124,6 +126,43 @@ class FluidSynthRenderer(ScoreRenderer):
 
         samples = _wrap_and_trim(samples, n)
         return to_wav_bytes(samples, SR, normalize=False)
+
+
+# ---------------- 自带的 SoundFont 采样播放 ----------------
+
+class SF2Renderer(ScoreRenderer):
+    """用 `backend/sf2.py` 直接读 SoundFont 放采样。**默认走这条。**
+
+    和 FluidSynthRenderer 出的是同一类东西（都是采样音源），区别在于不需要
+    任何外部可执行文件 —— 源码跑和打包跑完全一致。
+    """
+
+    name = "sf2"
+
+    def __init__(self, soundfont: str):
+        self.soundfont = soundfont
+
+    def render_part(self, part: dict, blueprint: dict) -> bytes:
+        sf = sf2.load(self.soundfont)
+        bpm = float(blueprint["bpm"])
+        bpb = int(blueprint["beats_per_bar"])
+        unit = int(blueprint.get("beat_unit") or 4)
+        n = self.target_samples(blueprint)
+
+        buf = [0.0] * (n + int(TAIL_SECONDS * SR))
+        perc = int(part.get("channel") or 0) == scorelib.PERCUSSION_CHANNEL
+        # 鼓组在 GM 里是 bank 128；旋律乐器走 bank 0
+        bank = 128 if perc else 0
+        program = 0 if perc else int(part.get("gm_program") or 0)
+
+        for ev in scorelib.part_note_events(part, bpm, bpb, unit):
+            sf.render_note(
+                buf, int(ev["start"] * SR), SR,
+                bank=bank, program=program, key=ev["pitch"],
+                vel=ev["velocity"], dur=ev["dur"], gain=MASTER_GAIN,
+            )
+
+        return to_wav_bytes(_wrap_and_trim(buf, n), SR, normalize=False)
 
 
 # ---------------- 纯 Python 合成 ----------------
@@ -280,13 +319,17 @@ def renderer_status() -> dict:
     """给 /api/health 用。前端据此告诉用户当前音色是采样音源还是内置合成。"""
     sf = config.find_soundfont()
     has_fs = fluidsynth_available()
-    choice = (config.SCORE_RENDERER or "auto").strip().lower()
+    choice = config.active_renderer_choice().strip().lower()
+    # auto 优先自带的 SF2 播放器而不是 fluidsynth：音色是同一类（都是采样），
+    # 但不依赖任何外部可执行文件，源码跑和打包跑一致。
     if choice == "fluidsynth":
-        active = "fluidsynth" if (has_fs and sf) else "builtin"
+        active = "fluidsynth" if (has_fs and sf) else ("sf2" if sf else "builtin")
     elif choice == "builtin":
         active = "builtin"
+    elif choice == "sf2":
+        active = "sf2" if sf else "builtin"
     else:
-        active = "fluidsynth" if (has_fs and sf) else "builtin"
+        active = "sf2" if sf else "builtin"
     return {
         "renderer": active,
         # 键名带前缀：这个 dict 会和 composer_status() 合并进 /api/health 的
@@ -302,12 +345,11 @@ def renderer_status() -> dict:
 
 def get_renderer() -> ScoreRenderer:
     st = renderer_status()
+    if st["renderer"] == "sf2":
+        return SF2Renderer(st["soundfont_path"])
     if st["renderer"] == "fluidsynth":
         return FluidSynthRenderer(st["soundfont_path"])
-    if st["renderer_configured"] == "fluidsynth":
-        logger.warning(
-            "SCORE_RENDERER=fluidsynth 但%s，退回内置合成。",
-            "没找到 fluidsynth 可执行文件" if not st["fluidsynth_found"]
-            else f"没在 {st['soundfont_dir']} 找到 SoundFont",
-        )
+    if st["renderer_configured"] in ("fluidsynth", "sf2"):
+        logger.warning("SCORE_RENDERER=%s 但没在 %s 找到 SoundFont，退回内置合成。",
+                       st["renderer_configured"], st["soundfont_dir"])
     return PySynthRenderer()
