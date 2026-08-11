@@ -96,3 +96,56 @@
   font-size: 14px;
   padding: 20px 0;
 }
+
+/* ---- 生成方式选择（新建项目时定，之后不能改）---- */
+
+.modes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mode {
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  border-radius: 10px;
+  padding: 11px 13px;
+  font: inherit;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.mode:hover {
+  border-color: var(--accent-dim);
+}
+
+.modeActive {
+  border-color: var(--accent);
+  background: var(--surface-3);
+}
+
+.modeLabel {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.modeHint {
+  font-size: 12px;
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--ink) 48%, transparent);
+}
+
+.modeNote {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: color-mix(in srgb, var(--ink) 52%, transparent);
+}
+
+.modeNote strong {
+  font-weight: 600;
+  color: color-mix(in srgb, var(--ink) 78%, transparent);
+}

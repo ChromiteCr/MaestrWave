@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Optional
 import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -49,6 +50,38 @@ LLM_CONFIG_PATH = Path(os.environ.get(
 # 当 ACE-Step API 调用失败时，是否回退到本地程序化合成（保证演示链路）
 ALLOW_SYNTH_FALLBACK = os.environ.get("ALLOW_SYNTH_FALLBACK", "1") not in ("0", "false", "False")
 
+# ---- M7：符号乐谱生成模式（generation_mode = "score"）----
+# 作曲器：llm = BYOK 大模型写谱；remote = 外部符号音乐模型服务；
+#         algorithmic = 纯规则，不依赖任何外部服务；
+#         auto（默认）= 有 LLM 配置就用 llm，否则退到 algorithmic。
+SCORE_COMPOSER = os.environ.get("SCORE_COMPOSER", "auto")
+SYMBOLIC_COMPOSER_URL = os.environ.get("SYMBOLIC_COMPOSER_URL", "")
+
+# 渲染器：fluidsynth = 外部 fluidsynth + SoundFont；builtin = 纯 Python 合成；
+#         auto（默认）= 两个条件都满足就用 fluidsynth，否则 builtin。
+SCORE_RENDERER = os.environ.get("SCORE_RENDERER", "auto")
+# SoundFont 目录。放任意 .sf2 / .sf3 进去即可，不指定具体文件名就取字典序第一个
+# —— 用户从网上下来的文件名千奇百怪，逼他们改名或改环境变量是没必要的摩擦。
+SOUNDFONT_DIR = Path(os.environ.get("SOUNDFONT_DIR", str(BASE_DIR / "backend" / "soundfonts")))
+SOUNDFONT_PATH = os.environ.get("SOUNDFONT_PATH", "")
+SOUNDFONT_EXTENSIONS = (".sf2", ".sf3")
+
+# 渲染采样率。**必须和其它生成路径一致**：audio_utils.mix_wav_files 明确不做重
+# 采样（见那里的注释），22050 的轨混进 44100 的轨会变成噪音。
+SCORE_SAMPLE_RATE = 44100
+
+
+def find_soundfont() -> Optional[str]:
+    """找一个可用的 SoundFont。显式配置优先，否则扫目录取第一个。"""
+    if SOUNDFONT_PATH and Path(SOUNDFONT_PATH).is_file():
+        return SOUNDFONT_PATH
+    d = SOUNDFONT_DIR
+    if d.is_dir():
+        for p in sorted(d.iterdir()):
+            if p.is_file() and p.suffix.lower() in SOUNDFONT_EXTENSIONS:
+                return str(p.resolve())
+    return None
+
 # 支持的 LoKr 权重文件后缀
 LOKR_EXTENSIONS = (".pt", ".safetensors", ".ckpt", ".bin")
 
@@ -65,32 +98,53 @@ STEM_PROMPTS = {
 # tab 就是从这里取的），也有具体乐器（长号/双簧管...），用户可以任选其一新增
 # 乐器 tab。role 用于 project_gen.py 决定 lego prompt 怎么描述"这个新声部相对
 # 于已有声部要扮演什么角色"（melody / harmony / bass / rhythm）。
+# M7 起每件乐器多两个字段，给「符号乐谱」生成模式（backend/score.py）用：
+#   gm_program —— General MIDI 音色号（0 起）。渲染器按它选 SoundFont 里的音色。
+#   range      —— (最低, 最高) MIDI 音高。取**保守的舒适音区**而不是极限音域：
+#                 作曲器写出界的音会被八度移位进这个区间，区间给宽了等于没约束，
+#                 小提琴照样能收到一个拉不出来的音。
+#   percussion —— 走 GM 第 10 通道的鼓组。只有笼统的「打击乐」是；定音鼓有确定
+#                 音高，走普通通道（见 score.py 的 DRUM_KEYS 注释）。
 INSTRUMENT_LIBRARY = {
     "brass": {"display_name": "铜管", "role": "harmony",
+              "gm_program": 61, "range": (40, 79),
               "prompt": "Brass section, warm and cohesive ensemble blend, {style}"},
     "woodwind": {"display_name": "木管", "role": "harmony",
+                 "gm_program": 73, "range": (55, 93),
                  "prompt": "Woodwind ensemble, flute and oboe, light and airy countermelody, {style}"},
+    # range 对鼓组不是音域而是可用鼓件的编号跨度（见 score.DRUM_KEYS）
     "percussion": {"display_name": "打击乐", "role": "rhythm",
+                   "gm_program": 0, "range": (35, 81), "percussion": True,
                    "prompt": "Orchestral percussion, timpani and cymbals, rhythmic foundation, {style}"},
     "strings": {"display_name": "弦乐", "role": "melody",
+                "gm_program": 48, "range": (40, 88),
                 "prompt": "String section, orchestral, legato, expressive, {style}"},
     "violin": {"display_name": "小提琴", "family": "strings", "role": "melody",
+               "gm_program": 40, "range": (55, 96),
                "prompt": "Solo violin melody, orchestral, legato, expressive vibrato, {style}"},
     "cello": {"display_name": "大提琴", "family": "strings", "role": "bass",
+              "gm_program": 42, "range": (36, 76),
               "prompt": "Cello section, orchestral bass and harmony, rich warm tone, {style}"},
     "trumpet": {"display_name": "小号", "family": "brass", "role": "melody",
+                "gm_program": 56, "range": (52, 82),
                 "prompt": "Solo trumpet, orchestral fanfare, bold and majestic lead line, {style}"},
     "trombone": {"display_name": "长号", "family": "brass", "role": "harmony",
+                 "gm_program": 57, "range": (40, 72),
                  "prompt": "Trombone section, warm brass harmony beneath the melody, {style}"},
     "french_horn": {"display_name": "圆号", "family": "brass", "role": "harmony",
+                     "gm_program": 60, "range": (34, 77),
                      "prompt": "French horn, mellow sustained brass harmony, {style}"},
     "oboe": {"display_name": "双簧管", "family": "woodwind", "role": "melody",
+             "gm_program": 68, "range": (58, 91),
              "prompt": "Solo oboe, expressive countermelody, {style}"},
     "flute": {"display_name": "长笛", "family": "woodwind", "role": "melody",
+              "gm_program": 73, "range": (60, 96),
               "prompt": "Solo flute, light airy melodic line, {style}"},
     "clarinet": {"display_name": "单簧管", "family": "woodwind", "role": "harmony",
+                 "gm_program": 71, "range": (50, 91),
                  "prompt": "Clarinet, smooth legato harmony line, {style}"},
     "timpani": {"display_name": "定音鼓", "family": "percussion", "role": "rhythm",
+                "gm_program": 47, "range": (41, 57),
                 "prompt": "Timpani, orchestral rhythmic punctuation and low-end impact, {style}"},
 }
 
@@ -173,13 +227,20 @@ def resolve_instrument_key(raw_name: str) -> tuple[str, str]:
 
 def get_instrument_spec(key: str) -> dict:
     """按 key 查 INSTRUMENT_LIBRARY；查不到时（用户填了完全自定义的乐器名）
-    退化成一个通用模板，role 默认 harmony。"""
+    退化成一个通用模板，role 默认 harmony。
+
+    自定义乐器也给 gm_program / range：弦乐合奏音色 + C3–C6，是一个"放在哪件
+    乐器上都不至于离谱"的中庸取值。宁可音色不准，不能没有 —— 缺了这两项，
+    符号模式下这件乐器要么渲染不出声，要么写出一堆超出人类音域的音。
+    """
     spec = INSTRUMENT_LIBRARY.get(key)
     if spec:
         return spec
     return {
         "display_name": key,
         "role": "harmony",
+        "gm_program": 48,
+        "range": (48, 84),
         "prompt": f"{key}, orchestral, blending naturally with the rest of the ensemble, " + "{style}",
     }
 

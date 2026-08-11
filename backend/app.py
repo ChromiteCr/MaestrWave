@@ -9,6 +9,7 @@ import io
 import json
 import logging
 import time
+import urllib.parse
 import zipfile
 
 # support running as package (backend.app) or as module (app)
@@ -22,6 +23,9 @@ try:
     from . import project as projectlib
     from . import project_gen
     from .generation_backend import get_backend, backend_capabilities
+    from . import composer as composerlib
+    from . import render as renderlib
+    from . import score_gen
     from .conduct import hub as conduct_hub
     from .netinfo import network_info
     from .tunnel import manager as tunnel_manager
@@ -38,6 +42,9 @@ except Exception:
     import project as projectlib
     import project_gen
     from generation_backend import get_backend, backend_capabilities
+    import composer as composerlib
+    import render as renderlib
+    import score_gen
     from conduct import hub as conduct_hub
     from netinfo import network_info
     from tunnel import manager as tunnel_manager
@@ -141,6 +148,9 @@ async def health():
         "generation_backend": GENERATION_BACKEND,
         "generation_backend_ready": active_ok,
         "capabilities": backend_capabilities(),
+        # 符号乐谱模式（generation_mode="score"）用哪个作曲器、哪个渲染器。
+        # 和上面那套是两个维度：上面按环境变量选服务，这个按项目选流水线。
+        "score": {**renderlib.renderer_status(), **composerlib.composer_status()},
     }
 
 
@@ -434,6 +444,23 @@ def _take_url(project_id: str, instrument_id: str, audio_file: str) -> str:
     return f"/project-audio/{project_id}/takes/{instrument_id}/{audio_file}"
 
 
+def _content_disposition(filename: str) -> str:
+    """下载文件名。**中文名必须走 RFC 5987 的 filename\\*。**
+
+    HTTP 头只能是 latin-1，直接把中文塞进 `filename="..."` 会让 starlette 在
+    编码响应头时抛 UnicodeEncodeError，整个请求 500 —— 而项目名默认就允许中文。
+    做法是给两份：ASCII 的 `filename` 兜底老客户端，UTF-8 百分号编码的
+    `filename*` 给现代浏览器（后者优先级更高）。
+    """
+    quoted = urllib.parse.quote(filename, safe="")
+    stem, _, ext = filename.rpartition(".")
+    ascii_stem = (stem or filename).encode("ascii", "ignore").decode("ascii")
+    ascii_stem = ascii_stem.replace('"', "").strip()
+    # 纯中文名 ASCII 化之后会只剩个扩展名（".mid"），给个能认的默认词干
+    ascii_name = f"{ascii_stem or 'maestrwave'}.{ext}" if ext else (ascii_stem or "download")
+    return f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quoted}"
+
+
 def _serialize_project(project: dict) -> dict:
     """给每个 take 补一个可直接播放的 url 字段，前端不用自己拼路径。"""
     out = json.loads(json.dumps(project))
@@ -686,7 +713,29 @@ async def export_project_endpoint(project_id: str):
     filename = f"{project.get('name') or project_id}.zip"
     return StreamingResponse(
         buf, media_type="application/zip",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={"Content-Disposition": _content_disposition(filename)},
+    )
+
+
+@app.get("/api/projects/{project_id}/score")
+async def get_project_score(project_id: str):
+    """蓝图 + 各声部音符，喂「生成」页的钢琴卷帘。"""
+    project = _load_or_404(project_id)
+    return score_gen.project_score(project)
+
+
+@app.get("/api/projects/{project_id}/score.mid")
+async def get_project_midi(project_id: str):
+    """全部声部导出成一个 MIDI，拿去 MuseScore / DAW 里用。"""
+    project = _load_or_404(project_id)
+    try:
+        data = score_gen.project_midi(project)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    name = f"{project.get('name') or project_id}.mid"
+    return StreamingResponse(
+        io.BytesIO(data), media_type="audio/midi",
+        headers={"Content-Disposition": _content_disposition(name)},
     )
 
 
@@ -728,6 +777,23 @@ async def generate_instrument_endpoint(project_id: str, instrument_id: str,
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="project not found")
 
+    # 模式三走完全不同的流水线（作曲 → 渲染），但**返回结构一模一样**，
+    # 所以前端、浏览页、指挥链路都不用知道这件事。
+    if (project.get("generation_mode") or "").lower() == "score":
+        try:
+            take = await score_gen.generate_instrument_score(
+                project, instrument_id, composerlib.get_composer(), renderlib.get_renderer())
+        except KeyError:
+            raise HTTPException(status_code=404, detail="instrument not found")
+        except composerlib.ComposerError as e:
+            raise HTTPException(status_code=502, detail=str(e))
+        except Exception as e:
+            logger.exception("score generation failed: %s", e)
+            raise HTTPException(status_code=500, detail=str(e))
+        take = dict(take)
+        take["url"] = _take_url(project_id, instrument_id, take["audio_file"])
+        return take
+
     lora_path = _resolve_lora_id_or_path(req.lora_path)
     backend = get_backend()
     try:
@@ -754,6 +820,26 @@ async def repaint_instrument_endpoint(project_id: str, instrument_id: str,
         project = projectlib.load_project(project_id)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="project not found")
+
+    # 符号模式下重绘是真能做的：重写那几小节的音符再整轨重渲染，
+    # 不需要模型支持音频层面的局部重绘（天琴那边直接 501）。
+    if (project.get("generation_mode") or "").lower() == "score":
+        try:
+            take = await score_gen.repaint_instrument_score(
+                project, instrument_id, composerlib.get_composer(), renderlib.get_renderer(),
+                start_time=req.start_time, end_time=req.end_time)
+        except KeyError:
+            raise HTTPException(status_code=404, detail="instrument not found")
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        except composerlib.ComposerError as e:
+            raise HTTPException(status_code=502, detail=str(e))
+        except Exception as e:
+            logger.exception("score repaint failed: %s", e)
+            raise HTTPException(status_code=500, detail=str(e))
+        take = dict(take)
+        take["url"] = _take_url(project_id, instrument_id, take["audio_file"])
+        return take
 
     lora_path = _resolve_lora_id_or_path(req.lora_path)
     backend = get_backend()

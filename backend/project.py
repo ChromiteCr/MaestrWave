@@ -37,6 +37,9 @@ PROJECT_DEFAULTS: dict = {
     "generation_order": [],   # 由构型算出的乐器生成顺序（锚点在前）
     "master": None,           # 模式二：整曲成品
     "stems": [],              # 模式二：extract 分出的轨，原样记录不做解释
+    # 模式三「符号乐谱」：全曲共用的和声/段落蓝图，见 backend/score_gen.py。
+    # 各声部的音符不在这里，落在 PROJECTS_DIR/{id}/scores/{take_id}.json。
+    "score_blueprint": None,
 }
 
 INSTRUMENT_DEFAULTS: dict = {

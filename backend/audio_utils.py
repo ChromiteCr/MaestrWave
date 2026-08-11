@@ -26,14 +26,24 @@ def mix_into(target: List[float], src: Sequence[float], offset: int = 0) -> None
         j += 1
 
 
-def to_wav_bytes(samples: Sequence[float], sr: int) -> bytes:
-    """float 采样（约 -1..1）峰值归一化后编码为 16-bit PCM mono WAV。"""
-    peak = 0.0
-    for s in samples:
-        a = s if s >= 0 else -s
-        if a > peak:
-            peak = a
-    gain = 0.9 / peak if peak > 1e-6 else 1.0
+def to_wav_bytes(samples: Sequence[float], sr: int, normalize: bool = True) -> bytes:
+    """float 采样（约 -1..1）编码为 16-bit PCM mono WAV。
+
+    `normalize=True`（默认，保持既有调用方行为）会把峰值拉到 0.9。
+
+    **分声部渲染时必须传 False。** 逐轨归一化会把每条音轨都推到同一个响度，
+    一件三角铁和铜管齐奏出来一样响，整个配器平衡当场作废 —— 而这个软件的
+    卖点正是指挥能分别控制各个声部。M7 的符号渲染走固定增益，响度差异由
+    力度（velocity）和声部基准音量决定。
+    """
+    gain = 1.0
+    if normalize:
+        peak = 0.0
+        for s in samples:
+            a = s if s >= 0 else -s
+            if a > peak:
+                peak = a
+        gain = 0.9 / peak if peak > 1e-6 else 1.0
     buf = io.BytesIO()
     with wave.open(buf, "wb") as wf:
         wf.setnchannels(1)

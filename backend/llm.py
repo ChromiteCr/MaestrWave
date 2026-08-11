@@ -283,11 +283,16 @@ async def chat_text(messages: list[dict], *, temperature: float = 0.4,
             raise LLMError(f"语言模型返回的内容无法解析：{type(e).__name__}: {e}") from None
 
 
-async def chat_json(system: str, user: str, *, temperature: float = 0.35) -> dict:
+async def chat_json(system: str, user: str, *, temperature: float = 0.35,
+                    max_tokens: int = 4000) -> dict:
     """要一段 JSON 回来。失败重试至多 MAX_JSON_RETRIES 次，仍失败就明确报错。
 
     绝不「猜测拼接」—— 构型数据会直接决定生成什么音乐，宁可报错让用户重试，
     也不要把一个半残的结构悄悄落盘。
+
+    `max_tokens` 必须显式发：各家兼容层的默认上限差得很远（有的只有几百），
+    而 M7 的乐谱一份就是上千个数字，截断的话回来的是一段不完整的 JSON。
+    Anthropic 的兼容端点更是**强制要求**这个字段。
     """
     cfg, url = _prepare_call()
 
@@ -300,6 +305,7 @@ async def chat_json(system: str, user: str, *, temperature: float = 0.35) -> dic
                 "model": cfg["model"],
                 "messages": messages,
                 "temperature": temperature,
+                "max_tokens": max_tokens,
                 # 兼容层对 response_format 的支持面不一（DeepSeek 只有 json_object、
                 # 部分 provider 完全忽略），所以 400 时会去掉它重来一次，见下。
                 "response_format": {"type": "json_object"},

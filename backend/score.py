@@ -41,11 +41,20 @@ POLYPHONY = {"melody": 2, "harmony": 4, "bass": 2, "rhythm": 8}
 
 # ---- 打击乐 ----
 # GM 第 10 通道（0 起算就是 9）上音高数字是**鼓件编号不是音高**，所以
-# 既不能做八度移位，也不能按音域钳制。限定成这 8 件，模型只能从中挑。
+# 既不能做八度移位，也不能按音域钳制。
+#
+# 只放**管弦乐队里真有的**打击乐器。GM 鼓组里的闭镲/开镲/嗵鼓属于爵士鼓组，
+# 管弦乐队没有这几件 —— 放进来模型立刻会写出流行歌的节奏型，整首曲子的
+# 编制就跑偏了。定音鼓不在这张表里：它有确定音高，走普通通道。
 PERCUSSION_CHANNEL = 9
 DRUM_KEYS = {
-    35: "大鼓", 38: "军鼓", 42: "闭镲", 45: "低嗵",
-    46: "开镲", 47: "中嗵", 49: "吊镲", 51: "叮叮镲",
+    35: "大鼓",       # orchestral bass drum
+    38: "小军鼓",     # snare，进行曲里的主力
+    49: "吊镲",       # crash，段落与高潮的强调
+    52: "中国钹",     # 更暗更长的一击
+    55: "小吊镲",     # splash，轻的强调
+    80: "三角铁（闷音）",
+    81: "三角铁",     # 明亮的点缀
 }
 
 # 自定义乐器（不在 INSTRUMENT_LIBRARY 里）的兜底音色与音域：
@@ -212,6 +221,50 @@ def parse_chord(symbol: str) -> dict:
         "symbol": raw,
         "resolved": resolved,
     }
+
+
+# ---------------- 调式 ----------------
+
+MAJOR_SCALE = (0, 2, 4, 5, 7, 9, 11)
+# 自然小调。和声小调的升七级留给作曲器在需要属和弦时自己抬，不写死在音阶里 ——
+# 整条旋律都用升七级会听起来像匈牙利民歌，不是我们要的默认气质。
+MINOR_SCALE = (0, 2, 3, 5, 7, 8, 10)
+
+_SHARP_NAMES = ("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
+_FLAT_NAMES = ("C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B")
+# 这些调按惯例写降号。写成 A# major 而不是 Bb major 不算错，但没人这么记谱。
+_FLAT_KEYS = {5, 10, 3, 8, 1}  # F, Bb, Eb, Ab, Db
+
+
+def parse_key(key: str) -> dict:
+    """'D major' / 'a minor' / 'Bb' → {tonic_pc, minor, flats}。解析不了按 C 大调。"""
+    raw = (key or "").strip()
+    minor = "minor" in raw.lower() or raw.lower().endswith(" m")
+    parsed = _root_pc(raw.split()[0] if raw else "")
+    tonic = parsed[0] if parsed else 0
+    return {"tonic_pc": tonic, "minor": minor, "flats": tonic in _FLAT_KEYS}
+
+
+def pc_name(pc: int, flats: bool = False) -> str:
+    return (_FLAT_NAMES if flats else _SHARP_NAMES)[pc % 12]
+
+
+def scale_pcs(key: dict) -> list[int]:
+    steps = MINOR_SCALE if key["minor"] else MAJOR_SCALE
+    return [(key["tonic_pc"] + s) % 12 for s in steps]
+
+
+def diatonic_triads(key: dict) -> list[str]:
+    """调内七个级的三和弦符号，下标 0 = I 级。
+
+    大调 I ii iii IV V vi vii°，小调 i ii° III iv v VI VII —— 但**小调的 v 级
+    换成大三和弦**（和声小调的属功能）。自然小调的 v 是小三和弦，收束时完全
+    没有回家的拉力，整段听着像没写完。
+    """
+    pcs = scale_pcs(key)
+    qualities = (["", "m", "m", "", "", "m", "dim"] if not key["minor"]
+                 else ["m", "dim", "", "m", "", "", ""])
+    return [f"{pc_name(pcs[i], key['flats'])}{qualities[i]}" for i in range(7)]
 
 
 def pitch_in_chord(pitch: int, chord: dict) -> bool:

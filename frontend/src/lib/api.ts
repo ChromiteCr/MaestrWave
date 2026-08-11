@@ -160,8 +160,24 @@ export interface MusicFormation {
   warnings: FormationWarning[];
 }
 
-/** 生成模式。multitrack=每乐器一条轨；separate=云端整曲再分轨。见 backend/project.py */
-export type GenerationMode = "multitrack" | "separate";
+/** 生成模式。multitrack=每乐器一条轨；separate=云端整曲再分轨；
+ *  score=AI 写谱再用采样器渲染（M7）。见 backend/project.py */
+export type GenerationMode = "multitrack" | "separate" | "score";
+
+/** 见 backend/render.py 与 backend/composer.py：符号乐谱模式当前用哪套流水线。 */
+export interface ScoreStatus {
+  renderer: "fluidsynth" | "builtin";
+  renderer_configured: string;
+  fluidsynth_found: boolean;
+  soundfont_found: boolean;
+  soundfont_path: string;
+  soundfont_dir: string;
+  sample_rate: number;
+  composer: "llm" | "remote" | "algorithmic";
+  composer_configured: string;
+  llm_ready: boolean;
+  remote_url: string;
+}
 
 export interface Instrument {
   id: string;
@@ -224,6 +240,8 @@ export interface HealthInfo {
   generation_backend: string;
   generation_backend_ready: boolean;
   capabilities: BackendCapabilities;
+  /** M7 起才有；老后端返回的 health 里没有这一项，一律按可选处理。 */
+  score?: ScoreStatus;
 }
 
 /** 见 backend/netinfo.py：浏览器拿不到本机局域网 IP，只能问后端。 */
@@ -321,6 +339,8 @@ export const api = {
     time_signature: string;
     segment_duration: number;
     name?: string;
+    /** 不传时后端默认 multitrack。见 backend/project.py 的 PROJECT_DEFAULTS。 */
+    generation_mode?: GenerationMode;
   }) => req<Project>("/api/projects", { method: "POST", body: JSON.stringify(body) }),
 
   listProjects: () => req<{ projects: Project[] }>("/api/projects"),

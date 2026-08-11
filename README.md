@@ -218,6 +218,41 @@ uvicorn app:app --host 0.0.0.0 --port 3000
 
 天琴返回的是完整曲子的 MP3，后端会用 ffmpeg 转成单声道 WAV 并裁到项目的「乐曲总时长」，保证多轨能对齐循环播放。没装 ffmpeg 时会告警并保留原始音频（浏览器仍能播，但 Python 侧的混音会跳过这条轨）。
 
+## 写谱演奏模式（M7）
+
+前两种模式都是**直接产音频**，问题在于这类模型输出的是频谱不是音符：说了 92 BPM 出来的未必真是 92 BPM，多件乐器各生成一次就更对不齐，而这个软件恰好需要「每件乐器一条独立音轨 + 精确的拍网格 + 乐器能按段落进出场」。
+
+第三种模式换个路子：**AI 先写谱，再由采样器演奏**。产物仍然是每件乐器一个 WAV，所以浏览页、输出页、摄像头指挥一行都没改。新建项目时选「写谱演奏」即可。
+
+它顺带解决了几件旧问题：各声部长度精确一致、循环无接缝（尾音会叠回开头）、构型里的 `participation` 第一次真正生效（不参与的小节根本不写音符）、Repaint 真的能用（重写那几小节的音符再整轨重渲染）。谱子可以导出成 `.mid` 拿去 MuseScore 或 DAW 里用。
+
+### 作曲器
+
+| 值 | 说明 |
+|---|---|
+| `algorithmic` | 纯规则，不联网、不吃显存。调性统一、声部进行平稳、音区不重叠 |
+| `llm` | 走已有的 BYOK 通路。任何一步失败都退回 `algorithmic`，并把降级原因记进 take |
+| `remote` | 外部符号音乐模型服务，需配 `SYMBOLIC_COMPOSER_URL` |
+
+默认 `auto`：配了语言模型就用 `llm`，否则 `algorithmic`。
+
+```bash
+export SCORE_COMPOSER=algorithmic   # 强制用本地规则，一次外部调用都不发
+```
+
+### 音源
+
+默认走内置的纯 Python 合成，零安装但音色朴素。装上 fluidsynth 加任意 GM SoundFont 就会自动切成采样音源，同一份谱子不用重写：
+
+```bash
+brew install fluid-synth
+mkdir -p backend/soundfonts   # 把 .sf2 / .sf3 放进去即可，文件名随意
+```
+
+推荐 [MuseScore_General](https://musescore.org/en/handbook/2/soundfonts-and-sfz-files)（MIT 授权，sf3 压缩版约 36MB，fluidsynth 2.x 直接吃）。`/api/health` 的 `score` 块会如实报告当前用的是哪个作曲器和哪个音源。
+
+**打击乐限定为管弦乐编制** —— 大鼓、小军鼓、吊镲、三角铁，没有踩镲和嗵鼓（那是爵士鼓组）。定音鼓是有音高的乐器，走普通通道写主音／属音，不当鼓组音效。
+
 ## 代码结构
 
 - backend

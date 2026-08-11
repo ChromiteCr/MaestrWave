@@ -1,15 +1,32 @@
 import { useEffect, useState } from "react";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
 import { Button } from "../../components/Button/Button";
-import { api, type Project } from "../../lib/api";
+import { api, type GenerationMode, type Project } from "../../lib/api";
 import { useAppStore } from "../../state/store";
 import styles from "./FilePage.module.css";
 
-// 新建项目只问"叫什么、多长"；风格描述/调性/拍号/BPM 都交给「生成」页去调，
-// 这里用合理的默认值创建，避免和那边的表单重复。
+// 新建项目只问"叫什么、多长、怎么生成"；风格描述/调性/拍号/BPM 都交给「生成」
+// 页去调，这里用合理的默认值创建，避免和那边的表单重复。
 const DEFAULT_KEY = "D major";
 const DEFAULT_BPM = 92;
 const DEFAULT_TIME_SIGNATURE = "4/4";
+
+/**
+ * 生成方式是**建项目时就定死的**，之后不能改 —— 三种模式的产物结构不一样
+ * （模式二有 master + stems，模式三有乐谱），中途换等于把已生成的东西全作废。
+ */
+const MODES: { id: GenerationMode; label: string; hint: string }[] = [
+  {
+    id: "multitrack",
+    label: "分轨生成",
+    hint: "每件乐器单独调音乐模型生成一条音轨。音色真实，但各声部只能靠调性和速度对齐。",
+  },
+  {
+    id: "score",
+    label: "写谱演奏",
+    hint: "AI 先写出每件乐器的谱子，再由采样器演奏。速度和拍点精确，声部之间真正配合；音色取决于音源。",
+  },
+];
 
 export function FilePage() {
   const setProject = useAppStore((s) => s.setProject);
@@ -21,6 +38,9 @@ export function FilePage() {
 
   const [name, setName] = useState("");
   const [totalDuration, setTotalDuration] = useState(16);
+  const [mode, setMode] = useState<GenerationMode>("multitrack");
+  const health = useAppStore((s) => s.health);
+  const refreshHealth = useAppStore((s) => s.refreshHealth);
 
   const loadProjects = async () => {
     setLoading(true);
@@ -34,7 +54,8 @@ export function FilePage() {
 
   useEffect(() => {
     loadProjects();
-  }, []);
+    refreshHealth();
+  }, [refreshHealth]);
 
   const openProject = (project: Project) => {
     setProject(project);
@@ -51,6 +72,7 @@ export function FilePage() {
         bpm: DEFAULT_BPM,
         time_signature: DEFAULT_TIME_SIGNATURE,
         segment_duration: totalDuration,
+        generation_mode: mode,
       });
       openProject(project);
     } catch (e) {
@@ -82,6 +104,40 @@ export function FilePage() {
               value={totalDuration}
               onChange={(e) => setTotalDuration(Number(e.target.value))}
             />
+          </div>
+
+          {/* 生成方式建完就锁死，所以放在这里而不是「生成」页 */}
+          <div className={styles.field}>
+            <span className="field-label">生成方式</span>
+            <div className={styles.modes}>
+              {MODES.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  className={`${styles.mode} ${mode === m.id ? styles.modeActive : ""}`}
+                  aria-pressed={mode === m.id}
+                  onClick={() => setMode(m.id)}
+                >
+                  <span className={styles.modeLabel}>{m.label}</span>
+                  <span className={styles.modeHint}>{m.hint}</span>
+                </button>
+              ))}
+            </div>
+            {mode === "score" && health?.score && (
+              <p className={styles.modeNote}>
+                当前会用
+                <strong>
+                  {health.score.composer === "llm" ? "语言模型" :
+                    health.score.composer === "remote" ? "外部符号模型" : "内置规则"}
+                </strong>
+                作曲、
+                <strong>{health.score.renderer === "fluidsynth" ? "采样音源" : "内置合成"}</strong>
+                演奏。
+                {health.score.renderer !== "fluidsynth" && (
+                  <> 装上 fluidsynth 并把 SoundFont 放进 {health.score.soundfont_dir} 可换成采样音源。</>
+                )}
+              </p>
+            )}
           </div>
 
           <Button variant="primary" disabled={creating} onClick={handleCreate}>
