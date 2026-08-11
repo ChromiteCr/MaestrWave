@@ -92,6 +92,8 @@ def save_score_prefs(**fields) -> dict:
     for k in ("renderer", "composer"):
         if fields.get(k) is not None:
             prefs[k] = str(fields[k]).strip().lower()
+    if fields.get("symbolic_url") is not None:
+        prefs["symbolic_url"] = str(fields["symbolic_url"]).strip().rstrip("/")
     SCORE_PREFS_PATH.parent.mkdir(parents=True, exist_ok=True)
     SCORE_PREFS_PATH.write_text(json.dumps(prefs, ensure_ascii=False, indent=2),
                                 encoding="utf-8")
@@ -104,6 +106,38 @@ def active_renderer_choice() -> str:
 
 def active_composer_choice() -> str:
     return load_score_prefs().get("composer") or SCORE_COMPOSER or "auto"
+
+
+def active_symbolic_url() -> str:
+    """外部符号音乐模型服务的地址。设置页写的优先，其次环境变量。"""
+    return load_score_prefs().get("symbolic_url") or SYMBOLIC_COMPOSER_URL or ""
+
+
+def is_private_endpoint(url: str) -> bool:
+    """这个地址是不是只在本机/局域网里。
+
+    **接口只允许设成私网地址**，公网地址必须走环境变量或手工编辑偏好文件。
+    照抄 llm.py 那条「白名单只能手工加、不能通过接口加」的思路：隧道一开，
+    后端就暴露在公网上，而这个地址决定了后端会把整份乐谱 POST 到哪去 ——
+    能通过接口随便改成任意外网地址的话，它就是一条现成的外传通道。
+    """
+    import ipaddress
+    from urllib.parse import urlparse
+    try:
+        u = urlparse(url)
+    except ValueError:
+        return False
+    if u.scheme not in ("http", "https") or not u.hostname:
+        return False
+    host = u.hostname.lower()
+    if host == "localhost" or host.endswith(".local") or host.endswith(".localhost"):
+        return True
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        # 不是 IP 也不是 .local：可能是任意公网域名，不放行
+        return False
+    return ip.is_loopback or ip.is_private or ip.is_link_local
 
 
 def find_soundfont() -> Optional[str]:

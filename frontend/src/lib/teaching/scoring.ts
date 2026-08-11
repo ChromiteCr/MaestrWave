@@ -25,7 +25,7 @@ import { shapeDistance } from "../camera/beatPattern";
 import type { RubricDimension, RubricItem } from "./curriculum";
 import { DIMENSIONS } from "./curriculum";
 import { ictusTimes, medianFrameIntervalMs, splitBars, splitBarsByDownbeat, type Recording } from "./recorder";
-import { patternPointAt, PATTERNS, type Meter, type Point } from "./patterns";
+import { motionPattern, patternPointAt, type Meter, type Point } from "./patterns";
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
@@ -166,7 +166,7 @@ const CLARITY_LOOKBACK_MS = 60;
  * 等于设了一个谁都够不着的线，完美动作也只能得 85 分。
  */
 function templateClarity(meter: Meter, bpm: number, frameMs: number): number {
-  const p = PATTERNS[meter];
+  const p = motionPattern(meter);
   const beatMs = 60000 / bpm;
   const dBeat = frameMs / beatMs;
   const speedAt = (beat: number) => {

@@ -629,7 +629,7 @@ class RemoteSymbolicComposer(Composer):
     name = "remote"
 
     def __init__(self, url: Optional[str] = None):
-        self.url = (url or config.SYMBOLIC_COMPOSER_URL or "").rstrip("/")
+        self.url = (url or config.active_symbolic_url()).rstrip("/")
         self._fallback = AlgorithmicComposer()
 
     async def blueprint(self, project: dict) -> dict:
@@ -680,7 +680,7 @@ def composer_status() -> dict:
     if choice == "llm":
         active = "llm" if llm_ready else "algorithmic"
     elif choice == "remote":
-        active = "remote" if config.SYMBOLIC_COMPOSER_URL else "algorithmic"
+        active = "remote" if config.active_symbolic_url() else "algorithmic"
     elif choice == "algorithmic":
         active = "algorithmic"
     else:
@@ -689,7 +689,7 @@ def composer_status() -> dict:
         "composer": active,
         "composer_configured": choice,
         "llm_ready": llm_ready,
-        "remote_url": config.SYMBOLIC_COMPOSER_URL,
+        "remote_url": config.active_symbolic_url(),
     }
 
 

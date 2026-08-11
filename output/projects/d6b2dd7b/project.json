@@ -1,0 +1,202 @@
+{
+  "project_id": "d6b2dd7b",
+  "name": "Project d6b2dd7b",
+  "created_at": "2026-08-11T07:10:12.229994Z",
+  "style_description": "",
+  "key": "D major",
+  "bpm": 92,
+  "time_signature": "4/4",
+  "instruments": [],
+  "schema_version": 2,
+  "generation_mode": "multitrack",
+  "total_duration": 16.0,
+  "formation": {
+    "schema_version": 1,
+    "revision": 0,
+    "created_by": "llm",
+    "source_template_id": "chamber",
+    "updated_at": "2026-08-11T07:10:42.575484Z",
+    "dirty": false,
+    "global": {
+      "total_duration": 16.0,
+      "key": "G major",
+      "bpm": 76,
+      "time_signature": "4/4",
+      "style_description": "",
+      "global_prompt": "intimate orchestral ensemble, warm and conversational, gentle dynamics",
+      "mood_tags": [
+        "温暖",
+        "亲密",
+        "流动"
+      ],
+      "ensemble_size": "orchestral",
+      "dynamic_range": "narrow"
+    },
+    "sections": [
+      {
+        "id": "ec749806",
+        "kind": "intro",
+        "label": "呈示",
+        "duration": 4.0,
+        "intensity": 0.35,
+        "shape": "flat",
+        "is_climax": false
+      },
+      {
+        "id": "70f220b4",
+        "kind": "main",
+        "label": "主题",
+        "duration": 4.0,
+        "intensity": 0.55,
+        "shape": "arch",
+        "is_climax": false
+      },
+      {
+        "id": "706d494b",
+        "kind": "bridge",
+        "label": "过渡",
+        "duration": 4.0,
+        "intensity": 0.45,
+        "shape": "dip",
+        "is_climax": false
+      },
+      {
+        "id": "5698dd63",
+        "kind": "outro",
+        "label": "收束",
+        "duration": 4.0,
+        "intensity": 0.3,
+        "shape": "fall",
+        "is_climax": false
+      }
+    ],
+    "instruments": [
+      {
+        "id": "ef1585fe",
+        "library_key": "violin",
+        "display_name": "小提琴",
+        "role": "melody",
+        "family": "strings",
+        "tier": "core",
+        "prominence": 0.78,
+        "participation": [
+          0.8,
+          1,
+          0.7,
+          0.6
+        ],
+        "instrument_prompt": "warm legato violin, leading melodic lines with expressive vibrato",
+        "resolution": {
+          "matched": "exact",
+          "llm_raw_name": "violin"
+        }
+      },
+      {
+        "id": "0b548196",
+        "library_key": "cello",
+        "display_name": "大提琴",
+        "role": "bass",
+        "family": "strings",
+        "tier": "core",
+        "prominence": 0.72,
+        "participation": [
+          0.7,
+          0.8,
+          0.8,
+          0.6
+        ],
+        "instrument_prompt": "deep rich cello, providing harmonic foundation and bass support",
+        "resolution": {
+          "matched": "exact",
+          "llm_raw_name": "cello"
+        }
+      },
+      {
+        "id": "c496cadd",
+        "library_key": "clarinet",
+        "display_name": "单簧管",
+        "role": "harmony",
+        "family": "woodwind",
+        "tier": "core",
+        "prominence": 0.65,
+        "participation": [
+          0.5,
+          0.8,
+          0.9,
+          0.4
+        ],
+        "instrument_prompt": "mellow clarinet, blending with strings for warm chordal textures",
+        "resolution": {
+          "matched": "exact",
+          "llm_raw_name": "clarinet"
+        }
+      },
+      {
+        "id": "0b29db2d",
+        "library_key": "flute",
+        "display_name": "长笛",
+        "role": "melody",
+        "family": "woodwind",
+        "tier": "accent",
+        "prominence": 0.42,
+        "participation": [
+          0.3,
+          0.6,
+          0.5,
+          0.3
+        ],
+        "instrument_prompt": "light airy flute, adding delicate counterlines and color",
+        "resolution": {
+          "matched": "exact",
+          "llm_raw_name": "flute"
+        }
+      },
+      {
+        "id": "fff0daa4",
+        "library_key": "french_horn",
+        "display_name": "法国号",
+        "role": "harmony",
+        "family": "brass",
+        "tier": "accent",
+        "prominence": 0.42,
+        "participation": [
+          0.2,
+          0.7,
+          0.6,
+          0.2
+        ],
+        "instrument_prompt": "soft french horn, adding warm brass resonance to the harmony",
+        "resolution": {
+          "matched": "exact",
+          "llm_raw_name": "french_horn"
+        }
+      },
+      {
+        "id": "df705902",
+        "library_key": "timpani",
+        "display_name": "定音鼓",
+        "role": "rhythm",
+        "family": "percussion",
+        "tier": "accent",
+        "prominence": 0.12,
+        "participation": [
+          0,
+          0.3,
+          0.2,
+          0
+        ],
+        "instrument_prompt": "subtle timpani pulses, providing gentle rhythmic grounding",
+        "resolution": {
+          "matched": "exact",
+          "llm_raw_name": "timpani"
+        }
+      }
+    ],
+    "warnings": []
+  },
+  "generation_order": [],
+  "master": null,
+  "stems": [],
+  "score_blueprint": null,
+  "segment_duration": 16.0
+}

@@ -178,3 +178,27 @@
   line-height: 1.55;
   color: color-mix(in srgb, var(--ink) 45%, transparent);
 }
+
+/* ---- M7c：符号模型服务地址（输入框 + 保存按钮同一行）---- */
+.urlRow {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.urlRow input {
+  flex: 1;
+  min-width: 0;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 11px;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.urlRow input:focus {
+  outline: none;
+  border-color: var(--accent-dim);
+}

@@ -19,6 +19,7 @@ try:
         list_lokr_weights, ACESTEP_API_URL, ALLOW_SYNTH_FALLBACK, LOKR_WEIGHTS_DIR,
         OUTPUT_DIR, PROJECTS_DIR, GENERATION_BACKEND, INSTRUMENT_LIBRARY, DEFAULT_INSTRUMENTS,
     )
+    from . import config as cfg
     from .generator import ACEStepGenerator
     from . import project as projectlib
     from . import project_gen
@@ -38,6 +39,7 @@ except Exception:
         list_lokr_weights, ACESTEP_API_URL, ALLOW_SYNTH_FALLBACK, LOKR_WEIGHTS_DIR,
         OUTPUT_DIR, PROJECTS_DIR, GENERATION_BACKEND, INSTRUMENT_LIBRARY, DEFAULT_INSTRUMENTS,
     )
+    import config as cfg
     from generator import ACEStepGenerator
     import project as projectlib
     import project_gen
@@ -546,6 +548,8 @@ class ScorePrefsRequest(BaseModel):
     """「设置」页选的音源与作曲器。auto 表示按可用性自动挑。"""
     renderer: Optional[str] = None
     composer: Optional[str] = None
+    """外部符号音乐模型服务地址。空字符串表示清除。"""
+    symbolic_url: Optional[str] = None
 
 
 @app.post("/api/score/prefs")
@@ -556,8 +560,20 @@ async def set_score_prefs(req: ScorePrefsRequest):
         raise HTTPException(status_code=400, detail=f"renderer 只能是 {sorted(valid_r)}")
     if req.composer is not None and req.composer not in valid_c:
         raise HTTPException(status_code=400, detail=f"composer 只能是 {sorted(valid_c)}")
-    from config import save_score_prefs
-    save_score_prefs(renderer=req.renderer, composer=req.composer)
+    # 用顶上那个 `cfg` 而不是在函数里 `from config import …`：以包的方式启动
+    # （`uvicorn backend.app:app`，发布包的入口就是这么跑的）时顶层 `config`
+    # 根本不在 sys.path 上，函数里那句 import 会当场 ModuleNotFoundError ——
+    # 这个端点在发布包里一直是 500，只是没人从那条路径点过它。
+    url = req.symbolic_url.strip() if req.symbolic_url is not None else None
+    if url:
+        # 只放行本机/局域网。理由见 config.is_private_endpoint —— 和 llm.py 的
+        # 「白名单只能手工加」是同一条线：接口不能把后端的外发范围拉大。
+        if not cfg.is_private_endpoint(url):
+            raise HTTPException(
+                status_code=400,
+                detail="只能填本机或局域网地址（localhost / 127.x / 10.x / 192.168.x / *.local）。"
+                       "确实要连公网服务的话，请用 SYMBOLIC_COMPOSER_URL 环境变量启动。")
+    cfg.save_score_prefs(renderer=req.renderer, composer=req.composer, symbolic_url=url)
     return {**renderlib.renderer_status(), **composerlib.composer_status()}
 
 

@@ -21,13 +21,21 @@ export function SettingsPage() {
     if (health?.score) setScore(health.score);
   }, [health?.score]);
 
-  const pickRenderer = async (renderer: string) => {
+  const [symbolicUrl, setSymbolicUrl] = useState("");
+  const [scoreError, setScoreError] = useState<string | null>(null);
+  useEffect(() => {
+    if (health?.score) setSymbolicUrl(health.score.remote_url);
+  }, [health?.score?.remote_url]);
+
+  const saveScorePrefs = async (patch: { renderer?: string; composer?: string; symbolic_url?: string }) => {
     setScoreSaving(true);
+    setScoreError(null);
     try {
-      setScore(await api.setScorePrefs({ renderer }));
+      setScore(await api.setScorePrefs(patch));
       await refreshHealth();
     } catch (e) {
-      alert("保存失败：" + (e as Error).message);
+      // 地址不合法这类错误要显示在卡片里，不能用 alert —— 用户改的就是这个输入框
+      setScoreError((e as Error).message);
     } finally {
       setScoreSaving(false);
     }
@@ -151,7 +159,7 @@ export function SettingsPage() {
                   aria-pressed={score.renderer_configured === r.id}
                   className={`${styles.renderer} ${
                     score.renderer_configured === r.id ? styles.rendererActive : ""}`}
-                  onClick={() => pickRenderer(r.id)}
+                  onClick={() => saveScorePrefs({ renderer: r.id })}
                 >
                   <span className={styles.rendererLabel}>{r.label}</span>
                   <span className={styles.rendererHint}>{r.hint}</span>
@@ -166,6 +174,83 @@ export function SettingsPage() {
               <span className={styles.statValue}>
                 {score.renderer === "sf2" ? "内置采样音源"
                   : score.renderer === "fluidsynth" ? "FluidSynth" : "内置合成"}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {score && (
+          <div className={styles.card}>
+            <p className={styles.cardTitle}>作曲器（写谱演奏模式）</p>
+            <p className={styles.note}>
+              谁来写这份谱子。和弦走向与段落结构一律本地算，作曲器只负责填音符。
+            </p>
+            <div className={styles.rendererList}>
+              {([
+                { id: "auto", label: "自动", hint: "配了语言模型就用它，否则规则作曲" },
+                {
+                  id: "llm", label: "大模型写谱",
+                  hint: score.llm_ready
+                    ? "用你配的语言模型逐件乐器写，看得见其它声部写了什么"
+                    : "需要先在上面配好语言模型",
+                  disabled: !score.llm_ready,
+                },
+                {
+                  id: "remote", label: "外部符号模型",
+                  hint: score.remote_url
+                    ? `POST 到 ${score.remote_url}/compose_part`
+                    : "先在下面填服务地址",
+                  disabled: !score.remote_url,
+                },
+                { id: "algorithmic", label: "规则作曲", hint: "不联网、不花额度，声部进行与音区分离都按规则来" },
+              ] as const).map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  disabled={scoreSaving || ("disabled" in c && c.disabled)}
+                  aria-pressed={score.composer_configured === c.id}
+                  className={`${styles.renderer} ${
+                    score.composer_configured === c.id ? styles.rendererActive : ""}`}
+                  onClick={() => saveScorePrefs({ composer: c.id })}
+                >
+                  <span className={styles.rendererLabel}>{c.label}</span>
+                  <span className={styles.rendererHint}>{c.hint}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className={styles.field} style={{ marginTop: 14 }}>
+              <span className={styles.fieldLabel}>符号模型服务地址</span>
+              <div className={styles.urlRow}>
+                <input
+                  value={symbolicUrl}
+                  onChange={(e) => setSymbolicUrl(e.target.value)}
+                  placeholder="http://127.0.0.1:8002"
+                  spellCheck={false}
+                />
+                <Button
+                  disabled={scoreSaving}
+                  onClick={() => saveScorePrefs({ symbolic_url: symbolicUrl.trim() })}
+                >
+                  {scoreSaving ? "保存中…" : "保存"}
+                </Button>
+              </div>
+              <p className={styles.note}>
+                只接受本机或局域网地址。接口契约见 docs/SYMBOLIC_COMPOSER_API.md ——
+                任何符号音乐模型自己包一层薄服务就能接进来，后端不用改。
+              </p>
+            </div>
+
+            {scoreError && <p className={styles.errorNote}>{scoreError}</p>}
+
+            <div className={styles.statRow}>
+              <span className={styles.statLabel}>
+                <span className={`${styles.dot} ${styles.dotOk}`} />
+                实际生效
+              </span>
+              <span className={styles.statValue}>
+                {score.composer === "llm" ? "大模型写谱"
+                  : score.composer === "remote" ? "外部符号模型" : "规则作曲"}
               </span>
             </div>
           </div>

@@ -425,7 +425,7 @@ export const api = {
 
   // ---- 写谱演奏模式：音源与作曲器 ----
   /** 选择在设置页做，落到后端的偏好文件；env 只作为默认值。 */
-  setScorePrefs: (body: { renderer?: string; composer?: string }) =>
+  setScorePrefs: (body: { renderer?: string; composer?: string; symbolic_url?: string }) =>
     req<ScoreStatus>("/api/score/prefs", { method: "POST", body: JSON.stringify(body) }),
 
   /** 蓝图 + 各声部音符，喂「生成」页的钢琴卷帘。非 score 项目会返回 blueprint: null。 */
