@@ -49,6 +49,7 @@ export interface BeatPattern {
 const PLANE = 0.12;
 
 export const PATTERNS: Record<Meter, BeatPattern> = {
+  /** 二拍子横∞字：1→2 底部右弧 + 2→1 左上跨中线弧 = 横躺 8 字 */
   2: {
     meter: 2,
     ictus: [
@@ -56,40 +57,42 @@ export const PATTERNS: Record<Meter, BeatPattern> = {
       { x: 0.76, y: PLANE },
     ],
     rebound: [
-      { x: 0.7, y: 0.46 },
-      { x: 0.58, y: 0.84 },
+      { x: 0.63, y: PLANE + 0.08 },
+      { x: 0.37, y: 0.84 },
     ],
     mnemonic: ["下", "右上"],
     strokes: ["向右", "上提·预备"],
   },
+  /** 三拍子：1、2 在平面，3 回到身体中线上方 */
   3: {
     meter: 3,
     ictus: [
       { x: 0.5, y: PLANE },
       { x: 0.78, y: PLANE },
-      { x: 0.63, y: PLANE },
+      { x: 0.5, y: 0.84 },
     ],
     rebound: [
-      { x: 0.63, y: 0.36 },
-      { x: 0.83, y: 0.42 },
-      { x: 0.54, y: 0.84 },
+      { x: 0.66, y: PLANE + 0.03 },
+      { x: 0.68, y: 0.38 },
+      { x: 0.5, y: 0.94 },
     ],
     mnemonic: ["下", "右", "上"],
     strokes: ["向右", "回中", "上提·预备"],
   },
+  /** 四拍子：1/2/3 在平面，4 回到身体中线上方 */
   4: {
     meter: 4,
     ictus: [
       { x: 0.5, y: PLANE },
       { x: 0.21, y: PLANE },
       { x: 0.8, y: PLANE },
-      { x: 0.64, y: PLANE },
+      { x: 0.5, y: 0.84 },
     ],
     rebound: [
-      { x: 0.32, y: 0.4 },
-      { x: 0.5, y: 0.36 },
-      { x: 0.86, y: 0.42 },
-      { x: 0.55, y: 0.84 },
+      { x: 0.35, y: PLANE + 0.05 },
+      { x: 0.5, y: PLANE - 0.04 },
+      { x: 0.68, y: 0.45 },
+      { x: 0.5, y: 0.94 },
     ],
     mnemonic: ["下", "左", "右", "上"],
     strokes: ["向左", "向右", "回中", "上提·预备"],
