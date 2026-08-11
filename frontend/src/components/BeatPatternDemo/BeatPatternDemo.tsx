@@ -71,7 +71,12 @@ export function BeatPatternDemo({ meter, bpm, playing, onBeat, height = 300 }: P
 
     const pattern = PATTERNS[meter];
     const path = samplePattern(pattern, 40);
-    const plane = pattern.ictus[0].y;
+    // 拍点编号往「远离图形重心」的方向让开。拍点逐拍升高之后，四拍的第 2→3 拍
+    // 横扫会从第 4 拍落下的那一笔上穿过去，编号固定标在点正下方就会压在线上。
+    const centroid = {
+      x: pattern.ictus.reduce((s, p) => s + p.x, 0) / pattern.ictus.length,
+      y: pattern.ictus.reduce((s, p) => s + p.y, 0) / pattern.ictus.length,
+    };
 
     // clientWidth 在首帧可能还是 0（父容器尚未布局），所以用 ResizeObserver 而不是读一次
     let w = 0;
@@ -116,28 +121,21 @@ export function BeatPatternDemo({ meter, bpm, playing, onBeat, height = 300 }: P
       const px = (x: number) => padX + x * iw;
       const py = (y: number) => padTop + (1 - y) * ih;
 
-      // 拍点平面
-      ctx.strokeStyle = withAlpha(colors.ink, 0.18);
-      ctx.setLineDash([3, 6]);
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(padX - 26, py(plane));
-      ctx.lineTo(w - padX + 26, py(plane));
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.font = canvasFont(10);
-      ctx.fillStyle = withAlpha(colors.ink, 0.38);
-      ctx.fillText("拍点平面", padX - 26, py(plane) - 7);
+      // 这里**不画**「拍点平面」那条横线：图式的拍点是逐拍升高的（见 patterns.ts
+      // 文件头），一条横线只穿得过第 1 拍，标上「拍点平面」四个字反而是在教错。
+      // 平面是**手**该守的，不是图该守的，那件事由课程文字和「平面一致性」评分讲。
 
       // 身体中线。二拍与三拍只在中线右侧活动，四拍才跨到左边 —— 不画这条线的话，
       // 三拍图看起来像是「整个挤到右边去了」的排版事故，其实那正是它该在的位置。
       ctx.strokeStyle = withAlpha(colors.ink, 0.1);
       ctx.setLineDash([2, 7]);
+      ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(px(0.5), padTop);
-      ctx.lineTo(px(0.5), py(plane));
+      ctx.lineTo(px(0.5), h - padBottom);
       ctx.stroke();
       ctx.setLineDash([]);
+      ctx.font = canvasFont(10);
       ctx.fillStyle = withAlpha(colors.ink, 0.3);
       const midLabel = "身体中线";
       ctx.fillText(midLabel, px(0.5) - ctx.measureText(midLabel).width / 2, padTop - 6);
@@ -173,10 +171,21 @@ export function BeatPatternDemo({ meter, bpm, playing, onBeat, height = 300 }: P
           ctx.lineTo(mx - Math.cos(ang + 0.5) * 7, my - Math.sin(ang + 0.5) * 7);
           ctx.stroke();
 
+          // 走向文字沿着这一段的**法线**往图形外侧让开，不是固定往上挪。
+          // 四拍的第 2→3 拍横扫和第 4 拍落下的那一笔在中间交叉，两段的中点几乎
+          // 重合，固定往上挪会让「向右」和「上提·预备」叠印成一团。
           ctx.font = canvasFont(10);
           ctx.fillStyle = withAlpha(colors.ink, 0.42);
           const tw = ctx.measureText(word).width;
-          ctx.fillText(word, mx - tw / 2, my - 11);
+          let nx = -Math.sin(ang);
+          let ny = Math.cos(ang);
+          if (nx * (mx - px(centroid.x)) + ny * (my - py(centroid.y)) < 0) {
+            nx = -nx;
+            ny = -ny;
+          }
+          // 法线接近水平时只挪 14px 仍会有半个词压在线上，按横向分量补上半个词宽
+          const off = 14 + (tw / 2) * Math.abs(nx);
+          ctx.fillText(word, mx + nx * off - tw / 2, my + ny * off + 4);
         });
       }
 
@@ -197,7 +206,13 @@ export function BeatPatternDemo({ meter, bpm, playing, onBeat, height = 300 }: P
         ctx.font = canvasFont(12, isCurrent ? 600 : 400);
         ctx.fillStyle = isCurrent ? colors.accent : withAlpha(colors.ink, 0.52);
         const tw = ctx.measureText(label).width;
-        ctx.fillText(label, cx - tw / 2, cy + 21);
+        // 从重心指向该拍点的方向，再往外挪 18px —— 编号就永远落在图形外侧
+        const dx = cx - px(centroid.x);
+        const dy = cy - py(centroid.y);
+        const len = Math.hypot(dx, dy) || 1;
+        const lx = cx + (dx / len) * 18;
+        const ly = cy + (dy / len) * 18;
+        ctx.fillText(label, lx - tw / 2, ly + 4);
       });
 
       // 拍点闪光
