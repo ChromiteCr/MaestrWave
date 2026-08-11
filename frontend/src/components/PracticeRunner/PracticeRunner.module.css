@@ -20,6 +20,66 @@
   border-color: color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
+/*
+  即时偏差指针。放在摄像头画面下面、动作按钮上面 —— 跟练时眼睛盯着自己的手，
+  这条要落在余光里够得着的地方。
+*/
+.meter {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.meterTrack {
+  position: relative;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--surface-2);
+  border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
+  overflow: hidden;
+}
+
+/* 「算准」的那一段。指针落在这里面就别再抠了 */
+.meterGood {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.meterCenter {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: color-mix(in srgb, var(--ink) 40%, transparent);
+}
+
+.meterNeedle {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 3px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: var(--accent);
+  /* 跟手但不追帧：太快会抖，太慢会让人以为是上一拍 */
+  transition: left 90ms linear;
+}
+
+.meterLabels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: color-mix(in srgb, var(--ink) 40%, transparent);
+}
+
+.meterValue {
+  font-family: var(--font-mono);
+  color: color-mix(in srgb, var(--ink) 68%, transparent);
+}
+
 .actions {
   display: flex;
   align-items: center;

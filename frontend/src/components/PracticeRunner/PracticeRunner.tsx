@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { CameraIntentSource } from "../../lib/camera/cameraIntentSource";
 import { HandTracker } from "../../lib/camera/handTracker";
 import type { RubricItem } from "../../lib/teaching/curriculum";
-import { Metronome, type BeatGrid } from "../../lib/teaching/metronome";
+import { getLatencyMs, shiftGrid } from "../../lib/teaching/latency";
+import { beatIndexAt, Metronome, type BeatGrid } from "../../lib/teaching/metronome";
 import { PiecePlayer } from "../../lib/teaching/piecePlayer";
 import { SessionRecorder, type Recording } from "../../lib/teaching/recorder";
 import { scoreSession, type SessionScore } from "../../lib/teaching/scoring";
@@ -55,7 +56,10 @@ export function PracticeRunner({
   const [error, setError] = useState("");
   const [beat, setBeat] = useState<number | null>(null);
   const [ictusCount, setIctusCount] = useState(0);
+  const [lastOffset, setLastOffset] = useState<number | null>(null);
   const [score, setScore] = useState<SessionScore | null>(null);
+  /** 上一个已经显示过的拍点时刻，用来只对「新的那一拍」做反馈。 */
+  const seenIctusRef = useRef(0);
 
   const sourceRef = useRef<CameraIntentSource | null>(null);
   const metroRef = useRef<Metronome | null>(null);
@@ -161,17 +165,37 @@ export function PracticeRunner({
       return;
     }
 
+    // 把校准出来的音画延迟加到网格原点上。不做这一步，戴蓝牙耳机的人每一拍
+    // 都会被判成拖了两百毫秒（见 lib/teaching/latency.ts）。
+    grid = shiftGrid(grid, getLatencyMs());
+
     const rec = new SessionRecorder();
     recorderRef.current = rec;
     rec.start(grid);
     src.onSample(rec.push);
 
     setPhase("countIn");
+    setLastOffset(null);
+    seenIctusRef.current = 0;
     const beatNow = () => (piece ? playerRef.current?.beatNow() : metroRef.current?.beatNow());
     tickRef.current = setInterval(() => {
       const b = beatNow();
       setBeat(b === null || b === undefined ? null : Math.floor(b));
       setIctusCount(rec.ictusCount);
+
+      // 现打现看：刚打下去那一拍偏了多少。
+      //
+      // 这是整个跟练里唯一的**即时**反馈，也是学节拍最需要的东西 —— 一轮打完
+      // 才知道「平均晚了 60ms」是没法照着改的，你根本不记得是哪几下晚了。
+      const at = rec.lastIctusAt;
+      if (at !== null && at !== seenIctusRef.current) {
+        seenIctusRef.current = at;
+        const idx = beatIndexAt(grid, at);
+        const off = (idx - Math.round(idx)) * (60000 / grid.bpm);
+        // 差半拍以上说明它没对上任何一拍，显示出来只会误导
+        if (Math.abs(off) < 30000 / grid.bpm) setLastOffset(off);
+      }
+
       if (b === null || b === undefined) return;
       if (b >= 0) setPhase("running");
       if (b >= useBars * useMeter) finish();
@@ -211,6 +235,8 @@ export function PracticeRunner({
         </div>
       )}
 
+      {running && phase === "running" && <OffsetMeter offsetMs={lastOffset} beatMs={60000 / useBpm} />}
+
       {error && <p className={styles.error}>{error}</p>}
 
       <div className={styles.actions}>
@@ -227,7 +253,48 @@ export function PracticeRunner({
         </span>
       </div>
 
-      {score && <ScoreReport score={score} />}
+      {score && <ScoreReport score={score} beatMs={60000 / useBpm} />}
     </div>
   );
 }
+
+/**
+ * 「刚才那一下」偏了多少 —— 一根指针，左边抢拍右边拖拍，中间那段是准。
+ *
+ * 学节拍靠的是**闭环**：打一下、立刻看到偏在哪边、下一拍改过来。一轮打完才给
+ * 一个「平均晚了 60ms」是学不会的 —— 那时候人已经不记得是哪几下晚了。
+ *
+ * 刻度用拍长的百分比而不是固定毫秒：慢曲子里偏 60ms 几乎看不出来，快曲子里
+ * 同样的 60ms 已经是四分之一拍。指针要和「听起来差多少」一致，不是和绝对时间一致。
+ */
+function OffsetMeter({ offsetMs, beatMs }: { offsetMs: number | null; beatMs: number }) {
+  // 满量程 = 四分之一拍。再远就不是「偏了」而是「打错拍了」
+  const full = beatMs * 0.25;
+  const pos = offsetMs === null ? 0 : clampPct((offsetMs / full) * 50);
+  // 免罚区和评分里的 TIMING 满分容差同源，别让指针说「准」而分数说「不准」
+  const goodHalf = clampPct((Math.max(45, beatMs * 0.07) / full) * 50);
+  return (
+    <div className={styles.meter} aria-hidden>
+      <div className={styles.meterTrack}>
+        <span className={styles.meterGood} style={{ left: `${50 - goodHalf}%`, width: `${goodHalf * 2}%` }} />
+        <span className={styles.meterCenter} />
+        {offsetMs !== null && (
+          <span className={styles.meterNeedle} style={{ left: `${50 + pos}%` }} />
+        )}
+      </div>
+      <div className={styles.meterLabels}>
+        <span>抢拍</span>
+        <span className={styles.meterValue}>
+          {offsetMs === null
+            ? "打一拍看看"
+            : Math.abs(offsetMs) <= Math.max(45, beatMs * 0.07)
+              ? "准"
+              : `${offsetMs > 0 ? "晚" : "早"} ${Math.abs(offsetMs).toFixed(0)}ms`}
+        </span>
+        <span>拖拍</span>
+      </div>
+    </div>
+  );
+}
+
+const clampPct = (v: number) => Math.max(-50, Math.min(50, v));

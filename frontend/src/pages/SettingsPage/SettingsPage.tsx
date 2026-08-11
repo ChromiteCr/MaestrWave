@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
 import { Button } from "../../components/Button/Button";
+import { LatencyCalibration } from "../../components/LatencyCalibration/LatencyCalibration";
 import { api, type LokrOption, type LLMStatus, type ScoreStatus } from "../../lib/api";
 import { useAppStore } from "../../state/store";
 import styles from "./SettingsPage.module.css";
@@ -306,6 +307,11 @@ export function SettingsPage() {
             )}
           </div>
         )}
+
+        <div className={styles.card}>
+          <p className={styles.cardTitle}>音画延迟校准</p>
+          <LatencyCalibration />
+        </div>
 
         <div className={styles.card}>
           <p className={styles.cardTitle}>LoKr / LoRA</p>

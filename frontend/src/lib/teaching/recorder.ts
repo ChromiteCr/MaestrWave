@@ -63,6 +63,14 @@ export class SessionRecorder {
     return n;
   }
 
+  /** 最后一个拍点的真实时刻。跟练时用它做「刚才那一下早了/晚了」的即时反馈。 */
+  get lastIctusAt(): number | null {
+    for (let i = this.frames.length - 1; i >= 0; i -= 1) {
+      if (this.frames[i].ictus && this.frames[i].ictusAt !== null) return this.frames[i].ictusAt;
+    }
+    return null;
+  }
+
   start(grid: BeatGrid): void {
     this.frames = [];
     this.grid = grid;

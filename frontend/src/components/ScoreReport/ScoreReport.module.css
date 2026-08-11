@@ -115,3 +115,99 @@
   font-size: 11.5px;
   color: color-mix(in srgb, var(--ink) 35%, transparent);
 }
+
+/*
+  「先看这个」的提示条。排在分数上面，用酒红描边——它说的是「这次的分数
+  不该照字面理解」，压在讲评下面就没人看了。
+*/
+.banner {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--wine) 40%, transparent);
+  background: color-mix(in srgb, var(--wine) 7%, transparent);
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--ink);
+}
+
+.timeline {
+  margin: 16px 0 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.timelineHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.timelineLegend {
+  font-size: 11.5px;
+  color: color-mix(in srgb, var(--ink) 40%, transparent);
+}
+
+/*
+  一拍一根柱子，从中线往上（拖）或往下（抢）长。用 flex 均分而不是定宽：
+  一段跟练可能是 16 拍也可能是 96 拍，定宽要么撑破要么留一大片空。
+*/
+.timelineTrack {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 1px;
+  height: 56px;
+  padding: 0 2px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
+}
+
+.timelineZero {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: color-mix(in srgb, var(--ink) 30%, transparent);
+}
+
+/* 一格 = 一拍，占满整个高度；真正的柱子是里面那个绝对定位的子元素 */
+.tick {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 2px;
+  align-self: stretch;
+}
+
+.tickBar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--ink) 45%, transparent);
+}
+
+/* 落在容差里的拍子用强调色——一眼看出「哪几下是准的」 */
+.tickGood {
+  background: var(--accent);
+}
+
+/* 小节的第一拍加深，这样「每小节第 1 拍都抢」这种规律才看得出来 */
+.tickDown {
+  background: color-mix(in srgb, var(--ink) 78%, transparent);
+}
+
+.tickGood.tickDown {
+  background: var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 45%, transparent);
+}
+
+/* 没打出来的拍子：中线上一小段酒红，不画柱子 */
+.tickMiss {
+  background: color-mix(in srgb, var(--wine) 75%, transparent);
+}

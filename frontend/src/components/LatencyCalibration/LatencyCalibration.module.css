@@ -1,0 +1,118 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 嵌在自检栏里时不重复写引言，只留状态和按钮 */
+.compact {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.intro {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.75;
+  color: color-mix(in srgb, var(--ink) 55%, transparent);
+}
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 12px;
+  color: color-mix(in srgb, var(--ink) 45%, transparent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.link:hover {
+  color: var(--ink);
+}
+
+/*
+  敲击区做大：校准的精度直接取决于用户敲得准不准，而一个小按钮会让人先去
+  「瞄准」再敲 —— 瞄准的那一下就已经不是跟着节奏敲了。
+*/
+.tapPad {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 132px;
+  padding: 20px;
+  border-radius: 10px;
+  border: 1px dashed color-mix(in srgb, var(--ink) 28%, transparent);
+  background: var(--surface-2);
+  cursor: pointer;
+  font: inherit;
+  color: var(--ink);
+  /* 连点时不要选中文字，也不要触发移动端的双击缩放 */
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.tapPad:active {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--ink) 55%, transparent);
+}
+
+.tapBig {
+  font-family: var(--font-mono);
+  font-size: 28px;
+  letter-spacing: 0.04em;
+}
+
+.tapHint {
+  font-size: 12.5px;
+  color: color-mix(in srgb, var(--ink) 50%, transparent);
+}
+
+.tapLast {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: color-mix(in srgb, var(--ink) 62%, transparent);
+}
+
+.result {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.resultLine {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.resultNote {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: color-mix(in srgb, var(--ink) 52%, transparent);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.error {
+  margin: 0;
+  font-size: 13px;
+  color: var(--wine);
+}

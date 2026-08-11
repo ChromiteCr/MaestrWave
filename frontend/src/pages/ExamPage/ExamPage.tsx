@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "../../components/Button/Button";
 import { CameraPreview } from "../../components/CameraPreview/CameraPreview";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
+import { LatencyCalibration } from "../../components/LatencyCalibration/LatencyCalibration";
 import { PracticeRunner } from "../../components/PracticeRunner/PracticeRunner";
 import { CameraIntentSource } from "../../lib/camera/cameraIntentSource";
 import { HandTracker } from "../../lib/camera/handTracker";
@@ -297,9 +298,16 @@ export function ExamPage() {
                   )}
                 </div>
 
+                <p className="eyebrow" style={{ marginTop: 26 }}>音画延迟校准</p>
+                <p className={styles.checkHint}>
+                  戴无线耳机或用外接音箱的话，先做这一步。声音晚到多少，你的拍点就会
+                  被判成晚了多少 —— 这是分数无缘无故很低的头号原因。
+                </p>
+                <LatencyCalibration compact />
+
                 <p className={styles.todo}>
                   挡住「开始考试」的只有曲目 —— 曲子没渲染完，考了也没有拍网格可对。
-                  摄像头那四项不挡：认不到手照样让你开，但强烈建议先看到绿点，
+                  摄像头那四项和校准都不挡：认不到手照样让你开，但强烈建议先看到绿点，
                   不然一整轮打完只会得到一句「没录到任何画面」。
                 </p>
               </>
