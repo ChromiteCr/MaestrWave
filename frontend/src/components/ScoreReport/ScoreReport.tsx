@@ -104,10 +104,20 @@ export function ScoreReport({ score, beatMs }: { score: SessionScore; beatMs?: n
         </p>
       )}
 
+      {!score.scorable && (
+        <p className={styles.banner}>
+          这一课要评的几个维度还没有实现自动评分（需要看懂左手在做什么，现在的信号
+          给不出来）。下面列出的只是记录，<strong>不是</strong>你的成绩 ——
+          别照着它判断自己练得怎么样。
+        </p>
+      )}
+
       <div className={styles.head}>
         <div className={styles.totalBox}>
-          <span className={`${styles.total} ${g.tone}`}>{score.total}</span>
-          <span className={styles.grade}>{g.label}</span>
+          <span className={`${styles.total} ${score.scorable ? g.tone : styles.dimOff}`}>
+            {score.scorable ? score.total : "—"}
+          </span>
+          <span className={styles.grade}>{score.scorable ? g.label : "本课不计分"}</span>
         </div>
         <div className={styles.summary}>
           <span className="mono-chip">

@@ -10,7 +10,8 @@
  * 评分那边一行都不用改。
  */
 
-import { motionPattern, patternPointAt, type BeatPattern, type Meter, type Point } from "../teaching/patterns";
+import { motionPattern } from "../teaching/motionTemplate";
+import { patternPointAt, type BeatPattern, type Meter, type Point } from "../teaching/patterns";
 
 /** 重采样后的点数。48 点在 2/3/4 拍上都够描出形状，DTW 是 48×48 的表，可忽略不计。 */
 export const RESAMPLE_N = 48;
@@ -106,8 +107,9 @@ const templateCache = new Map<Meter, Point[]>();
 export function templateShape(meter: Meter): Point[] {
   const hit = templateCache.get(meter);
   if (hit) return hit;
-  // 用动作模板而不是图式：图式为了画得开把拍点逐拍抬高了，拿它当模板，
-  // 一个拍点老老实实落在平面上的人反而会被判形状不对（见 patterns.ts 文件头）
+  // 用动作模板而不是图式：图式把末拍画在高处（那一拍同时是下一小节的预备），
+  // 拿它当模板，一个拍点老老实实落在平面上的人反而会被判形状不对 —— 实测三拍
+  // 丢 15 分、四拍丢 24 分。见 teaching/motionTemplate.ts
   const p: BeatPattern = motionPattern(meter);
   // 从第 1 拍拍点起，走完一整圈，和 splitBars 切出来的一小节对齐
   const raw: Point[] = [];

@@ -35,8 +35,16 @@ export interface PieceMusic {
   key?: string;
 }
 
-/** 数拍小节数。一小节是教材里的通行做法，够用户把手抬起来。 */
-export const COUNT_IN_BARS = 1;
+/**
+ * 数拍小节数。
+ *
+ * 一小节是教材里的通行做法，但那是按四拍子说的 —— 到了一拍、两拍就只剩一两声，
+ * 人还没反应过来正曲已经开始了。所以按**至少响三下**来给：
+ * 1 拍 → 2 小节（2 声），2 拍 → 2 小节（4 声），3/4 拍 → 1 小节。
+ */
+export function countInBarsFor(meter: Meter): number {
+  return meter >= 3 ? 1 : 2;
+}
 
 /**
  * 字符串 → 稳定的种子。
@@ -66,7 +74,7 @@ export function buildSpec(music: PieceMusic, opts: {
     meter: opts.meter,
     bpm: opts.bpm,
     bars: music.bars,
-    count_in_bars: COUNT_IN_BARS,
+    count_in_bars: countInBarsFor(opts.meter),
     key: music.key ?? "D major",
     dynamics: music.dynamics,
     pickup: music.pickup ?? false,

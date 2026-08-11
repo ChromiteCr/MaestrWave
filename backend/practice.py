@@ -117,8 +117,10 @@ def parse_spec(raw: dict) -> PieceSpec:
     except (TypeError, ValueError):
         raise ValueError("meter / bpm / bars / count_in_bars / seed 只能是整数")
 
-    if meter not in (2, 3, 4):
-        raise ValueError("meter 只能是 2、3、4")
+    # 1 拍是「打 1 拍」那一课用的：速度快到一小节只给一下（谐谑曲）。
+    # 它不是 1/4 拍号的曲子，而是「一小节只打一个拍点」的练法。
+    if meter not in (1, 2, 3, 4):
+        raise ValueError("meter 只能是 1、2、3、4")
     if not MIN_BPM <= bpm <= MAX_BPM:
         raise ValueError(f"bpm 要在 {MIN_BPM}–{MAX_BPM} 之间")
     if not 1 <= bars <= MAX_BARS:
@@ -243,7 +245,8 @@ def _melody_rhythm(style: str, bpb: int, rng: random.Random,
 
     句尾用长音收住 —— 一路匀速的四分音符听着像练习册，学生也就分不清乐句在哪断。
     """
-    if is_phrase_end:
+    if is_phrase_end or bpb == 1:
+        # 一小节一拍时旋律也只能一小节一个音，再拆就跨出小节了
         return [(0.0, float(bpb))]
     if style == "lyric":
         if bpb >= 4:
@@ -273,6 +276,9 @@ def _pad_hits(style: str, bpb: int) -> list[tuple[float, float]]:
     **这是拍号最主要的听觉线索。** 圆舞曲的「蓬-恰-恰」（低音在 1，和弦在 2、3）
     和进行曲的后半拍和弦，比任何节拍器都更能让人听出这是三拍还是四拍。
     """
+    # 一小节只有一拍：没有「弱拍」可落，和声只能铺满整小节
+    if bpb == 1:
+        return [(0.0, 1.0)]
     if style == "waltz" and bpb == 3:
         return [(1.0, 1.0), (2.0, 1.0)]
     if style == "lyric":

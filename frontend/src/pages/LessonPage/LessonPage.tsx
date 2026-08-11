@@ -173,17 +173,19 @@ export function LessonPage() {
 
               <BeatPatternDemo meter={meter} bpm={bpm} playing={playing} onBeat={setBeat} />
 
-              <label className={styles.speed}>
-                <span className="field-label">示范速度</span>
-                <input
-                  type="range"
-                  min={40}
-                  max={180}
-                  value={bpm}
-                  onChange={(e) => setBpm(Number(e.target.value))}
-                />
-                <span className="mono-chip">{bpm} BPM</span>
-              </label>
+              {lesson.id !== "one-beat" && (
+                <label className={styles.speed}>
+                  <span className="field-label">示范速度</span>
+                  <input
+                    type="range"
+                    min={40}
+                    max={180}
+                    value={bpm}
+                    onChange={(e) => setBpm(Number(e.target.value))}
+                  />
+                  <span className="mono-chip">{bpm} BPM</span>
+                </label>
+              )}
             </section>
           ) : (
             <section className={styles.card}>

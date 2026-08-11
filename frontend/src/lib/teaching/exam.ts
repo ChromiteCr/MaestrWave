@@ -21,7 +21,7 @@
 
 import { DIMENSIONS, type RubricDimension, type RubricItem } from "./curriculum";
 import type { Meter } from "./patterns";
-import { COUNT_IN_BARS, type PieceMusic } from "./piece";
+import { countInBarsFor, type PieceMusic } from "./piece";
 
 export interface ExamPiece {
   id: string;
@@ -44,7 +44,7 @@ export interface ExamPiece {
 
 /** 整段音频有多长（含数拍与尾巴不算 —— 这里给的是用户要打的那段）。 */
 export function examDurationSec(p: ExamPiece): number {
-  return Math.round(((p.music.bars + COUNT_IN_BARS) * p.meter * 60) / p.bpm);
+  return Math.round(((p.music.bars + countInBarsFor(p.meter)) * p.meter * 60) / p.bpm);
 }
 
 /**
@@ -56,6 +56,11 @@ export function examDurationSec(p: ExamPiece): number {
  */
 export const PASS_SCORE = 70;
 export const GOOD_SCORE = 85;
+
+/** 一条平的力度曲线。 */
+function flat(n: number, v: number): number[] {
+  return Array.from({ length: n }, () => v);
+}
 
 export const EXAM_PIECES: ExamPiece[] = [
   {
@@ -77,7 +82,7 @@ export const EXAM_PIECES: ExamPiece[] = [
     music: {
       style: "march",
       bars: 20,
-      dynamics: Array.from({ length: 20 }, () => 0.62),
+      dynamics: flat(20, 0.62),
       key: "Bb major",
     },
   },

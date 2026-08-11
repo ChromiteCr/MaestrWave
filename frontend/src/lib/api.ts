@@ -1,5 +1,7 @@
 /** 对接 backend/app.py 里 M1 新增的 project API（见 backend/project.py / project_gen.py）。 */
 
+import type { Meter } from "./teaching/patterns";
+
 export interface InstrumentSpec {
   display_name: string;
   role: "melody" | "harmony" | "bass" | "rhythm";
@@ -237,7 +239,7 @@ export interface ProjectScore {
 export interface PracticeSpec {
   /** 织体与配器。march=进行曲，waltz=圆舞曲（蓬-恰-恰），lyric=抒情长句。 */
   style: "march" | "waltz" | "lyric";
-  meter: 2 | 3 | 4;
+  meter: Meter;
   bpm: number;
   /** 正曲小节数，不含数拍。 */
   bars: number;

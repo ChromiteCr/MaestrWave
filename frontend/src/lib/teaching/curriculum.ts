@@ -23,7 +23,10 @@ export type RubricDimension =
   | "patternShape"
   | "ictusClarity"
   | "planeConsistency"
-  | "dynamicsMatch";
+  | "dynamicsMatch"
+  | "handIndependence"
+  | "cueAccuracy"
+  | "gesturePurpose";
 
 export const DIMENSIONS: Record<RubricDimension, { label: string; how: string; basis: string }> = {
   ictusTiming: {
@@ -56,6 +59,21 @@ export const DIMENSIONS: Record<RubricDimension, { label: string; how: string; b
     how: "拍型大小与乐曲力度的相关性",
     basis: "力度由拍型的大小表达，拍型在高度与宽度上一起变大就是渐强",
   },
+  handIndependence: {
+    label: "左右手独立性",
+    how: "左手是否能独立工作而不干扰右手",
+    basis: "右手维持拍型的同时，左手应能独立完成 cue 或其他沟通，不镜像、不拖累",
+  },
+  cueAccuracy: {
+    label: "Cue 准确性",
+    how: "目标和时间点是否清晰",
+    basis: "清晰的 cue 需要准备动作、明确目标和准确的时间点，不是简单指向",
+  },
+  gesturePurpose: {
+    label: "动作信息性",
+    how: "每个动作是否都有明确目的",
+    basis: "左手越克制、越有目的性，真正需要注意的动作越明显；无意义的持续运动等于噪声",
+  },
 };
 
 export interface RubricItem {
@@ -86,14 +104,14 @@ export interface Lesson {
    * M7e 之前这里是一段喂给音频生成模型的提示词（`practicePrompt`），要求它
    * 「BPM 必须准、要有打击乐、开头带一小节数拍」—— 三条都是**请求**，模型给不给
    * 是另一回事，所以还得配一套能量起始点检测去猜拍网格在哪。现在练习曲是自己
-   * 写谱渲染的，这三条从请求变成了事实，那套检测也就不需要了。
+   * 写谱渲染的（`backend/practice.py`），这三条从请求变成了事实。
    */
   music: PieceMusic;
   rubric: RubricItem[];
 }
 
 export const UNITS: { unit: 1 | 2 | 3; title: string; summary: string }[] = [
-  { unit: 1, title: "拍子怎么打", summary: "右手的基本功：站姿、图形拍型" },
+  { unit: 1, title: "拍子怎么打", summary: "右手的基本功：站姿、图形拍型、打 1 拍" },
   { unit: 2, title: "两只手分开用", summary: "左手不再跟着右手镜像，开始做自己的事" },
   { unit: 3, title: "把音乐讲出来", summary: "力度、速度变化 —— 让拍子变成音乐" },
 ];
@@ -136,12 +154,12 @@ export const LESSONS: Lesson[] = [
       "图形拍型是乐手辨认「现在是第几拍」的唯一视觉线索，三种拍号的走向是通用约定：二拍「下 → 右上」，三拍「下 → 右 → 上」构成三角形，四拍「下 → 左 → 右 → 上」。第 1 拍永远向下 —— 这是全世界通行的一条，乐手就靠它找小节线。",
     points: [
       "每一拍都是三段：预备（离开上一个拍点）→ 拍点（ictus）→ 反弹（rebound）。真正传达信息的是拍点，反弹只是为了去下一个拍点。",
-      "图式逐拍升高：第 1 拍最低，最后一拍最高。最后一拍同时是下一小节的预备 —— 手先到得了高处，下一个第 1 拍才砸得下来。",
-      "拍与拍之间不是匀速：离开拍点后减速，到弧线中段最慢，再加速砸向下一个拍点。这个加速就是拍点清晰的来源。",
-      "示范图上的左右是「指挥自己的」左右。教材图多半画的是乐手看你的样子，左右正好相反，照着抄会打反。",
+      "所有拍点落在同一个高度上，也就是站姿那一课找到的「平面」。左右位置各不相同，上下不要乱跑。",
+      "拍与拍之间不是匀速：离开拍点后减速，到反弹顶点最慢，再加速砸向下一个拍点。这个加速就是拍点清晰的来源。",
+      "最后一拍的反弹会明显更高 —— 它同时是下一小节第 1 拍的预备。",
     ],
     pitfalls: [
-      "一小节一小节整体往上爬，几小节下来手飘到了脸前面 —— 每小节的第 1 拍都要回到同一个低点。",
+      "拍点越打越高，一小节下来手飘到了脸前面。",
       "匀速划圈，看不出哪一下是拍。",
       "四拍的第 2 拍往右打（应该往指挥自己的左边）—— 这是最常见的方向错误。",
     ],
@@ -156,35 +174,8 @@ export const LESSONS: Lesson[] = [
     ],
   },
   {
-    id: "left-hand",
-    unit: 2,
-    title: "非持棒手的职责",
-    goal: "让左手停止模仿右手，开始说自己的话。",
-    standard:
-      "右手管拍子与速度，左手管别的：给声部进入的提示、调力度、做分句、平衡音量。教材反对两手镜像 —— 镜像等于把左手浪费掉了，同时让画面变得没有重点。持棒手放左放右都可以，重要的是分工，不是哪只手。",
-    points: [
-      "左手默认应该是静止的。它一动，乐手就知道「这是给我的」。",
-      "手心向上、向上向外抬 = 渐强；手心向下、向下压 = 渐弱。",
-      "给某个声部提示时，要看着他们 —— 手势加眼神才算一个 cue。",
-      "在本软件里，左手的横向位置对应乐队席位：偏左是主旋律（第一小提琴一侧），中间是和声（木管），偏右是低音（大提琴与低音提琴一侧）。",
-    ],
-    pitfalls: [
-      "两手完全镜像，全程一起画同一个拍型。",
-      "左手一直在动，于是它什么也没说。",
-    ],
-    meters: [],
-    bpm: 84,
-    // 力度一路起伏，左手才有事可做 —— 这一课的 rubric 里「力度对应」占一半
-    music: { style: "lyric", bars: 8, dynamics: [0.3, 0.35, 0.55, 0.75, 0.75, 0.5, 0.4, 0.3] },
-    rubric: [
-      { dimension: "dynamicsMatch", weight: 0.5 },
-      { dimension: "patternShape", weight: 0.3 },
-      { dimension: "tempoStability", weight: 0.2 },
-    ],
-  },
-  {
     id: "one-beat",
-    unit: 2,
+    unit: 1,
     title: "打 1 拍",
     goal: "速度快到一小节只能给一下时，怎么打。",
     standard:
@@ -195,14 +186,43 @@ export const LESSONS: Lesson[] = [
       "开始与结束、以及任何需要精确对齐的地方，仍然要临时拆回逐拍。",
     ],
     pitfalls: ["一小节打一下之后速度开始飘 —— 因为唯一的时间参照只剩反弹曲线。"],
-    meters: [3],
-    bpm: 168,
-    // 168 BPM 的三拍一小节才 1.07 秒，8 小节太短，给到 16
-    music: { style: "waltz", bars: 16, dynamics: flat(16, 0.5) },
+    meters: [1],
+    bpm: 90,
+    music: { style: "waltz", bars: 24, dynamics: flat(24, 0.5) },
     rubric: [
       { dimension: "tempoStability", weight: 0.5 },
       { dimension: "ictusClarity", weight: 0.3 },
       { dimension: "ictusTiming", weight: 0.2 },
+    ],
+  },
+  {
+    id: "left-hand",
+    unit: 2,
+    title: "非持棒手的职责",
+    goal: "让左手停止模仿右手，开始传递独立的信息。",
+    standard:
+      "右手主要负责建立拍子和时间框架；左手主要用于 cue、声部沟通、进入与结束提示。核心不是固定分工，而是两只手不要重复表达相同的信息。",
+    points: [
+      "左手默认保持安静。没有额外信息需要传达时，不要持续运动。",
+      "左手动作要有目的。每个动作都应该让乐团知道「谁、什么时候、做什么」。",
+      "Cue 不只是指向。清晰的 cue 需要准备动作、明确目标和准确的时间点。",
+      "左右手可以同时做不同的事。右手维持拍型，左手可以独立完成 cue 或其他沟通。",
+      "静止也是信息。左手越克制，真正需要注意的动作越明显。",
+    ],
+    pitfalls: [
+      "两只手完全镜像，左手重复右手。",
+      "左手一直动，却没有明确目的。",
+      "Cue 只有「指向」，没有清晰的准备和时间点。",
+      "左手动作过大，反而干扰右手拍型。",
+    ],
+    meters: [],
+    bpm: 84,
+    // 力度一路起伏，左手才有事可做
+    music: { style: "lyric", bars: 8, dynamics: [0.3, 0.35, 0.55, 0.75, 0.75, 0.5, 0.4, 0.3] },
+    rubric: [
+      { dimension: "handIndependence", weight: 0.4 },
+      { dimension: "cueAccuracy", weight: 0.3 },
+      { dimension: "gesturePurpose", weight: 0.3 },
     ],
   },
   {

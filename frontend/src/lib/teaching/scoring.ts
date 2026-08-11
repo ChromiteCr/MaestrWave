@@ -56,7 +56,8 @@ import { shapeDistance } from "../camera/beatPattern";
 import type { RubricDimension, RubricItem } from "./curriculum";
 import { DIMENSIONS } from "./curriculum";
 import { ictusTimes, medianFrameIntervalMs, splitBars, splitBarsByDownbeat, type Recording } from "./recorder";
-import { motionPattern, patternPointAt, type Meter, type Point } from "./patterns";
+import { motionPattern } from "./motionTemplate";
+import { patternPointAt, type Meter, type Point } from "./patterns";
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
@@ -160,6 +161,11 @@ export interface SessionScore {
   total: number;
   /** 这一次打的是几拍。讲评页画时间线时要用它标小节线。 */
   meter: Meter;
+  /**
+   * 有没有任何一维评得出来。false 时 `total` 恒为 0，**不代表打得差** ——
+   * 而是本课的维度还没实现自动评分（如左手那三维）。UI 必须区别对待。
+   */
+  scorable: boolean;
   dimensions: DimensionScore[];
   beats: {
     /** 网格上应该有多少拍（只算录制覆盖到的部分）。 */
@@ -671,13 +677,23 @@ export function scoreSession(rec: Recording, opts: ScoreOptions): SessionScore {
     });
   }
 
-  // 权重归一化：评不了的维度把权重摊给其它维度，而不是当 0 分算
-  const items = opts.rubric.filter((r) => raw.has(r.dimension));
-  const usable = items.filter((r) => raw.get(r.dimension)!.score !== null);
+  // 权重归一化：评不了的维度把权重摊给其它维度，而不是当 0 分算。
+  //
+  // 课程里的维度可能**还没有实现**（左手那三维 —— 独立性、cue 准确性、动作
+  // 信息性 —— 需要能读懂左手在干什么，现在的信号还给不出来）。以前这些维度
+  // 会被 `filter` 悄悄丢掉，于是一门只考这三维的课会算出「0 分」外加一张空表。
+  // 现在照样列出来、标明原因，让人知道是功能没做，不是你打得差。
+  const items = opts.rubric;
+  const usable = items.filter((r) => raw.get(r.dimension)?.score != null);
   const usableWeight = usable.reduce((s, r) => s + r.weight, 0);
 
   const dimensions: DimensionScore[] = items.map((r) => {
-    const d = raw.get(r.dimension)!;
+    const d = raw.get(r.dimension) ?? {
+      score: null,
+      detail: "这一维还没有实现自动评分",
+      advice: `${DIMENSIONS[r.dimension].basis}。这一条目前只能自己对着镜子练，软件还判断不了。`,
+      unavailable: "尚未实现",
+    };
     return {
       dimension: r.dimension,
       label: DIMENSIONS[r.dimension].label,
@@ -701,6 +717,7 @@ export function scoreSession(rec: Recording, opts: ScoreOptions): SessionScore {
   return {
     total: Math.round(total),
     meter: opts.meter,
+    scorable: usable.length > 0,
     dimensions,
     beats: { expected: pairs.length, detected: ictus.length, matched: offsets.length },
     bars: bars.length,
