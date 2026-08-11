@@ -24,7 +24,7 @@
 import { shapeDistance } from "../camera/beatPattern";
 import type { RubricDimension, RubricItem } from "./curriculum";
 import { DIMENSIONS } from "./curriculum";
-import { medianFrameIntervalMs, splitBars, splitBarsByDownbeat, type Recording } from "./recorder";
+import { ictusTimes, medianFrameIntervalMs, splitBars, splitBarsByDownbeat, type Recording } from "./recorder";
 import { patternPointAt, PATTERNS, type Meter, type Point } from "./patterns";
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -96,6 +96,8 @@ interface Matched {
   /** 每个网格拍对应的用户拍点时刻（毫秒），没对上是 null。 */
   pairs: { beat: number; offsetMs: number | null }[];
   offsets: number[];
+  /** 对上了的拍：网格上的第几拍 + 用户实际打的时刻。算拍间隔要用它，见下。 */
+  hits: { beat: number; t: number }[];
   /** 对上了、且落在小节第一拍的那些用户拍点时刻。按用户强拍切小节时用。 */
   downbeats: number[];
 }
@@ -110,6 +112,7 @@ function matchIctus(rec: Recording, ictus: number[]): Matched {
 
   const pairs: Matched["pairs"] = [];
   const offsets: number[] = [];
+  const hits: Matched["hits"] = [];
   const downbeats: number[] = [];
   const used = new Set<number>();
 
@@ -127,12 +130,13 @@ function matchIctus(rec: Recording, ictus: number[]): Matched {
       const off = ictus[bestI] - target;
       pairs.push({ beat: b, offsetMs: off });
       offsets.push(off);
+      hits.push({ beat: b, t: ictus[bestI] });
       if (b % rec.grid.meter === 0) downbeats.push(ictus[bestI]);
     } else {
       pairs.push({ beat: b, offsetMs: null });
     }
   }
-  return { pairs, offsets, downbeats };
+  return { pairs, offsets, hits, downbeats };
 }
 
 function mean(xs: number[]): number {
@@ -206,7 +210,7 @@ function userClarity(rec: Recording): number | null {
   const avg = mean(speeds.map((s) => s.v));
   if (avg <= 0) return null;
 
-  const ictusAt = rec.frames.filter((f) => f.ictus).map((f) => f.t);
+  const ictusAt = ictusTimes(rec);
   if (ictusAt.length === 0) return null;
   const peaks = ictusAt.map((t) => {
     const near = speeds.filter((s) => s.t <= t && t - s.t <= CLARITY_LOOKBACK_MS);
@@ -219,8 +223,8 @@ function userClarity(rec: Recording): number | null {
 
 export function scoreSession(rec: Recording, opts: ScoreOptions): SessionScore {
   const beatMs = 60000 / rec.grid.bpm;
-  const ictus = rec.frames.filter((f) => f.ictus).map((f) => f.t);
-  const { pairs, offsets, downbeats } = matchIctus(rec, ictus);
+  const ictus = ictusTimes(rec);
+  const { pairs, offsets, hits, downbeats } = matchIctus(rec, ictus);
   // 形状按用户自己的强拍切，时间误差才不会渗进拍型分（见 splitBarsByDownbeat）
   const bars = splitBarsByDownbeat(rec, downbeats) ?? splitBars(rec);
 
@@ -256,8 +260,19 @@ export function scoreSession(rec: Recording, opts: ScoreOptions): SessionScore {
   }
 
   // 2. 速度稳定性
+  //
+  // 间隔要按**对上网格的那些拍**来算，并且除以它们之间隔了几拍。
+  //
+  // 直接拿相邻拍点相减不行：漏掉一拍就会多出一个双倍长的间隔，几个这样的间隔
+  // 就足以把变异系数从 4% 抬到 25%，于是「漏了几拍」被算成「速度极不稳」，
+  // 同一件事在「拍点准确度」那一维已经按覆盖率罚过一次了。多打出来的杂拍同理，
+  // 它们对不上网格，本来就不该参与速度的统计。
   const intervals: number[] = [];
-  for (let i = 1; i < ictus.length; i += 1) intervals.push(ictus[i] - ictus[i - 1]);
+  for (let i = 1; i < hits.length; i += 1) {
+    const span = hits[i].beat - hits[i - 1].beat;
+    // 隔了四拍以上说明中间断了一大段，那一段的平均值说明不了速度稳不稳
+    if (span >= 1 && span <= 4) intervals.push((hits[i].t - hits[i - 1].t) / span);
+  }
   if (intervals.length >= 4) {
     const m = mean(intervals);
     const cv = m > 0 ? stdev(intervals) / m : 1;

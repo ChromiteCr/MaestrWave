@@ -13,8 +13,34 @@
       "display_name": "弦乐组",
       "family": "strings",
       "role": "melody",
-      "takes": [],
-      "current_take_id": null,
+      "takes": [
+        {
+          "take_id": "f7b487a6",
+          "created_at": "2026-08-11T06:20:08.285045Z",
+          "audio_file": "f7b487a6.wav",
+          "task_type_used": "score",
+          "params": {
+            "composer": "llm",
+            "composer_requested": "llm",
+            "renderer": "sf2",
+            "blueprint_revision": 1,
+            "seed": 991722116,
+            "note_count": 23,
+            "repairs": [],
+            "beat_grid": {
+              "bpm": 88,
+              "beats_per_bar": 4,
+              "offset": 0.0
+            },
+            "bpm": 88,
+            "key": "D minor",
+            "time_signature": "4/4",
+            "duration": 16.3636,
+            "score_file": "f7b487a6.json"
+          }
+        }
+      ],
+      "current_take_id": "f7b487a6",
       "participation": [
         0.7,
         0.9,

@@ -6,7 +6,9 @@
  *   打拍手（持棒手，默认右手）
  *     · 拍点(ictus) = 手向下走到底、开始回弹的那一瞬间。教材原话是拍点由手腕的
  *       一个轻弹给出，三段式是 预备(prep) → 拍点(ictus) → 反弹(rebound)。
- *       所以检测的是**垂直速度过零点**，不是「位置低于某条线」。
+ *       检测的是**轨迹这个多边形的拐角**，不是「位置低于某条线」，也不是逐帧的
+ *       速度过零点 —— 后者是噪声的属性不是手势的属性，实测一拍能数成三下。
+ *       见 `ictusDetector.ts`。
  *     · 拍型的大小本身就表达力度 —— "the right hand pattern gradually gets larger,
  *       both in height and in width"。所以取轨迹包围盒当力度主项。
  *
@@ -27,11 +29,17 @@ import {
   PULSE_TAU_MS, QUIET_HOLD_MS, RELEASE_MS, SUSTAIN_FLOOR,
 } from "../gestureConstants";
 import type { Point } from "../teaching/patterns";
+import { ICTUS_WINDOW_MS, IctusTracker } from "./ictusDetector";
 import type { HandFrame, HandPoint } from "./handTracker";
 
 // ---- 摄像头专用参数 ----
 
-/** 轨迹包围盒的观察窗口。和 IMU 侧的力度窗口同量级，跨得过一拍。 */
+/**
+ * 力度用的轨迹包围盒窗口。和 IMU 侧的力度窗口同量级，跨得过一拍。
+ *
+ * 拍点检测用的是更长的 `ICTUS_WINDOW_MS` —— 认一个拐角要看得见它两边的边，
+ * 1200ms 在慢速下盖不住两拍。缓冲区按长的那个留，这里只是取包围盒时往回数多远。
+ */
 const TRAJ_WINDOW_MS = 1200;
 /**
  * 包围盒对角线长度（归一化图像坐标）到力度的绝对映射区间。
@@ -52,8 +60,6 @@ const SIZE_SMOOTH_TAU_MS = 250;
 /** 判定「手停住了」的包围盒上限与窗口。对应 IMU 侧的峰峰值判静止。 */
 const STILL_WINDOW_MS = 300;
 const STILL_BOX = 0.02;
-/** 一次有效的下击至少要走这么远，否则是手抖不是拍点。跟随拍型大小自适应。 */
-const STROKE_MIN_RATIO = 0.25;
 /** 表情手高度映射力度时，占最终力度的权重（其余给拍型大小）。 */
 const EXPRESSION_WEIGHT = 0.6;
 
@@ -90,9 +96,8 @@ export class ConductingModel {
   private bpm = 80;
   private lastBeatAt = 0;
   private beatPulse = 0;
-  /** 上一帧的垂直速度（指挥视角，向上为正），用来找过零点。 */
-  private lastVy = 0;
-  private lastY = 0;
+  /** 拍点检测器。轨迹化成多边形取拐角，见 `ictusDetector.ts` 开头那段说明。 */
+  private ictus = new IctusTracker();
   /** 平滑后的包围盒对角线，见 SIZE_SMOOTH_TAU_MS。 */
   private smoothDiag = 0;
 
@@ -114,6 +119,8 @@ export class ConductingModel {
 
   constructor(opts: CameraModelOptions = {}) {
     this.opts = { swapHands: !!opts.swapHands, mirrored: !!opts.mirrored };
+    // 没人调 setBaseBpm 时也要有个像样的不应期，别退回 200ms 那个绝对下限
+    this.setBaseBpm(this.baseBpm);
   }
 
   setOptions(opts: CameraModelOptions): void {
@@ -123,6 +130,10 @@ export class ConductingModel {
   setBaseBpm(bpm: number): void {
     this.baseBpm = bpm;
     this.bpm = bpm;
+    // 不应期按拍长走。固定 200ms 在慢速下等于没有，抖动能在一拍里攒出假拐角
+    // （66 BPM 实测查准率 66%）。45% 只排除掉「比曲子快一倍以上」的候选，
+    // 打半速或抢拍都不会被误杀。
+    if (bpm > 0) this.ictus.setOptions({ minIntervalMs: Math.max(200, (60000 / bpm) * 0.45) });
   }
 
   /** 打拍手 / 表情手，按 handedness 与 swapHands 决定。 */
@@ -147,10 +158,11 @@ export class ConductingModel {
     if (beat) {
       const v = toConductorView(beat, this.opts.mirrored);
       this.traj.push({ t: now, x: v.ux, y: v.h });
-      while (this.traj.length && now - this.traj[0].t > TRAJ_WINDOW_MS) this.traj.shift();
-      this.detectIctus(v.h, now, dt);
+      while (this.traj.length && now - this.traj[0].t > ICTUS_WINDOW_MS) this.traj.shift();
+      const at = this.ictus.feed(this.traj);
+      if (at !== null) this.acceptIctus(at);
     } else {
-      this.traj = this.traj.filter((p) => now - p.t <= TRAJ_WINDOW_MS);
+      this.traj = this.traj.filter((p) => now - p.t <= ICTUS_WINDOW_MS);
     }
 
     const exprView = expr ? toConductorView(expr, this.opts.mirrored) : null;
@@ -189,50 +201,24 @@ export class ConductingModel {
   }
 
   /**
-   * 拍点检测：垂直速度由「向下」转为「向上」的过零点。
+   * 收下一个已确认的拍点。`at` 是**拐角本身的时刻**，不是确认它的时刻。
    *
-   * 这和 IMU 侧用加速度过零点是同一个运动学原理（拍点是运动方向反转的拐点，
-   * 不是位置阈值），区别只在摄像头能直接拿到位置、要自己求导。
+   * 之所以要区分：多边形拐角要等出边长够了才敢认，实测滞后约 120ms。评分读的是
+   * `at`，所以时间准确度不受滞后影响（实测平均偏差 19ms）；而 `beatPulse` 是
+   * 现在才亮的，节奏声部的重音因此会晚一点点 —— 这是换来「不再一拍数成三下」
+   * 的代价。要消掉它得再上一层锁相预测，那是另一件事。
    */
-  private detectIctus(h: number, now: number, dt: number): void {
-    if (dt <= 0) {
-      this.lastY = h;
-      return;
+  private acceptIctus(at: number): void {
+    const interval = at - this.lastBeatAt;
+    if (interval > MIN_BEAT_INTERVAL_MS && interval < MAX_BEAT_INTERVAL_MS) {
+      const detected = 60000 / interval;
+      const lo = this.baseBpm * 0.7;
+      const hi = this.baseBpm * 1.3;
+      this.bpm = this.bpm * 0.85 + clamp(detected, lo, hi) * 0.15;
     }
-    const vy = (h - this.lastY) / dt; // 向上为正
-    this.lastY = h;
-
-    const box = this.boundingBox(TRAJ_WINDOW_MS, now);
-    // 下击幅度门槛跟着拍型大小走：挥得小的人也该被识别出拍点
-    const minTravel = Math.max(0.015, box.height * STROKE_MIN_RATIO);
-    const recentDrop = this.recentDrop(now);
-
-    if (this.lastVy < 0 && vy >= 0 && recentDrop >= minTravel) {
-      const interval = now - this.lastBeatAt;
-      if (interval > MIN_BEAT_INTERVAL_MS && interval < MAX_BEAT_INTERVAL_MS) {
-        const detected = 60000 / interval;
-        const lo = this.baseBpm * 0.7;
-        const hi = this.baseBpm * 1.3;
-        this.bpm = this.bpm * 0.85 + clamp(detected, lo, hi) * 0.15;
-      }
-      this.lastBeatAt = now;
-      this.lastIctusAt = now;
-      this.beatPulse = 1;
-    }
-    this.lastVy = vy;
-  }
-
-  /** 最近一段下行里手总共向下走了多远。用来滤掉原地小抖动造成的假过零点。 */
-  private recentDrop(now: number): number {
-    let peak = -Infinity;
-    let drop = 0;
-    for (let i = this.traj.length - 1; i >= 0; i--) {
-      const p = this.traj[i];
-      if (now - p.t > 600) break;
-      peak = Math.max(peak, p.y);
-      drop = Math.max(drop, peak - this.traj[this.traj.length - 1].y);
-    }
-    return drop;
+    this.lastBeatAt = at;
+    this.lastIctusAt = at;
+    this.beatPulse = 1;
   }
 
   private boundingBox(windowMs: number, now: number): { width: number; height: number; diag: number } {
@@ -312,8 +298,7 @@ export class ConductingModel {
     this.bpm = this.baseBpm;
     this.lastBeatAt = 0;
     this.beatPulse = 0;
-    this.lastVy = 0;
-    this.lastY = 0;
+    this.ictus.reset();
     this.smoothDiag = 0;
     this.active = false;
     this.activeSince = 0;

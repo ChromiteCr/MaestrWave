@@ -27,8 +27,16 @@ export interface ConductSample {
   /** 指挥视角坐标（x 左→右、y 下→上），与 lib/teaching/patterns.ts 同坐标系。 */
   beat: Point | null;
   expr: Point | null;
-  /** 这一帧是否落在拍点上。 */
+  /** 这一帧是否**确认**了一个拍点。 */
   ictus: boolean;
+  /**
+   * 该拍点的真实时刻（拐角本身，不是确认它的这一帧）。没有拍点时为 null。
+   *
+   * 必须单独带出来：多边形拐角要等出边够长才敢认，确认得比实际晚约 120ms。
+   * 拿 `t` 当拍点时刻的话，每一拍都会被系统性地记晚 120ms，评分会一致地
+   * 判成「你在拖拍」—— 而人其实没拖。
+   */
+  ictusAt: number | null;
 }
 
 export class CameraIntentSource implements IntentSource {
@@ -69,8 +77,9 @@ export class CameraIntentSource implements IntentSource {
         const ictus = this.model.lastIctusAt > 0 && this.model.lastIctusAt !== this.lastSeenIctusAt;
         if (ictus) this.lastSeenIctusAt = this.model.lastIctusAt;
         const view = this.model.lastView;
+        const ictusAt = ictus ? this.model.lastIctusAt : null;
         this.sampleListeners.forEach((cb) =>
-          cb({ t: frame.t, intent, beat: view.beat, expr: view.expr, ictus }),
+          cb({ t: frame.t, intent, beat: view.beat, expr: view.expr, ictus, ictusAt }),
         );
       }
     });

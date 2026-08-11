@@ -19,6 +19,8 @@ export interface RecordedFrame {
   beat: Point | null;
   expr: Point | null;
   ictus: boolean;
+  /** 拍点的真实时刻。见 ConductSample.ictusAt —— 评分一律用它，不要用 `t`。 */
+  ictusAt: number | null;
   effort: number;
 }
 
@@ -77,6 +79,7 @@ export class SessionRecorder {
       beat: s.beat,
       expr: s.expr,
       ictus: s.ictus,
+      ictusAt: s.ictusAt,
       effort: s.intent.effort,
     });
   };
@@ -94,9 +97,11 @@ export class SessionRecorder {
   }
 }
 
-/** 取出所有拍点时刻。 */
+/** 取出所有拍点时刻（拐角的真实时刻，不是确认它的那一帧）。 */
 export function ictusTimes(rec: Recording): number[] {
-  return rec.frames.filter((f) => f.ictus).map((f) => f.t);
+  const out: number[] = [];
+  for (const f of rec.frames) if (f.ictus && f.ictusAt !== null) out.push(f.ictusAt);
+  return out;
 }
 
 /** 一小节至少要有这么多帧才算数：30fps 下最短的一小节（2/4 @ 168BPM）也有 21 帧。 */
