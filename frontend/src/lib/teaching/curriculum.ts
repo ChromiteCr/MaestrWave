@@ -88,9 +88,9 @@ export interface Lesson {
 }
 
 export const UNITS: { unit: 1 | 2 | 3; title: string; summary: string }[] = [
-  { unit: 1, title: "拍子怎么打", summary: "右手的基本功：站姿、起拍、图形拍型、收拍" },
+  { unit: 1, title: "拍子怎么打", summary: "右手的基本功：站姿、图形拍型" },
   { unit: 2, title: "两只手分开用", summary: "左手不再跟着右手镜像，开始做自己的事" },
-  { unit: 3, title: "把音乐讲出来", summary: "延音、力度、速度变化 —— 让拍子变成音乐" },
+  { unit: 3, title: "把音乐讲出来", summary: "力度、速度变化 —— 让拍子变成音乐" },
 ];
 
 /** 每课练习曲提示词共用的硬性部分，避免十一处各写一遍、改的时候漏掉。 */
@@ -131,32 +131,6 @@ export const LESSONS: Lesson[] = [
     ],
   },
   {
-    id: "preparation",
-    unit: 1,
-    title: "预备拍",
-    goal: "用一个动作同时告诉乐队三件事：多快、多响、什么时候进。",
-    standard:
-      "预备拍（preparatory beat）是整场演出里最重要的一下。它的时值就是乐曲的一拍，所以它的速度直接定义了乐曲的速度；它的幅度定义了起始力度。乐手是靠这一下的**反弹**判断入声时刻的，不是靠你嘴上数拍。",
-    points: [
-      "先呼吸、再抬手，眼睛看着乐队而不是谱子。",
-      "预备拍走的是「入声那一拍的前一拍」。要在第 1 拍进，就打一个第 4 拍（或第 2 拍，视拍号而定）的动作。",
-      "幅度要和起始力度成正比：弱起就小，强起就大。给一个大动作却要弱奏，乐队一定会奏响。",
-      "预备拍结束后必须真的落到拍点上，不能悬在半空 —— 悬着乐手就不知道该在哪一刻发声。",
-    ],
-    pitfalls: [
-      "预备拍打得比正曲快，乐队一进来就得刹车。",
-      "抬手就走，没有停顿也没有眼神，乐队来不及准备。",
-    ],
-    meters: [4, 3, 2],
-    bpm: 80,
-    practicePrompt: practice("a piece with clear repeated entrances after rests, so the conductor must cue in the orchestra repeatedly", 80, 4),
-    rubric: [
-      { dimension: "ictusTiming", weight: 0.5 },
-      { dimension: "ictusClarity", weight: 0.3 },
-      { dimension: "tempoStability", weight: 0.2 },
-    ],
-  },
-  {
     id: "patterns",
     unit: 1,
     title: "基本图形拍型（2 / 3 / 4 拍）",
@@ -185,29 +159,6 @@ export const LESSONS: Lesson[] = [
     ],
   },
   {
-    id: "release",
-    unit: 1,
-    title: "收拍",
-    goal: "让整个乐队在同一刻停住，而不是稀稀拉拉地各停各的。",
-    standard:
-      "收拍（cut-off / release）和起拍是对称的：它同样需要一个预备动作，乐手同样是看着那个动作的落点判断在哪一刻停。没有预备的收拍，就等于让每个人自己猜。",
-    points: [
-      "先给一个小小的准备动作（通常是向上或向外的一个提起），再收。",
-      "收的那一下要有明确的终点 —— 握拳、捏合、或一个干脆的横向切动都可以，但必须是能看出「到此为止」的形状。",
-      "长音的收拍要落在正确的拍上：写到第 4 拍结束，就在第 4 拍走完的那一刻收，不是第 4 拍的拍点上。",
-      "收完手要停住。手还在动，乐队就会以为还有东西。",
-    ],
-    pitfalls: ["收拍太小，前排收了后排还在响。", "收完立刻放松垂手，尾音被切得很难看。"],
-    meters: [4, 3],
-    bpm: 76,
-    practicePrompt: practice("a piece ending on a long sustained chord that must be cut off cleanly", 76, 4),
-    rubric: [
-      { dimension: "ictusClarity", weight: 0.5 },
-      { dimension: "ictusTiming", weight: 0.5 },
-    ],
-  },
-
-  {
     id: "left-hand",
     unit: 2,
     title: "非持棒手的职责",
@@ -224,35 +175,13 @@ export const LESSONS: Lesson[] = [
       "两手完全镜像，全程一起画同一个拍型。",
       "左手一直在动，于是它什么也没说。",
     ],
-    meters: [4],
+    meters: [],
     bpm: 84,
     practicePrompt: practice("distinct instrument sections entering one after another, so each entrance needs its own cue", 84, 4),
     rubric: [
       { dimension: "dynamicsMatch", weight: 0.5 },
       { dimension: "patternShape", weight: 0.3 },
       { dimension: "tempoStability", weight: 0.2 },
-    ],
-  },
-  {
-    id: "active-passive",
-    unit: 2,
-    title: "主动拍与被动拍",
-    goal: "把「需要乐队做事的拍」和「只是走过去的拍」区分开。",
-    standard:
-      "不是每一拍都同样重要。有音要进、有变化要发生的那些拍是主动拍，要给足预备与幅度；其余的拍只需要维持脉搏，动作可以很小。全部一样用力，重点就消失了。",
-    points: [
-      "先看谱子决定哪些拍是主动的，再决定动作大小 —— 顺序不能反。",
-      "被动拍不是不打，是打小。脉搏一断，乐队的速度感就散了。",
-      "主动拍的预备要提前一拍开始，乐手才来得及反应。",
-    ],
-    pitfalls: ["每一拍都用尽全力，两分钟就累了，而且乐队看不出重点。"],
-    meters: [4, 3],
-    bpm: 92,
-    practicePrompt: practice("alternating dense and sparse bars, so some beats carry entrances and others just keep the pulse", 92, 4),
-    rubric: [
-      { dimension: "dynamicsMatch", weight: 0.4 },
-      { dimension: "ictusTiming", weight: 0.3 },
-      { dimension: "tempoStability", weight: 0.3 },
     ],
   },
   {
@@ -290,7 +219,7 @@ export const LESSONS: Lesson[] = [
       "弱起通常较弱，预备拍的幅度也要相应收小。",
     ],
     pitfalls: ["不管从第几拍入，预备拍一律往下挥，乐队会当成第 1 拍。"],
-    meters: [4, 3],
+    meters: [],
     bpm: 88,
     practicePrompt: practice("a melody with a clear pickup (anacrusis) before the first downbeat", 88, 4),
     rubric: [
@@ -300,28 +229,6 @@ export const LESSONS: Lesson[] = [
     ],
   },
 
-  {
-    id: "fermata",
-    unit: 3,
-    title: "延音",
-    goal: "把音停在半空，再决定什么时候继续。",
-    standard:
-      "延音（fermata）是把时间暂停。难点不在停，在于「停多久」和「怎么走出去」—— 走出延音需要一个新的预备拍，本质上是重新起一次拍。",
-    points: [
-      "进入延音的那一拍照常打，落到拍点后手停住不动。",
-      "手停住的位置就是乐队保持的力度，手一抖乐队就会跟着抖。",
-      "离开延音有两种：直接接下一拍（给一个新预备），或先收拍再重起。要哪一种，手上得看得出区别。",
-    ],
-    pitfalls: ["延音期间手继续微微晃动，乐队以为要走了。"],
-    meters: [4],
-    bpm: 72,
-    practicePrompt: practice("a slow piece with a long held chord in the middle, then resuming", 72, 4),
-    rubric: [
-      { dimension: "ictusClarity", weight: 0.4 },
-      { dimension: "planeConsistency", weight: 0.3 },
-      { dimension: "dynamicsMatch", weight: 0.3 },
-    ],
-  },
   {
     id: "dynamics",
     unit: 3,

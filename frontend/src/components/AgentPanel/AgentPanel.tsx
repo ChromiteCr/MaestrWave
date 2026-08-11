@@ -13,7 +13,7 @@ import styles from "./AgentPanel.module.css";
 
 const SUGGESTIONS = [
   "四拍的拍型怎么打？",
-  "预备拍是干什么的？",
+  "渐强和渐弱怎么用手表达？",
   "「构型」页是做什么的？",
   "怎么用摄像头指挥？",
 ];
