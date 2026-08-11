@@ -254,6 +254,42 @@ export interface LokrOption {
   size_mb?: number;
 }
 
+/** 带状态码的请求错误，调用方可以据此区分「接口不存在」和「接口报错」。 */
+export class ApiError extends Error {
+  constructor(message: string, readonly status: number, readonly path: string) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+/**
+ * 从错误响应体里抠出**给人看的**那句话。
+ *
+ * FastAPI 的 HTTPException 一律回 `{"detail": "..."}`，原样抛出去的话用户
+ * 看到的就是 `{"detail":"Not Found"}` 这种东西 —— 既不知道发生了什么，
+ * 也不知道该干什么。
+ */
+function errorMessage(body: string, resp: Response): string {
+  const text = body.trim();
+  if (text.startsWith("{") || text.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(text);
+      const detail = parsed?.detail ?? parsed?.message ?? parsed?.error;
+      if (typeof detail === "string" && detail.trim()) return detail.trim();
+      // 422 的 detail 是数组（Pydantic 校验错误），拼成一行
+      if (Array.isArray(detail)) {
+        const parts = detail
+          .map((d) => (typeof d?.msg === "string" ? d.msg : null))
+          .filter(Boolean);
+        if (parts.length) return parts.join("；");
+      }
+    } catch {
+      // 不是合法 JSON 就按纯文本处理
+    }
+  }
+  return text || `${resp.status} ${resp.statusText}`;
+}
+
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const resp = await fetch(path, {
     ...init,
@@ -261,7 +297,7 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!resp.ok) {
     const text = await resp.text().catch(() => "");
-    throw new Error(text || `${resp.status} ${resp.statusText}`);
+    throw new ApiError(errorMessage(text, resp), resp.status, path);
   }
   return resp.json() as Promise<T>;
 }

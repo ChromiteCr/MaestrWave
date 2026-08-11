@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { buildAgentContext } from "../lib/agentContext";
 import {
   api,
+  ApiError,
   type AgentMessage,
   type HealthInfo,
   type Instrument,
@@ -9,7 +10,32 @@ import {
   type Project,
 } from "../lib/api";
 
+/**
+ * 助手报错时给一句**能照着做**的话。
+ *
+ * 404 值得单独说：它几乎只有一个成因 —— 后端进程是加这个接口之前起的。
+ * 原样显示 `{"detail":"Not Found"}` 的话，看到的人完全无从下手。
+ */
+function agentErrorMessage(e: unknown): string {
+  if (e instanceof ApiError) {
+    if (e.status === 404) {
+      return "后端上没有这个接口，多半是后端进程还是旧的。重启后端再试。";
+    }
+    if (e.status === 403) {
+      return `${e.message}（隧道开着时调用语言模型要令牌，在「设置」页填）`;
+    }
+    if (e.status === 502) {
+      return `语言模型那边出错了：${e.message}`;
+    }
+    return e.message;
+  }
+  // fetch 本身失败（后端没起、端口不通）不会有状态码
+  if (e instanceof TypeError) return "连不上后端，确认它还在运行。";
+  return e instanceof Error ? e.message : String(e);
+}
+
 export type PageId =
+  | "home"
   | "teach"
   | "teach-lesson"
   | "teach-exam"
@@ -33,6 +59,8 @@ export type Section = "teach" | "perform" | "global";
  * 应用到生成页、编辑乐器）—— 少一处就是一个"侧栏高亮和内容对不上"的 bug。
  */
 export const PAGE_SECTION: Record<PageId, Section> = {
+  // 首页归 global：它在两条路径之上，进它**不该**把侧栏已经展开的那一级收回去。
+  home: "global",
   teach: "teach",
   "teach-lesson": "teach",
   "teach-exam": "teach",
@@ -104,7 +132,9 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
-  activePage: "file",
+  // 第一眼看到的是首页而不是「文件」——「文件」假设了你已经知道这软件是干什么的。
+  activePage: "home",
+  // 首页是 global 页，不会改 navSection，所以这里的初值决定了侧栏二级默认展开哪一条。
   navSection: "perform",
   setActivePage: (page) => {
     const section = PAGE_SECTION[page];
@@ -145,7 +175,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({
         agentMessages: s.agentMessages,
         agentBusy: false,
-        agentError: e instanceof Error ? e.message : String(e),
+        agentError: agentErrorMessage(e),
       });
       return false;
     }

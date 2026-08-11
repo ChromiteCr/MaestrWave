@@ -78,11 +78,12 @@
   word-break: break-word;
 }
 
+/* 助手回复走 Markdown 渲染，所以**不能**再留 pre-wrap ——
+   换行由 <p>/<br> 负责，两套一起上会多出一堆空行。 */
 .assistant {
   font-size: 13.5px;
   line-height: 1.8;
   color: color-mix(in srgb, var(--ink) 88%, transparent);
-  white-space: pre-wrap;
   word-break: break-word;
 }
 

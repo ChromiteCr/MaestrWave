@@ -16,6 +16,8 @@ import type { PageId } from "../state/store";
 import type { Project } from "./api";
 
 const PAGE_NAMES: Record<PageId, string> = {
+  // 停在首页多半是刚打开软件，问的会是「这东西能干什么」而不是某个具体操作
+  home: "首页（还没进入任何一条路径）",
   teach: "指挥教学 / 课程列表",
   "teach-lesson": "指挥教学 / 课程详情",
   "teach-exam": "指挥教学 / 考试",

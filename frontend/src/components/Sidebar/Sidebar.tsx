@@ -69,10 +69,20 @@ export function Sidebar() {
 
   return (
     <nav className={styles.rail}>
-      <div className={styles.brand}>
+      {/*
+        品牌区就是回首页的入口 —— 点 logo 回首页是通用约定，比在侧栏里多加一行
+        「首页」更省地方，也不会让两条一级路径变成三条。
+      */}
+      <button
+        type="button"
+        className={`${styles.brand} ${activePage === "home" ? styles.brandActive : ""}`}
+        aria-current={activePage === "home"}
+        title="回到首页"
+        onClick={() => setActivePage("home")}
+      >
         <Logo size={26} />
         <span className={styles.brandName}>MaestrWave</span>
-      </div>
+      </button>
 
       <div className={styles.group}>
         {SECTIONS.map((s) => (

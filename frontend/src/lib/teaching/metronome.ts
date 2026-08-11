@@ -98,11 +98,18 @@ export class Metronome {
 
     // 起播锚点。先留一点余量再开始，避免第一拍排到已经过去的时刻上。
     const lead = 0.12;
-    this.startCtx = ctx.currentTime + lead;
+    // 网格原点是**数拍结束**那一刻，而数拍要排在它之前。所以原点必须把整段
+    // 数拍的时长也让出来 —— 否则第 -meter 拍会落到 `currentTime` 之前。
+    // 每次 start() 都新建 AudioContext（stop() 里 close 掉了），currentTime 恒为 0，
+    // 于是 88 BPM 下第一个数拍排在 0.12 - 2.727 = -2.6 秒，
+    // `osc.start()` 直接抛 "startTime must be a positive value"，必现。
+    const countInSeconds = countInBars * meter * (60 / bpm);
+    this.startCtx = ctx.currentTime + lead + countInSeconds;
     // 网格原点要加上输出延迟。`currentTime` 是「送进音频图」的时刻，声音真正从
     // 喇叭出来还要晚 10~30ms。用户是跟着**听到的**声音打拍的，不补这一项，
     // 每个人都会被系统性地判成拖拍那么多毫秒 —— 一个谁也看不出来的固定偏差。
-    this.startPerf = performance.now() + (lead + outputLatency(ctx)) * 1000;
+    this.startPerf =
+      performance.now() + (lead + countInSeconds + outputLatency(ctx)) * 1000;
     this.nextBeat = -countInBars * meter;
 
     this.grid = { bpm, meter, originPerf: this.startPerf };
@@ -149,6 +156,13 @@ export class Metronome {
   }
 
   private click(ctx: AudioContext, when: number, strong: boolean): void {
+    // 负的 when 会让 osc.start() 抛异常、整个跟练当场中断。真出现的话说明
+    // 起播锚点算错了，跳过这一声并留个记录 —— 而不是钳到 0：钳过去只会让
+    // 拍子悄悄错位，而拍网格是评分的基准，错了比少响一声严重得多。
+    if (!(when >= 0)) {
+      console.warn("[metronome] 跳过一个排到负时刻的拍点", when);
+      return;
+    }
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.frequency.value = strong ? DOWNBEAT_HZ : BEAT_HZ;

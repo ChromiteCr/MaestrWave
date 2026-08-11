@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../../lib/api";
 import { useAppStore } from "../../state/store";
+import { Markdown } from "./Markdown";
 import styles from "./AgentChat.module.css";
 
 /**
@@ -70,11 +71,18 @@ export function AgentChat({ suggestions, maxHeight, emptyHint }: Props) {
           </div>
         )}
 
-        {messages.map((m, i) => (
-          <div key={i} className={m.role === "user" ? styles.user : styles.assistant}>
-            {m.content}
-          </div>
-        ))}
+        {messages.map((m, i) =>
+          m.role === "user" ? (
+            // 用户自己打的字原样显示（.user 上有 pre-wrap），不当 Markdown 解析
+            <div key={i} className={styles.user}>
+              {m.content}
+            </div>
+          ) : (
+            <div key={i} className={styles.assistant}>
+              <Markdown text={m.content} />
+            </div>
+          ),
+        )}
 
         {busy && <div className={styles.thinking}>正在想…</div>}
         {error && <div className={styles.error}>{error}</div>}

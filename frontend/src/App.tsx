@@ -1,6 +1,7 @@
 import { AgentPanel } from "./components/AgentPanel/AgentPanel";
 import { Sidebar } from "./components/Sidebar/Sidebar";
 import { WaveBackdrop } from "./components/WaveBackdrop/WaveBackdrop";
+import { HomePage } from "./pages/HomePage/HomePage";
 import { TeachPage } from "./pages/TeachPage/TeachPage";
 import { LessonPage } from "./pages/LessonPage/LessonPage";
 import { ExamPage } from "./pages/ExamPage/ExamPage";
@@ -16,6 +17,7 @@ import { DebugConductPage } from "./pages/DebugConductPage/DebugConductPage";
 import { useAppStore } from "./state/store";
 
 const PAGES = {
+  home: HomePage,
   teach: TeachPage,
   "teach-lesson": LessonPage,
   "teach-exam": ExamPage,

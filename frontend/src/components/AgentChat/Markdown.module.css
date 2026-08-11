@@ -1,0 +1,71 @@
+/* 助手回复里的 Markdown。侧栏只有 340px 宽，课程页内嵌那块更窄，
+   所以一切都往紧凑了调：段距小、列表缩进浅、代码块允许横向滚动。 */
+.md {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.md > :first-child {
+  margin-top: 0;
+}
+
+.md > :last-child {
+  margin-bottom: 0;
+}
+
+.para {
+  margin: 0;
+}
+
+.heading {
+  margin: 4px 0 0;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.list {
+  margin: 0;
+  /* 1.25em 而不是默认的 40px —— 窄栏里默认缩进会把正文挤掉小半行 */
+  padding-left: 1.25em;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.list li::marker {
+  color: var(--accent-dim);
+}
+
+.code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 1px 4px;
+  word-break: break-all;
+}
+
+.pre {
+  margin: 0;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  /* 长代码行横向滚动，绝不把整个面板撑宽 */
+  overflow-x: auto;
+}
+
+.pre code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre;
+}
+
+.rule {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 2px 0;
+}

@@ -1,0 +1,334 @@
+.page {
+  padding: 44px 40px 64px;
+  max-width: 1240px;
+}
+
+/* ---------------- 招牌区 ---------------- */
+
+/*
+  断点全部按**视口**算，但真正能用的宽度要减去侧栏（196px）和常驻的助手侧栏
+  （340px）—— 1280 的视口留给内容的只有约 744px。所以这里默认单列，
+  只有确实宽到放得下时才分栏，而不是反过来。
+*/
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 28px;
+  align-items: center;
+  margin-bottom: 44px;
+}
+
+@media (min-width: 1440px) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.85fr);
+    gap: 40px;
+    margin-bottom: 52px;
+  }
+}
+
+.heroText {
+  min-width: 0;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  /* 和 .display-1 同档。再大就会在助手侧栏打开时把标题挤成四行中文。 */
+  font-size: clamp(30px, 3.2vw, 46px);
+  line-height: 1.14;
+  letter-spacing: -0.022em;
+  /* 中文没有词间空格，只能靠宽度控制断行：约 10 个字一行，稳定成两行 */
+  max-width: 10em;
+  margin: 14px 0 0;
+}
+
+.lede {
+  margin: 20px 0 0;
+  max-width: 46ch;
+  font-size: 15px;
+  line-height: 1.85;
+  color: color-mix(in srgb, var(--ink) 66%, transparent);
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+.primaryBtn,
+.ghostBtn {
+  border-radius: 9px;
+  padding: 11px 20px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.primaryBtn {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.primaryBtn:hover {
+  background: var(--wave-1);
+}
+
+.ghostBtn {
+  background: transparent;
+  border-color: var(--line-strong);
+  color: color-mix(in srgb, var(--ink) 76%, transparent);
+}
+
+.ghostBtn:hover {
+  border-color: var(--accent-dim);
+  color: var(--ink);
+}
+
+/* 封顶宽度：拍型图本来就是横宽竖窄，再拉宽就变形了 */
+.heroArt {
+  min-width: 0;
+  width: 100%;
+  max-width: 560px;
+}
+
+/* ---------------- 两扇门 + 助手 ---------------- */
+
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+
+/* 助手挪到右侧独立一栏，只在真的放得下的时候 */
+@media (min-width: 1560px) {
+  .columns {
+    grid-template-columns: minmax(0, 1fr) 340px;
+  }
+}
+
+.doors {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+  align-items: stretch;
+}
+
+.door,
+.askCard {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 24px 26px 26px;
+}
+
+.door {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.doorHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.doorTitle {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 21px;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  margin: 7px 0 0;
+}
+
+.doorLede {
+  margin: 12px 0 0;
+  font-size: 13.5px;
+  line-height: 1.8;
+  color: color-mix(in srgb, var(--ink) 62%, transparent);
+}
+
+/* 单元链：编号在左，之间用一条竖线连起来——单元是必须按序学的依赖链，不是并列分类 */
+.units {
+  list-style: none;
+  margin: 20px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.units li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 0;
+  position: relative;
+}
+
+.units li:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  bottom: -50%;
+  width: 1px;
+  background: var(--line-strong);
+}
+
+.unitNo {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--accent-dim);
+  background: var(--surface);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.unitTitle {
+  font-size: 13.5px;
+  color: color-mix(in srgb, var(--ink) 82%, transparent);
+}
+
+/* 贴底对齐：两张门卡等高，动作行落在同一条线上 */
+.doorFoot {
+  margin-top: auto;
+  padding-top: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.doorBtn,
+.doorBtnQuiet {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+}
+
+.doorBtn {
+  font-size: 13.5px;
+  color: var(--accent);
+}
+
+.doorBtn:hover {
+  color: var(--wave-1);
+}
+
+/* 次要入口：考试不是学完课程的必经一步，压低一档，别和主动作抢 */
+.doorBtnQuiet {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--ink) 42%, transparent);
+}
+
+.doorBtnQuiet:hover {
+  color: color-mix(in srgb, var(--ink) 72%, transparent);
+}
+
+/* 流水线：每一步可直接点进去 */
+.pipeline {
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pipeline button {
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 10px;
+  border: none;
+  background: none;
+  border-radius: 8px;
+  font: inherit;
+  text-align: left;
+}
+
+.pipeline button:hover {
+  background: var(--surface-2);
+}
+
+.stepNo {
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--accent-dim);
+}
+
+.stepText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.stepLabel {
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.stepWhat {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--ink) 48%, transparent);
+}
+
+.pipeline button:hover .stepNo {
+  color: var(--accent);
+}
+
+/* ---------------- 助手 ---------------- */
+
+.askCard {
+  display: flex;
+  flex-direction: column;
+}
+
+.askSub {
+  margin: 6px 0 4px;
+  font-size: 12.5px;
+  color: color-mix(in srgb, var(--ink) 45%, transparent);
+}
+
+/* ---------------- 窄屏 ---------------- */
+
+@media (max-width: 1080px) {
+  .columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .page {
+    padding: 32px 24px 56px;
+  }
+
+  .doors {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
