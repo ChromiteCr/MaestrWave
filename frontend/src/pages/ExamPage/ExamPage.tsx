@@ -227,7 +227,7 @@ export function ExamPage() {
               <>
                 <p className="eyebrow">正在考试 · 《{selected.title}》</p>
                 <p className={styles.checkHint}>
-                  曲子开头有一小节数拍，跟着它进。打满 {selected.music.bars} 小节自动结束并出分。
+                  跟着数拍进，打满 {selected.music.bars} 小节自动结束并出分。
                 </p>
                 <PracticeRunner
                   meter={selected.meter}

@@ -5,6 +5,122 @@
   margin-top: 12px;
 }
 
+/*
+  开场白：这一首是几拍子、多快、多长。
+  放在摄像头**上面**而不是按钮旁边 —— 这几个数要在按下「开始」之前读到，
+  按钮那一行是操作区，人扫过去只找按钮。
+*/
+.brief {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px solid color-mix(in srgb, var(--ink) 10%, transparent);
+}
+
+.meterBadge {
+  flex: none;
+  display: grid;
+  place-items: center;
+  min-width: 52px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 19px;
+  line-height: 1;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 34%, transparent);
+}
+
+.briefTitle {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.briefDim {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: color-mix(in srgb, var(--ink) 45%, transparent);
+}
+
+.briefSub {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--ink) 58%, transparent);
+}
+
+/* 摄像头 + 压在它角上的拍型小窗 */
+.stage {
+  position: relative;
+}
+
+.guide {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 152px;
+  padding: 8px 8px 6px;
+  border-radius: 10px;
+  /* 画面是活动的，小窗得自己撑住可读性：不透明底 + 一点点模糊 */
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: blur(6px);
+  border: 1px solid color-mix(in srgb, var(--ink) 16%, transparent);
+  /* CameraPreview 里的 video 是后插进 DOM 的，不给 z-index 就会盖住这里 */
+  z-index: 3;
+}
+
+.guideHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.guideTitle {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: color-mix(in srgb, var(--ink) 70%, transparent);
+}
+
+.guideToggle,
+.guideOpen {
+  padding: 2px 6px;
+  font-size: 11px;
+  color: color-mix(in srgb, var(--ink) 50%, transparent);
+  background: none;
+  border: 1px solid color-mix(in srgb, var(--ink) 18%, transparent);
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.guideToggle:hover,
+.guideOpen:hover {
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--ink) 36%, transparent);
+}
+
+.guideMnemonic {
+  margin: 2px 0 0;
+  text-align: center;
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--accent) 78%, var(--ink));
+}
+
+.guideOpen {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 3;
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  backdrop-filter: blur(6px);
+}
+
 .hud {
   display: flex;
   flex-wrap: wrap;

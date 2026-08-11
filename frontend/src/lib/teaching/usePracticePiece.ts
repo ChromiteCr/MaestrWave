@@ -19,6 +19,8 @@ export interface PreparedPiece {
   meter: number;
   /** 音频开头到正曲第一拍的秒数。 */
   gridOffsetSec: number;
+  /** 数拍小节数。界面上要照实说「开头有几小节数拍」—— 它随拍号变，不是恒等于 1。 */
+  countInBars: number;
   /** 正曲小节数 —— 打满就停。 */
   bars: number;
   /** 每小节写下的力度，喂给「力度对应」那一维。 */
@@ -69,6 +71,7 @@ export function usePracticePiece(spec: PracticeSpec | null): {
         bpm: s.grid.bpm,
         meter: s.grid.beats_per_bar,
         gridOffsetSec: s.grid.offset,
+        countInBars: s.count_in_bars ?? current.count_in_bars,
         bars: s.music_bars ?? current.bars,
         loudnessPerBar: s.loudness_per_bar ?? current.dynamics,
       });

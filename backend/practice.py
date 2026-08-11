@@ -150,15 +150,26 @@ def parse_spec(raw: dict) -> PieceSpec:
                      pickup=pickup, seed=seed)
 
 
+# 写谱算法的版本。**改了本模块里任何影响音符的逻辑，就把它 +1。**
+#
+# 缓存键只由 spec 算出来，所以同一份 spec 换了作曲逻辑之后 id 一模一样，
+# 磁盘上那份旧音频会被继续端出来 —— 用户永远听不到修好的版本，而且两台跑着
+# 不同版本的后端会在同一个 id 下给出不同的曲子。把版本号也拌进 id 里，
+# 「同一个 id ⇒ 同一份音频」才是真的成立。旧文件成为孤儿，下次重渲染几秒钟。
+#
+# 2 = M7k：重音层次（`_beat_accent`）、`_vel` 的 accent 参数、强拍不再被拆分
+_ALGO_VERSION = 2
+
+
 def piece_id(spec: PieceSpec) -> str:
-    """spec → 缓存键。
+    """spec + 算法版本 → 缓存键。
 
     只取 sha1 前 16 位（64 bit）：这不是安全用途，只是给一个本机目录做文件名，
     而碰撞概率在几千首的量级上可以忽略。**取完之后仍然要用 `PIECE_ID_RE` 校验
     路径参数** —— id 从 URL 上来，不能拿它直接拼路径。
     """
-    blob = json.dumps(asdict(spec), sort_keys=True, ensure_ascii=False,
-                      separators=(",", ":"))
+    blob = json.dumps({"v": _ALGO_VERSION, "spec": asdict(spec)},
+                      sort_keys=True, ensure_ascii=False, separators=(",", ":"))
     return hashlib.sha1(blob.encode("utf-8")).hexdigest()[:16]
 
 
@@ -205,14 +216,41 @@ _PROGRESSION = {
 }
 
 
-def _vel(part_kind: str, dyn: float) -> int:
-    """力度 = 声部基准 × 该小节的力度系数。
+def _vel(part_kind: str, dyn: float, accent: float = 1.0) -> int:
+    """力度 = 声部基准 × 该小节的力度系数 × 这一拍的轻重。
 
     下限不取 0：力度曲线到 0 时应当是「很轻」而不是「没有」—— 真消音了，
     用户就没有拍子可跟了，而这首曲子的头等任务是让人跟得上。
+
+    **`accent` 必须乘在那个下限之外**，不能折进 `dyn` 里。折进去的话 0.42 那个
+    下限会把它压掉大半：M7k 之前进行曲的弱拍写的是 `_vel(kind, dyn * 0.68)`，
+    看着是「弱拍只有强拍的 68%」，实际算出来 dyn=0.62 时是 66 : 81 —— 82%，
+    耳朵基本听不出差别。整首曲子于是变成一串一样响的拍子（见 `_beat_accent`）。
     """
     base = _BASE_VEL.get(part_kind, 80)
-    return int(_clamp(round(base * (0.42 + 0.85 * dyn)), 24, 124))
+    return int(_clamp(round(base * (0.42 + 0.85 * dyn) * accent), 24, 124))
+
+
+def _beat_accent(bpb: int, beat: int) -> float:
+    """小节里第 `beat` 拍（0 起）该有多重。
+
+    **拍号是靠这条曲线听出来的，不是靠数音符数出来的。** 跟练的人正忙着挥手，
+    没有余力去数；他能依靠的只有「哪一下最重」。所以强-弱-次强-弱这个层次
+    必须真的摆出来 —— 四拍子少了第 3 拍那个次强拍，「强弱弱弱」和「强弱」在
+    耳朵里就是同一个东西，抓错强拍之后数成三拍完全正常。
+
+    这不是理论洁癖，是量出来的：M7k 之前对重音包络做自相关，四拍子的
+    lag=2 是 +0.82、lag=4 是 +0.92 —— 只差 0.10，等于没有拍号。
+
+    次强拍取 0.62 是扫出来的，**上限比下限更要紧**：把它加重到 0.82 反而更糟，
+    因为第 3 拍一旦接近第 1 拍，一小节四拍就听成了两小节二拍（lag4−lag2 从
+    +0.23 掉到 +0.15）。次强拍的作用是把小节的下半段撑住，不是再来一次强拍。
+    """
+    if beat == 0:
+        return 1.0
+    if bpb >= 4 and beat == bpb // 2:
+        return 0.62                      # 次强拍
+    return 0.55
 
 
 def _scale_pitches(key: dict, lo: int, hi: int) -> list[int]:
@@ -258,9 +296,10 @@ def _melody_rhythm(style: str, bpb: int, rng: random.Random,
             [(0.0, 2.0), (2.0, 1.0)],
             [(0.0, 1.0), (1.0, 2.0)],
         ]) if bpb == 3 else [(float(i), 1.0) for i in range(bpb)]
-    # march：以四分音符为骨架，偶尔把某一拍拆成两个八分，避免整首都是同一个节奏
+    # march：以四分音符为骨架，偶尔把某一拍拆成两个八分，避免整首都是同一个节奏。
+    # **强拍不拆**：拆开的第 1 拍在听感上是两个较轻的音，正好把用户唯一的定位点抹掉
     out: list[tuple[float, float]] = []
-    split_at = rng.randrange(bpb)
+    split_at = rng.randrange(1, bpb) if bpb >= 2 else 0
     for i in range(bpb):
         if i == split_at and bpb >= 3:
             out.append((float(i), 0.5))
@@ -303,8 +342,9 @@ def _drum_hits(style: str, bpb: int, count_in: bool) -> list[tuple[float, int, f
     数拍的唯一任务是告诉用户「下一小节的第一拍在这里」。
     """
     if count_in:
-        # 小军鼓每拍一下，第一拍加大鼓压住
-        hits = [(float(i), 38, 1.0 if i == 0 else 0.72) for i in range(bpb)]
+        # 小军鼓每拍一下，第一拍加大鼓压住。数拍这几声是**用户唯一一次**能从容
+        # 听出拍号的机会（手还没开始动），所以这里的强弱比正曲还要拉得开一点。
+        hits = [(float(i), 38, 1.0 if i == 0 else 0.5) for i in range(bpb)]
         hits.append((0.0, 35, 1.0))
         return hits
 
@@ -314,9 +354,14 @@ def _drum_hits(style: str, bpb: int, count_in: bool) -> list[tuple[float, int, f
         return [(0.0, 81, 0.8)]
     if style == "waltz":
         return [(0.0, 35, 1.0)] + [(float(i), 81, 0.6) for i in range(1, bpb)]
-    # march：小军鼓每拍，强拍加大鼓
+    # march：小军鼓每拍走强弱层次，大鼓**只压第 1 拍**。
+    #
+    # 次强拍上不要再补一记大鼓：试过，那是四拍子听成二拍子的主要原因 ——
+    # 大鼓是全曲最低最响的一件，它落在哪儿，哪儿就是小节头。第 1、3 拍各来一下，
+    # 等于每两拍宣告一次小节开始（lag4−lag2 从 +0.23 掉到 +0.09）。
+    # 第 3 拍该由**音色缺席**来区分：有小军鼓和定音鼓、没有大鼓。
     hits: list[tuple[float, int, float]] = [(0.0, 35, 1.0)]
-    hits += [(float(i), 38, 1.0 if i == 0 else 0.68) for i in range(bpb)]
+    hits += [(float(i), 38, _beat_accent(bpb, i)) for i in range(bpb)]
     return hits
 
 
@@ -397,10 +442,10 @@ def _compose(spec: PieceSpec, blueprint: dict) -> list[dict]:
         if kind == "drums":
             for b in range(1, spec.count_in_bars + 1):
                 for beat, drum, f in _drum_hits(spec.style, bpb, count_in=True):
-                    notes.append([b, beat + 1, 0.25, drum, _vel(kind, 0.75 * f)])
+                    notes.append([b, beat + 1, 0.25, drum, _vel(kind, 0.75, f)])
             for m in range(1, spec.bars + 1):
                 for beat, drum, f in _drum_hits(spec.style, bpb, count_in=False):
-                    notes.append([offset + m, beat + 1, 0.25, drum, _vel(kind, dyn[m - 1] * f)])
+                    notes.append([offset + m, beat + 1, 0.25, drum, _vel(kind, dyn[m - 1], f)])
 
         elif kind == "timpani":
             for m in range(1, spec.bars + 1):
@@ -409,9 +454,11 @@ def _compose(spec: PieceSpec, blueprint: dict) -> list[dict]:
                 if root is None:
                     continue
                 notes.append([offset + m, 1.0, 1.0, root, _vel(kind, dyn[m - 1])])
-                # 四拍子的第三拍是次强拍，给一记轻的把小节的下半段撑住
+                # 四拍子的第三拍是次强拍，给一记轻的把小节的下半段撑住。
+                # 轻重走 accent 而不是折进 dyn —— 折进去只剩 79%，听不出这是「轻的」
                 if bpb >= 4:
-                    notes.append([offset + m, 3.0, 1.0, root, _vel(kind, dyn[m - 1] * 0.62)])
+                    notes.append([offset + m, 3.0, 1.0, root,
+                                  _vel(kind, dyn[m - 1], _beat_accent(bpb, bpb // 2))])
 
         elif kind == "bass":
             for m in range(1, spec.bars + 1):
@@ -425,7 +472,10 @@ def _compose(spec: PieceSpec, blueprint: dict) -> list[dict]:
                     if p is None:
                         continue
                     span = (hits[i + 1] if i + 1 < len(hits) else bpb) - beat
-                    notes.append([offset + m, beat + 1, span, p, _vel(kind, dyn[m - 1])])
+                    # 进行曲的低音落在第 1、3 拍。两下一样响的话，小节里就出现了
+                    # 一个两拍的脉冲，四拍子听着会像两个二拍子 —— 次强拍那一下要轻
+                    notes.append([offset + m, beat + 1, span, p,
+                                  _vel(kind, dyn[m - 1], _beat_accent(bpb, int(beat)))])
 
         elif kind == "pad":
             for m in range(1, spec.bars + 1):

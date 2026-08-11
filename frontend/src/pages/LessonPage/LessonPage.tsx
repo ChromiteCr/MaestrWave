@@ -199,14 +199,15 @@ export function LessonPage() {
             <p className="eyebrow">跟练</p>
             {lesson.meters.length > 0 ? (
               <>
+                {/* 拍号、速度、小节数、数拍长度由 PracticeRunner 自己报，这里只说状态 */}
                 <p className={styles.todo}>
                   {practice.state === "ready"
-                    ? `跟着练习曲打 ${meter} 拍，${lesson.bpm} BPM，结束后按标准给你打分。曲子开头有一小节数拍。`
+                    ? "跟着练习曲打，结束后按标准给你打分。"
                     : practice.state === "preparing"
                       ? "练习曲正在生成 —— 先看讲解和示范，好了会自动换上。现在开始跟练的话跟的是节拍器。"
                       : practice.state === "error"
                         ? `练习曲没生成出来（${practice.error}），跟节拍器一样能练与打分，只是评不了「力度对应」。`
-                        : `跟着节拍器打 ${meter} 拍，结束后按标准给你打分。`}
+                        : "跟着节拍器打，结束后按标准给你打分。"}
                 </p>
                 <PracticeRunner
                   meter={meter}

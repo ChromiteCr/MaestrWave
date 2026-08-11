@@ -8,7 +8,9 @@ import { PiecePlayer } from "../../lib/teaching/piecePlayer";
 import { SessionRecorder, type Recording } from "../../lib/teaching/recorder";
 import { scoreSession, type SessionScore } from "../../lib/teaching/scoring";
 import type { PreparedPiece } from "../../lib/teaching/usePracticePiece";
-import type { Meter } from "../../lib/teaching/patterns";
+import { PATTERNS, type Meter } from "../../lib/teaching/patterns";
+import { countInBarsFor } from "../../lib/teaching/piece";
+import { BeatPatternDemo } from "../BeatPatternDemo/BeatPatternDemo";
 import { Button } from "../Button/Button";
 import { CameraPreview } from "../CameraPreview/CameraPreview";
 import { ScoreReport } from "../ScoreReport/ScoreReport";
@@ -41,7 +43,13 @@ interface Props {
   piece?: PreparedPiece | null;
   /** 打满这么多小节自动停。给了 piece 时以曲子的长度为准。 */
   targetBars?: number;
-  /** 数拍小节数。网格原点在数拍之后，数拍期间的拍不计分。跟练习曲时由曲子决定。 */
+  /**
+   * 节拍器的数拍小节数。跟练习曲时以曲子为准（`piece.countInBars`）。
+   *
+   * 默认取 `countInBarsFor(meter)`，和练习曲用的是同一个函数 —— 不这么写的话，
+   * 同一课「跟曲子」给两小节数拍、「跟节拍器」给一小节，同一个人两次练习的
+   * 起手时机不一样，而他会以为是自己没数准。
+   */
   countInBars?: number;
   /** 打分出来之后回调，考试页拿它判及格。 */
   onScored?: (score: SessionScore) => void;
@@ -50,7 +58,8 @@ interface Props {
 type Phase = "idle" | "arming" | "countIn" | "running" | "done" | "error";
 
 export function PracticeRunner({
-  meter, bpm, rubric, piece = null, targetBars = 8, countInBars = 1, onScored,
+  meter, bpm, rubric, piece = null, targetBars = 8,
+  countInBars = countInBarsFor(meter), onScored,
 }: Props) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState("");
@@ -58,6 +67,7 @@ export function PracticeRunner({
   const [ictusCount, setIctusCount] = useState(0);
   const [lastOffset, setLastOffset] = useState<number | null>(null);
   const [score, setScore] = useState<SessionScore | null>(null);
+  const [guideOpen, setGuideOpen] = useState(true);
   /** 上一个已经显示过的拍点时刻，用来只对「新的那一拍」做反馈。 */
   const seenIctusRef = useRef(0);
 
@@ -206,6 +216,17 @@ export function PracticeRunner({
   const barsDone = beat !== null && beat >= 0 ? Math.floor(beat / useMeter) : 0;
   // 数拍期间 beat 是负的，换算成「还有几拍开始」
   const countdown = beat !== null && beat < 0 ? -beat : 0;
+  // 跟曲子时数拍长度由曲子定；跟节拍器时用传进来的
+  const useCountIn = piece?.countInBars ?? countInBars;
+
+  /**
+   * 小窗里的光点跟谁走：正曲期间跟真实网格，数拍期间停在预备位置。
+   *
+   * 数拍那几拍不计分，光点跟着跑只会让人以为该打了。而正曲一旦开始就必须交给
+   * 网格 —— 让小窗自己按 BPM 转的话，它和用户真正在跟的那条音轨是两个时间源，
+   * 几十秒下来必然错开，那时它指的就是另一拍了。
+   */
+  const guideBeat = phase === "running" && beat !== null && beat >= 0 ? beat : null;
 
   const envProblem = !HandTracker.isSupported()
     ? "这个浏览器不支持摄像头采集。"
@@ -216,12 +237,73 @@ export function PracticeRunner({
 
   return (
     <div className={styles.wrap}>
-      <CameraPreview
-        source={running ? sourceRef.current : null}
-        swapHands={false}
-        height={running ? 300 : 180}
-        placeholder={piece ? "点「开始跟练」，练习曲会先给一小节数拍" : "点「开始跟练」打开摄像头"}
-      />
+      {/*
+        这一首是几拍子，在**按下开始之前**就要说清楚。
+        跟练时人是听着音乐挥手的，拍号错了整段都白打，而听出拍号并不是初学者
+        该在跟练时顺便完成的任务 —— 那是另一门功课。
+      */}
+      <div className={styles.brief}>
+        <span className={styles.meterBadge}>{useMeter}/4</span>
+        <div>
+          <p className={styles.briefTitle}>
+            {useMeter === 1 ? "一小节打一下" : `每小节 ${useMeter} 拍`}
+            <span className={styles.briefDim}>
+              {" · "}{piece ? "练习曲" : "节拍器"}{" · "}{useBpm} BPM{" · "}{useBars} 小节
+            </span>
+          </p>
+          <p className={styles.briefSub}>
+            {useMeter === 1
+              ? "拍点在最低处，手抬起来的那一程就是下一小节的预备。"
+              : `走向是「${PATTERNS[useMeter].mnemonic.join("、")}」。`}
+            开头有 {useCountIn} 小节数拍，共 {useCountIn * useMeter} 声，数完接第 1 拍。
+          </p>
+        </div>
+      </div>
+
+      <div className={styles.stage}>
+        <CameraPreview
+          source={running ? sourceRef.current : null}
+          swapHands={false}
+          height={running ? 300 : 180}
+          placeholder={
+            piece
+              ? `点「开始跟练」，练习曲会先给 ${useCountIn} 小节数拍`
+              : "点「开始跟练」打开摄像头"
+          }
+        />
+
+        {/*
+          拍型小窗。压在画面角上而不是摆在旁边：跟练时眼睛盯着自己的手在画面里的
+          位置，视线离开摄像头去别处对照，手就跟着歪了。
+          可收起 —— 它确实挡住一块画面，而已经打熟的人不需要它。
+
+          只在打的时候出来：没开始时画面里是「点开始跟练」那行字，小窗正好压在
+          它上面 —— 挡住的偏偏是**告诉人下一步做什么**的那句话。
+        */}
+        {!running ? null : guideOpen ? (
+          <div className={styles.guide}>
+            <div className={styles.guideHead}>
+              <span className={styles.guideTitle}>{useMeter}/4 怎么打</span>
+              <button type="button" className={styles.guideToggle} onClick={() => setGuideOpen(false)}>
+                收起
+              </button>
+            </div>
+            <BeatPatternDemo
+              meter={useMeter}
+              bpm={useBpm}
+              playing
+              compact
+              beat={guideBeat}
+              height={116}
+            />
+            <p className={styles.guideMnemonic}>{PATTERNS[useMeter].mnemonic.join(" → ")}</p>
+          </div>
+        ) : (
+          <button type="button" className={styles.guideOpen} onClick={() => setGuideOpen(true)}>
+            拍型
+          </button>
+        )}
+      </div>
 
       {running && (
         <div className={styles.hud}>
@@ -248,8 +330,9 @@ export function PracticeRunner({
           </Button>
         )}
         <span className={styles.hint}>
-          {useMeter}/4 · {useBpm} BPM · {useBars} 小节
-          {piece ? "，练习曲开头有一小节数拍" : `，节拍器会先给 ${countInBars} 小节数拍`}
+          {piece
+            ? "跟练习曲，力度也在评分之内"
+            : "跟节拍器，只有点没有音乐 —— 评不了「力度对应」"}
         </span>
       </div>
 

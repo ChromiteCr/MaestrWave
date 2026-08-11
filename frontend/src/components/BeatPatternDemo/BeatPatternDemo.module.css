@@ -5,3 +5,14 @@
   border: 1px solid var(--line);
   border-radius: 12px;
 }
+
+/*
+  小窗模式：去掉底色和边框。
+  小窗自己已经是一个有边框的浮层，再套一层就是框中框 —— 而里面那一格只有
+  一百来像素，两条边线吃掉的正是拍型最需要的地方。
+*/
+.canvasCompact {
+  background: none;
+  border: none;
+  border-radius: 0;
+}

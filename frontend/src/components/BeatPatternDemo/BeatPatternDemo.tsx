@@ -20,6 +20,16 @@ interface Props {
   /** 数拍回调，给上层显示「现在第几拍」。 */
   onBeat?: (beat: number) => void;
   height?: number;
+  /**
+   * 外部驱动的当前拍（0 起）。给了就以它为准，不给就自己按 BPM 走。
+   *
+   * 跟练时的小窗要用这个：示范自己那套时钟和用户真正在跟的那条音轨是两个独立的
+   * 时间源，各走各的，几十秒下来必然错开 —— 小窗那时指的就是**另一拍**了，
+   * 而它存在的全部意义就是告诉人现在该打哪一拍。传 `null` 表示还没开始（数拍中）。
+   */
+  beat?: number | null;
+  /** 小窗模式：去掉走向文字与箭头，缩小留白和标记，只留「图形 + 第几拍」。 */
+  compact?: boolean;
 }
 
 /** 拍点闪光的持续时间。比 CameraPreview 的 160ms 长一点，示范要看得清。 */
@@ -42,7 +52,9 @@ function withAlpha(hex: string, alpha: number): string {
   return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
 }
 
-export function BeatPatternDemo({ meter, bpm, playing, onBeat, height = 300 }: Props) {
+export function BeatPatternDemo({
+  meter, bpm, playing, onBeat, height = 300, beat: extBeat, compact = false,
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef(0);
   /** 小节内的连续拍数（可为小数）。暂停时保留，继续播放从原处走。 */
@@ -52,6 +64,11 @@ export function BeatPatternDemo({ meter, bpm, playing, onBeat, height = 300 }: P
   const flashAtRef = useRef(-Infinity);
   const onBeatRef = useRef(onBeat);
   onBeatRef.current = onBeat;
+  // 外部拍号每 100ms 变一次，进依赖数组就是每 100ms 重建一次 rAF 循环
+  const extBeatRef = useRef(extBeat);
+  extBeatRef.current = extBeat;
+  /** 上一次已经对过的外部拍。用来只在**变化时**校准，中间照常自己往前走。 */
+  const syncedRef = useRef<number | null | undefined>(undefined);
 
   useEffect(() => {
     // 换拍号时从第 1 拍重新开始，否则会从上一个拍号的半途接上，看着莫名其妙
@@ -96,7 +113,28 @@ export function BeatPatternDemo({ meter, bpm, playing, onBeat, height = 300 }: P
 
       const dt = lastTsRef.current ? Math.min(ts - lastTsRef.current, 100) : 0;
       lastTsRef.current = ts;
-      if (playing) {
+      const ext = extBeatRef.current;
+      if (ext !== undefined) {
+        // 外部驱动。校准只在拍号变的那一刻做，两次校准之间照常按 BPM 往前走 ——
+        // 上游的心跳是 100ms 一次，直接照它跳的话光点是一格一格挪的。
+        if (ext !== syncedRef.current) {
+          syncedRef.current = ext;
+          if (ext !== null) {
+            beatRef.current = ((ext % meter) + meter) % meter;
+            lastBeatIndexRef.current = Math.floor(beatRef.current);
+            flashAtRef.current = ts;
+          } else {
+            beatRef.current = 0;
+            lastBeatIndexRef.current = -1;
+          }
+        }
+        if (ext !== null) {
+          // 不许跑过这一拍的末尾：校准最晚会迟到一个心跳，跑过头就得往回跳，
+          // 而往回跳比在弧线尾巴上多停 100ms 显眼得多
+          const limit = Math.floor(beatRef.current) + 0.97;
+          beatRef.current = Math.min(beatRef.current + (dt / 1000) * (bpm / 60), limit);
+        }
+      } else if (playing) {
         beatRef.current = (beatRef.current + (dt / 1000) * (bpm / 60)) % meter;
         const idx = Math.floor(beatRef.current);
         if (idx !== lastBeatIndexRef.current) {
@@ -112,10 +150,11 @@ export function BeatPatternDemo({ meter, bpm, playing, onBeat, height = 300 }: P
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, w, h);
 
-      // 上下留白不对称：顶部要放反弹顶点，底部要放拍点编号
-      const padX = 46;
-      const padTop = 22;
-      const padBottom = 34;
+      // 上下留白不对称：顶部要放反弹顶点，底部要放拍点编号。
+      // 小窗里没有走向文字要摆，留白只需要够编号不被裁掉
+      const padX = compact ? 24 : 46;
+      const padTop = compact ? 12 : 22;
+      const padBottom = compact ? 18 : 34;
       const iw = w - padX * 2;
       const ih = h - padTop - padBottom;
       const px = (x: number) => padX + x * iw;
@@ -135,10 +174,12 @@ export function BeatPatternDemo({ meter, bpm, playing, onBeat, height = 300 }: P
       ctx.lineTo(px(0.5), h - padBottom);
       ctx.stroke();
       ctx.setLineDash([]);
-      ctx.font = canvasFont(10);
-      ctx.fillStyle = withAlpha(colors.ink, 0.3);
-      const midLabel = "身体中线";
-      ctx.fillText(midLabel, px(0.5) - ctx.measureText(midLabel).width / 2, padTop - 6);
+      if (!compact) {
+        ctx.font = canvasFont(10);
+        ctx.fillStyle = withAlpha(colors.ink, 0.3);
+        const midLabel = "身体中线";
+        ctx.fillText(midLabel, px(0.5) - ctx.measureText(midLabel).width / 2, padTop - 6);
+      }
 
       // 标准轨迹
       const isOneBeat = meter === 1;
@@ -156,7 +197,7 @@ export function BeatPatternDemo({ meter, bpm, playing, onBeat, height = 300 }: P
 
       // 行进方向箭头 + 该段的走向说法 —— 1 拍跳过（两段式轨迹的箭头位置需要
       // 单独算，且动画方向已经够清楚，不标比标错好）
-      if (!isOneBeat) {
+      if (!isOneBeat && !compact) {
         pattern.strokes.forEach((word, i) => {
           const a = patternPointAt(pattern, i + 0.42);
           const b = patternPointAt(pattern, i + 0.58);
@@ -195,23 +236,23 @@ export function BeatPatternDemo({ meter, bpm, playing, onBeat, height = 300 }: P
         const cy = py(p.y);
         const isCurrent = Math.floor(beatRef.current) === i;
         ctx.beginPath();
-        ctx.arc(cx, cy, 5.5, 0, Math.PI * 2);
+        ctx.arc(cx, cy, compact ? 4 : 5.5, 0, Math.PI * 2);
         ctx.fillStyle = isCurrent ? colors.accent : colors.bg;
         ctx.fill();
         ctx.strokeStyle = colors.accent;
         ctx.lineWidth = 1.6;
         ctx.stroke();
 
-        const label = isOneBeat ? "拍点" : String(i + 1);
-        ctx.font = canvasFont(12, isCurrent ? 600 : 400);
+        const label = isOneBeat ? (compact ? "1" : "拍点") : String(i + 1);
+        ctx.font = canvasFont(compact ? 10 : 12, isCurrent ? 600 : 400);
         ctx.fillStyle = isCurrent ? colors.accent : withAlpha(colors.ink, 0.52);
         const tw = ctx.measureText(label).width;
-        // 从重心指向该拍点的方向，再往外挪 18px —— 编号就永远落在图形外侧
+        // 从重心指向该拍点的方向，再往外挪 —— 编号就永远落在图形外侧
         const dx = cx - px(centroid.x);
         const dy = cy - py(centroid.y);
         const len = Math.hypot(dx, dy) || 1;
-        const lx = cx + (dx / len) * 18;
-        const ly = cy + (dy / len) * 18;
+        const lx = cx + (dx / len) * (compact ? 12 : 18);
+        const ly = cy + (dy / len) * (compact ? 12 : 18);
         ctx.fillText(label, lx - tw / 2, ly + 4);
       });
 
@@ -224,7 +265,7 @@ export function BeatPatternDemo({ meter, bpm, playing, onBeat, height = 300 }: P
         ctx.strokeStyle = withAlpha(colors.accent, (1 - k) * 0.8);
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(px(p.x), py(p.y), 6 + k * 20, 0, Math.PI * 2);
+        ctx.arc(px(p.x), py(p.y), (compact ? 4 : 6) + k * (compact ? 13 : 20), 0, Math.PI * 2);
         ctx.stroke();
       }
 
@@ -233,13 +274,13 @@ export function BeatPatternDemo({ meter, bpm, playing, onBeat, height = 300 }: P
       for (let i = TAIL; i > 0; i -= 1) {
         const p = patternPointAt(pattern, beatRef.current - i * 0.02);
         ctx.beginPath();
-        ctx.arc(px(p.x), py(p.y), 2.2, 0, Math.PI * 2);
+        ctx.arc(px(p.x), py(p.y), compact ? 1.7 : 2.2, 0, Math.PI * 2);
         ctx.fillStyle = withAlpha(colors.accent, (1 - i / TAIL) * 0.45);
         ctx.fill();
       }
       const now = patternPointAt(pattern, beatRef.current);
       ctx.beginPath();
-      ctx.arc(px(now.x), py(now.y), 7, 0, Math.PI * 2);
+      ctx.arc(px(now.x), py(now.y), compact ? 5 : 7, 0, Math.PI * 2);
       ctx.fillStyle = colors.ink;
       ctx.fill();
     };
@@ -250,7 +291,13 @@ export function BeatPatternDemo({ meter, bpm, playing, onBeat, height = 300 }: P
       lastTsRef.current = 0;
       ro.disconnect();
     };
-  }, [meter, bpm, playing]);
+  }, [meter, bpm, playing, compact]);
 
-  return <canvas ref={canvasRef} className={styles.canvas} style={{ height }} />;
+  return (
+    <canvas
+      ref={canvasRef}
+      className={`${styles.canvas} ${compact ? styles.canvasCompact : ""}`}
+      style={{ height }}
+    />
+  );
 }
