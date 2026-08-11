@@ -52,7 +52,7 @@ export const EXAM_PIECES: ExamPiece[] = [
     meter: 4,
     bpm: 88,
     durationSec: 60,
-    covers: ["preparation", "patterns", "release"],
+    covers: ["posture", "patterns"],
     rubric: [
       { dimension: "ictusTiming", weight: 0.35 },
       { dimension: "tempoStability", weight: 0.25 },
@@ -81,14 +81,14 @@ export const EXAM_PIECES: ExamPiece[] = [
   },
   {
     id: "exam-lyric",
-    title: "抒情段落（弱起、延音、渐慢）",
+    title: "抒情段落（弱起、渐慢）",
     level: 3,
     levelLabel: "高级",
-    tests: "从非第一拍进、中间一个延音、结尾渐慢。三个单元的内容一次全考。",
+    tests: "从非第一拍进、结尾渐慢，力度变化贯穿全曲。三个单元的内容一次全考。",
     meter: 4,
     bpm: 76,
     durationSec: 90,
-    covers: ["upbeat-start", "fermata", "tempo-change", "release"],
+    covers: ["patterns", "upbeat-start", "dynamics", "tempo-change"],
     rubric: [
       { dimension: "ictusTiming", weight: 0.3 },
       { dimension: "ictusClarity", weight: 0.25 },
