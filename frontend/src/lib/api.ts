@@ -179,6 +179,55 @@ export interface ScoreStatus {
   remote_url: string;
 }
 
+/**
+ * 一个音符：`[小节, 拍, 时值(拍), MIDI 音高, 力度]`。见 backend/score.py。
+ *
+ * 定长数组而不是对象 —— 一首 32 小节 8 声部的曲子上千个音符，写成
+ * `{"bar":1,"beat":1,…}` 光键名就吃掉几千 token。小节与拍都从 1 起，拍可以是小数。
+ */
+export type ScoreNote = [number, number, number, number, number];
+
+export interface ScoreSection {
+  id: string;
+  label: string;
+  start_bar: number;
+  end_bar: number;
+  intensity: number;
+}
+
+/** 全曲一份，存 project.score_blueprint。改 bpm/调/拍号/时长会让它的 revision +1。 */
+export interface ScoreBlueprint {
+  schema_version: number;
+  revision: number;
+  bpm: number;
+  key: string;
+  time_signature: string;
+  bars: number;
+  beats_per_bar: number;
+  exact_duration: number;
+  sections: ScoreSection[];
+  /** 每小节一个和弦，长度等于 bars。 */
+  chords: string[];
+}
+
+/** 每件乐器一份谱子。存在 PROJECTS_DIR/{pid}/scores/{take_id}.json。 */
+export interface ScorePart {
+  instrument_id: string;
+  library_key: string;
+  gm_program: number;
+  channel: number;
+  blueprint_revision: number;
+  notes: ScoreNote[];
+  take_id?: string;
+  warnings?: FormationWarning[];
+}
+
+export interface ProjectScore {
+  /** 还没生成过任何乐器时是 null —— 蓝图是第一次生成时才立的。 */
+  blueprint: ScoreBlueprint | null;
+  parts: ScorePart[];
+}
+
 export interface Instrument {
   id: string;
   library_key: string;
@@ -378,6 +427,12 @@ export const api = {
   /** 选择在设置页做，落到后端的偏好文件；env 只作为默认值。 */
   setScorePrefs: (body: { renderer?: string; composer?: string }) =>
     req<ScoreStatus>("/api/score/prefs", { method: "POST", body: JSON.stringify(body) }),
+
+  /** 蓝图 + 各声部音符，喂「生成」页的钢琴卷帘。非 score 项目会返回 blueprint: null。 */
+  projectScore: (projectId: string) => req<ProjectScore>(`/api/projects/${projectId}/score`),
+
+  /** 全部声部合成一个 MIDI 文件，各声部一个 track。丢进 MuseScore / DAW 里能直接开。 */
+  scoreMidiUrl: (projectId: string) => `/api/projects/${projectId}/score.mid`,
 
   // ---- 对话式 Agent ----
   /** 和构型页共用同一条 BYOK 通路，所以同样要带隧道令牌。 */

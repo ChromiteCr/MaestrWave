@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { cssVar, withAlpha } from "../../lib/canvasColor";
 import { PATTERNS, patternPointAt, type Meter } from "../../lib/teaching/patterns";
 import styles from "./ConductingTrace.module.css";
 
@@ -6,7 +7,7 @@ import styles from "./ConductingTrace.module.css";
  * 首页的招牌视觉：指挥棒尖端的**长曝光光迹**。
  *
  * 和 `BeatPatternDemo` 用的是同一份轨迹数据（`lib/teaching/patterns.ts`），但两者
- * 的职责相反：那边是教学图解，要标出拍点平面、身体中线、每一段的走向；这里什么
+ * 的职责相反：那边是教学图解，要标出拍点编号、身体中线、每一段的走向；这里什么
  * 都不标，只留下手走过的那条光。第一次打开软件的人不需要读图，需要的是一眼看出
  * 「这东西和挥手有关」。
  *
@@ -28,19 +29,6 @@ interface Props {
 const TRAIL_BEATS = 3.6;
 /** 每拍采多少个点。够密才不会在快速段落断成虚线。 */
 const SAMPLES_PER_BEAT = 26;
-
-function cssVar(name: string, fallback: string): string {
-  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  return v || fallback;
-}
-
-/** canvas 的 fillStyle 解析不了 `color-mix()`，且失败时静默沿用上一个颜色（M6 踩过）。 */
-function withAlpha(hex: string, alpha: number): string {
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
-  if (!m) return hex;
-  const n = parseInt(m[1], 16);
-  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
-}
 
 export function ConductingTrace({
   meters = [4, 3, 2],
@@ -78,7 +66,7 @@ export function ConductingTrace({
 
     // 把**所有**要展示的拍号的轨迹合起来算一个包围盒，用它做坐标映射。
     //
-    // 两个原因：一是 patterns.ts 的坐标是有物理含义的（拍点平面在 y=0.12，
+    // 两个原因：一是 patterns.ts 的坐标是有物理含义的（第 1 拍在 y=0.12 的最低处，
     // 二三拍只在身体中线右侧活动），直接按 0..1 铺满画布的话图形会缩在左下角；
     // 二是**必须所有拍号共用一个盒子** —— 各算各的话，四拍切到三拍的瞬间整个
     // 图形会突然缩放一下，像是页面抖了一下。

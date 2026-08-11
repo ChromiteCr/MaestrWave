@@ -728,6 +728,17 @@ async def export_project_endpoint(project_id: str):
                 wav_path = projectlib.takes_dir(project_id, inst["id"]) / take["audio_file"]
                 if wav_path.exists():
                     zf.write(wav_path, f"takes/{inst['display_name']}_{inst['id']}/{take['audio_file']}")
+
+        # 写谱模式：谱子和音频一样是这个项目的产物，导出漏掉的话，拿到 zip 的人
+        # 只有渲染结果、没有音符，改不了也接不下去。
+        scores = score_gen.scores_dir(project_id)
+        if scores.is_dir():
+            for f in sorted(scores.glob("*.json")):
+                zf.write(f, f"scores/{f.name}")
+        try:
+            zf.writestr("score.mid", score_gen.project_midi(project))
+        except ValueError:
+            pass  # 还没生成过任何声部，没有可导的谱子
     buf.seek(0)
     filename = f"{project.get('name') or project_id}.zip"
     return StreamingResponse(

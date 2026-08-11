@@ -104,8 +104,19 @@ export function Waveform({ peaks, state, height = 72, accent, isPlaying, getProg
     };
 
     draw();
+
+    /**
+     * 尺寸变了要重画。**首帧宽度可能是 0**（父容器还没布局完，或者所在的页面
+     * 刚切过来），那一次画出来的 canvas 后备位图就只有 1px 宽，再被 CSS 拉成
+     * 几百像素 —— 屏幕上是一整片糊掉的色块。而 draw 只在依赖变化时跑，没有别的
+     * 时机会把它救回来，于是这个波形就一直是坏的。BeatPatternDemo 早就踩过同一个坑。
+     */
+    const ro = new ResizeObserver(() => draw());
+    ro.observe(canvas);
+
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      ro.disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [peaks, state, isPlaying, accent]);

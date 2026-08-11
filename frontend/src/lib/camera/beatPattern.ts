@@ -118,6 +118,17 @@ export function templateShape(meter: Meter): Point[] {
   return shape;
 }
 
+/**
+ * ⚠️ 目前没有调用者，接进 UI 之前先读这段。
+ *
+ * 只看**轮廓**分不开二拍和三拍：归一化掉位置与大小之后，二拍的水滴形和三拍的
+ * 圆角三角形几乎是同一条闭合线，实测两个模板之间的 DTW 距离只有 0.025，远小于
+ * 判「形状对」的阈值 SHAPE_PERFECT=0.06。二者真正的区别是**拍点落在这条线的
+ * 哪几处**，而这一层信息在 `normalize(resample(bar))` 里正好被丢掉了。
+ *
+ * 所以「你打的其实是三拍」这类诊断不能只靠它，得把拍点时刻一起喂进来。
+ * 评分走的是 `shapeDistance(bar, meter)` —— 拍号由课程给定，不受这条限制。
+ */
 export const dtwClassifier: BeatPatternClassifier = {
   classify(bar: Point[]): PatternMatch[] {
     const shape = normalize(resample(bar));

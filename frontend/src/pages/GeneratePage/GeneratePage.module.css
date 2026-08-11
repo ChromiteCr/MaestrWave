@@ -183,3 +183,80 @@
   0%, 100% { opacity: 1; }
   50% { opacity: 0.45; }
 }
+
+/* ---------- 写谱模式：谱面 ---------- */
+
+.scoreBlock {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.scoreHead {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.scoreLegend {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: color-mix(in srgb, var(--ink) 62%, transparent);
+}
+
+/* 图例的两个小方块直接复用卷帘里的两种画法，颜色改一处就得两处一起改 */
+.legendMine,
+.legendOther {
+  width: 11px;
+  height: 9px;
+  border-radius: 2px;
+}
+
+.legendMine {
+  background: var(--accent);
+}
+
+.legendOther {
+  background: color-mix(in srgb, var(--ink) 17%, transparent);
+}
+
+.scoreMeta {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: color-mix(in srgb, var(--ink) 48%, transparent);
+}
+
+/* 「修了什么」不能做成静默的：颜色比正文淡，但必须在页面上 */
+.scoreNotice {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--ink) 58%, transparent);
+}
+
+/* 下载走 <a download>，样式对齐 Button 的 ghost */
+.midiLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 11px 20px;
+  min-height: 42px;
+  border-radius: 8px;
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.midiLink:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
