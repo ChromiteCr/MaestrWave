@@ -45,6 +45,7 @@ function lessonQuestions(lesson: Lesson): string[] {
 export function LessonPage() {
   const lessonId = useAppStore((s) => s.activeLessonId);
   const setActivePage = useAppStore((s) => s.setActivePage);
+  const goBack = useAppStore((s) => s.goBack);
   const openLesson = useAppStore((s) => s.openLesson);
   const hasAgentMessages = useAppStore((s) => s.agentMessages.length > 0);
   const clearAgent = useAppStore((s) => s.clearAgent);
@@ -104,6 +105,14 @@ export function LessonPage() {
               <span className="mono-chip">{lesson.meters.map((m) => `${m}/4`).join(" · ")}</span>
             )}
           </>
+        }
+        // 返回**上一页**，不是写死的课程列表：一节课能从列表进，也能从首页的入口卡
+        // 直接进，还能从侧栏的课程树跳过来。写死的话，从首页点进一课再返回，
+        // 会被送到一个自己从没打开过的列表。栈空时才回落到课程列表。
+        back={
+          <button type="button" className={styles.backBtn} onClick={() => goBack("teach")}>
+            <span aria-hidden="true">←</span> 返回
+          </button>
         }
         actions={
           <Button variant="ghost" onClick={() => setActivePage("teach")}>
@@ -178,10 +187,18 @@ export function LessonPage() {
               {lesson.id !== "one-beat" && (
                 <label className={styles.speed}>
                   <span className="field-label">示范速度</span>
+                  {/*
+                    60–120，不是原来的 40–180。两端那大半截是用不上的：40 BPM 一拍
+                    要一秒半，慢到看不出图形的走向；180 上光点已经糊成一条线。而全部
+                    七课的速度都落在 80–90（见 curriculum.ts），默认值正好在这段中间，
+                    往两边都还有一倍的余量可调。步长 2 —— 1 BPM 的差别听不出来，
+                    却让滑块要拖上八十格。
+                  */}
                   <input
                     type="range"
-                    min={40}
-                    max={180}
+                    min={60}
+                    max={120}
+                    step={2}
                     value={bpm}
                     onChange={(e) => setBpm(Number(e.target.value))}
                   />

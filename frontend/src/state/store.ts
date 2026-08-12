@@ -93,6 +93,28 @@ export const SECTION_HOME: Record<Exclude<Section, "global">, PageId> = {
   perform: "file",
 };
 
+/**
+ * 去过的地方。课程页的返回键要回到**真正的上一页**，而不是写死的课程列表 ——
+ * 一节课能从课程列表进，也能从首页的入口卡直接进，还能从侧栏的课程树跳过来。
+ * 写死的话，从首页点进一课再返回，会被送到一个自己从没打开过的列表。
+ *
+ * 记 `lessonId` 是因为「上一页」可能就是另一节课（在树里连着点两课）。
+ */
+interface NavEntry {
+  page: PageId;
+  lessonId: string | null;
+}
+
+/** 栈深度。够覆盖一次连续浏览，又不至于让「返回」变成走不完的迷宫。 */
+const NAV_DEPTH = 20;
+
+function pushNav(stack: NavEntry[], entry: NavEntry): NavEntry[] {
+  const top = stack[stack.length - 1];
+  // 同一个地方连着进两次不入栈，否则要按两下返回才动一格
+  if (top && top.page === entry.page && top.lessonId === entry.lessonId) return stack;
+  return [...stack, entry].slice(-NAV_DEPTH);
+}
+
 interface AppState {
   activePage: PageId;
   setActivePage: (page: PageId) => void;
@@ -101,6 +123,11 @@ interface AppState {
    * 「设置」再看侧栏，二级列表还应该是指挥体验那五项，否则回不去。
    */
   navSection: Exclude<Section, "global">;
+
+  /** 去过的地方，见上方 `NavEntry`。空栈表示没地方可退。 */
+  navHistory: NavEntry[];
+  /** 退回上一页。栈空时回落到 `fallback`（不给就什么都不做）。 */
+  goBack: (fallback?: PageId) => void;
 
   /** 当前打开的课程（`teach-lesson` 页读它）。 */
   activeLessonId: string | null;
@@ -155,13 +182,42 @@ export const useAppStore = create<AppState>((set, get) => ({
   activePage: "home",
   // 首页是 global 页，不会改 navSection，所以这里的初值决定了侧栏二级默认展开哪一条。
   navSection: "perform",
+  navHistory: [],
+  goBack: (fallback) => {
+    const s = get();
+    const prev = s.navHistory[s.navHistory.length - 1];
+    if (!prev) {
+      if (fallback) s.setActivePage(fallback);
+      return;
+    }
+    const section = PAGE_SECTION[prev.page];
+    set({
+      activePage: prev.page,
+      activeLessonId: prev.lessonId,
+      navHistory: s.navHistory.slice(0, -1),
+      ...(section === "global" ? {} : { navSection: section }),
+    });
+  },
+
   setActivePage: (page) => {
+    const s = get();
+    if (s.activePage === page) return;
     const section = PAGE_SECTION[page];
-    set(section === "global" ? { activePage: page } : { activePage: page, navSection: section });
+    set({
+      activePage: page,
+      navHistory: pushNav(s.navHistory, { page: s.activePage, lessonId: s.activeLessonId }),
+      ...(section === "global" ? {} : { navSection: section }),
+    });
   },
 
   activeLessonId: null,
-  openLesson: (id) => set({ activeLessonId: id, activePage: "teach-lesson", navSection: "teach" }),
+  openLesson: (id) =>
+    set((s) => ({
+      activeLessonId: id,
+      activePage: "teach-lesson",
+      navSection: "teach",
+      navHistory: pushNav(s.navHistory, { page: s.activePage, lessonId: s.activeLessonId }),
+    })),
 
   conductMode: readConductMode(),
   setConductMode: (mode) => {

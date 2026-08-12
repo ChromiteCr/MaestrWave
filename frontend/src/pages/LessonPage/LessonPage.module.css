@@ -137,6 +137,31 @@
   color: var(--bg);
 }
 
+/*
+  返回键。做成一条淡的文字链而不是按钮：它在巨大标题的正上方，
+  给它个实体按钮的重量就会压过标题本身，而标题才是这一页在说什么。
+*/
+.backBtn {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+  padding: 3px 8px 3px 6px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  font-size: 12.5px;
+  color: color-mix(in srgb, var(--ink) 50%, transparent);
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.backBtn:hover {
+  color: var(--ink);
+  background: var(--surface-2);
+}
+
 .speed {
   display: flex;
   align-items: center;

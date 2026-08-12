@@ -1,3 +1,5 @@
+import { Fragment } from "react";
+import { UNITS, lessonIndex, lessonsOfUnit } from "../../lib/teaching/curriculum";
 import { PAGE_SECTION, SECTION_HOME, useAppStore, type PageId, type Section } from "../../state/store";
 import {
   BrowseIcon,
@@ -50,6 +52,8 @@ export function Sidebar() {
   const activePage = useAppStore((s) => s.activePage);
   const navSection = useAppStore((s) => s.navSection);
   const setActivePage = useAppStore((s) => s.setActivePage);
+  const activeLessonId = useAppStore((s) => s.activeLessonId);
+  const openLesson = useAppStore((s) => s.openLesson);
 
   /**
    * 首页什么都不选中。
@@ -116,7 +120,49 @@ export function Sidebar() {
       {!onHome && (
         <>
           <div className={styles.divider} />
-          <div className={styles.group}>{PAGES[navSection].map(renderItem)}</div>
+          <div className={styles.group}>
+            {PAGES[navSection].map((item) => (
+              <Fragment key={item.id}>
+                {renderItem(item)}
+                {/*
+                  课程树挂在「课程」下面，缩进两级。
+                  单元的顺序是必须按序学的依赖链（见 TeachPage 的说明），所以树里
+                  也按单元分组，而不是把七课平铺成一列 —— 平铺会让人以为可以随便挑
+                  一课开始。学到第五课时想回头看第二课，不用先退回列表页。
+                */}
+                {item.id === "teach" && (
+                  <div className={styles.tree}>
+                    {UNITS.map((u) => (
+                      <div key={u.unit} className={styles.unit}>
+                        <p className={styles.unitLabel}>
+                          单元 {u.unit} · {u.title}
+                        </p>
+                        {lessonsOfUnit(u.unit).map((l) => {
+                          const on = activePage === "teach-lesson" && activeLessonId === l.id;
+                          return (
+                            <button
+                              key={l.id}
+                              type="button"
+                              aria-current={on}
+                              // 侧栏只有 172px 可用，长课名会折行；原文挂在 title 上
+                              title={l.title}
+                              className={`${styles.lesson} ${on ? styles.lessonActive : ""}`}
+                              onClick={() => openLesson(l.id)}
+                            >
+                              <span className={styles.lessonNo}>
+                                {String(lessonIndex(l.id)).padStart(2, "0")}
+                              </span>
+                              <span className={styles.lessonName}>{l.title}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Fragment>
+            ))}
+          </div>
         </>
       )}
 
