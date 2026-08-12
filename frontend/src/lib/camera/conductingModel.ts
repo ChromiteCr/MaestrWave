@@ -60,6 +60,22 @@ const SIZE_SMOOTH_TAU_MS = 250;
 /** 判定「手停住了」的包围盒上限与窗口。对应 IMU 侧的峰峰值判静止。 */
 const STILL_WINDOW_MS = 300;
 const STILL_BOX = 0.02;
+/**
+ * 声部强调的平滑时间常数。
+ *
+ * 表情手的横向位置是**逐帧的关键点原始值**：MediaPipe 的抖动约 ±0.01，经 `zone()`
+ * 那条 1/0.28 的斜率放大成 ±0.036 的强调抖动，三个声部同时以这个幅度颤，
+ * 就是听感上的「音量不平滑」。IMU 那侧早就对 gamma/beta 做了低通
+ * （`gesture.ts` 的 `filtered`），摄像头这侧一直是裸值 —— 这里补上。
+ *
+ * 平滑的是**强调值本身**，不是手的坐标：手丢一帧时 `emphasis(null)` 会直接归零，
+ * 平滑坐标救不了这个断崖，平滑输出可以 —— 丢一帧只让它朝 0 挪一小步，
+ * 而用户真的把手放下时它照样一路走到 0。
+ *
+ * 180ms 比 SIZE_SMOOTH_TAU_MS 短：声部平衡该比力度更跟手（指到哪儿就该亮哪儿），
+ * 又长过丢帧的时间尺度。
+ */
+const EMPH_SMOOTH_TAU_MS = 180;
 /** 表情手高度映射力度时，占最终力度的权重（其余给拍型大小）。 */
 const EXPRESSION_WEIGHT = 0.6;
 
@@ -100,6 +116,8 @@ export class ConductingModel {
   private ictus = new IctusTracker();
   /** 平滑后的包围盒对角线，见 SIZE_SMOOTH_TAU_MS。 */
   private smoothDiag = 0;
+  /** 平滑后的声部强调，见 EMPH_SMOOTH_TAU_MS。 */
+  private smoothEmph = { melody: 0, harmony: 0, bass: 0 };
 
   private active = false;
   private activeSince = 0;
@@ -203,7 +221,7 @@ export class ConductingModel {
       effort,
       beatPulse: this.beatPulse,
       tempoRatio: this.bpm / (this.baseBpm || 80),
-      emphasis: this.emphasis(expr),
+      emphasis: this.updateEmphasis(expr, dt),
       density: clamp(this.smoothDiag / SIZE_FULL, 0, 1),
       stillness: this.quietSince === 0 ? 0 : clamp((now - this.quietSince) / QUIET_HOLD_MS, 0, 1),
       expression: null,
@@ -289,11 +307,20 @@ export class ConductingModel {
    * 左手边第一小提琴 → 主旋律；中间木管/中提 → 和声；右手边大提琴与低音提琴 → 低音。
    * 这比 IMU 那套「倾斜角正负端」更符合直觉，也更好教 —— 指向哪个方位就是强调那一片。
    */
-  private emphasis(expr: HandPoint | null): ConductIntent["emphasis"] {
-    if (!expr) return { melody: 0, harmony: 0, bass: 0 };
-    const ux = toConductorView(expr, this.opts.mirrored).ux;
-    const zone = (center: number) => clamp(1 - Math.abs(ux - center) / 0.28, 0, 1);
-    return { melody: zone(0.16), harmony: zone(0.5), bass: zone(0.84) };
+  private updateEmphasis(expr: HandPoint | null, dt: number): ConductIntent["emphasis"] {
+    let target: ConductIntent["emphasis"];
+    if (!expr) {
+      target = { melody: 0, harmony: 0, bass: 0 };
+    } else {
+      const ux = toConductorView(expr, this.opts.mirrored).ux;
+      const zone = (center: number) => clamp(1 - Math.abs(ux - center) / 0.28, 0, 1);
+      target = { melody: zone(0.16), harmony: zone(0.5), bass: zone(0.84) };
+    }
+    const k = dt > 0 ? 1 - Math.exp(-dt / EMPH_SMOOTH_TAU_MS) : 1;
+    this.smoothEmph.melody += (target.melody - this.smoothEmph.melody) * k;
+    this.smoothEmph.harmony += (target.harmony - this.smoothEmph.harmony) * k;
+    this.smoothEmph.bass += (target.bass - this.smoothEmph.bass) * k;
+    return { ...this.smoothEmph };
   }
 
   /**
@@ -312,6 +339,7 @@ export class ConductingModel {
     this.beatPulse = 0;
     this.ictus.reset();
     this.smoothDiag = 0;
+    this.smoothEmph = { melody: 0, harmony: 0, bass: 0 };
     this.active = false;
     this.activeSince = 0;
     this.quietSince = 0;

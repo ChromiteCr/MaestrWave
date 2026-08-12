@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import type { Project } from "./api";
 import { sharedAudioEngine } from "./audioEngine";
 import { mixIntent, type GestureParams, type InstrumentRole } from "./gesture";
+import { VOLUME_GAMMA } from "./gestureConstants";
 import type { IntentSource } from "./intentSource";
 import { currentTake } from "../state/store";
 
@@ -62,7 +63,8 @@ export function useConductor() {
     for (const inst of project.instruments) {
       if (!inst.current_take_id) continue;
       const activation = params.roles[inst.role] ?? 0;
-      sharedAudioEngine.setTrackVolume(inst.id, activation * params.dynamics);
+      // 响度曲线：只抬中间，顶不动。理由和实测数字见 VOLUME_GAMMA。
+      sharedAudioEngine.setTrackVolume(inst.id, (activation * params.dynamics) ** VOLUME_GAMMA);
     }
     sharedAudioEngine.setPlaybackRate(params.tempo);
   };
