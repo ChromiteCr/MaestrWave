@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
 import { Button } from "../../components/Button/Button";
-import { api, type GenerationMode, type Project, type RepertoireItem } from "../../lib/api";
+import { api, type GenerationMode, type Project, type RenderProgress, type RepertoireItem } from "../../lib/api";
+import { RenderBar } from "../../components/RenderBar/RenderBar";
 import { useAppStore } from "../../state/store";
 import styles from "./FilePage.module.css";
 
@@ -40,6 +41,7 @@ export function FilePage() {
   // 两者都是「可以打开来指挥的东西」，没必要让他先理解「这是内置的那是我的」。
   const [repertoire, setRepertoire] = useState<RepertoireItem[]>([]);
   const [importing, setImporting] = useState("");
+  const [importProgress, setImportProgress] = useState<RenderProgress | null>(null);
 
   const [name, setName] = useState("");
   const [totalDuration, setTotalDuration] = useState(16);
@@ -67,12 +69,22 @@ export function FilePage() {
   /**
    * 打开一首内置曲目：后端把 MIDI 逐轨渲染成 take，造出一个正常的项目。
    *
-   * 首次要等十几秒到一分多钟（取决于渲染器），之后这个项目就存在了，
-   * 和自己建的项目没有区别 —— 所以这里造完直接进「生成」页，不做特殊对待。
+   * 造完这个项目就存在了，和自己建的没有区别 —— 所以这里造完直接进「生成」页，
+   * 不做特殊对待。
+   *
+   * 造项目那条端点是**阻塞的**（十几个声部要逐条渲染落盘），一路上拿不到中途
+   * 状态，所以另开一条轮询去问进度。轮询失败不打断：进度条是给人看的，
+   * 它掉了不代表渲染掉了。
    */
   const openRepertoire = async (item: RepertoireItem) => {
     if (importing) return;
     setImporting(item.id);
+    setImportProgress(null);
+    const poll = setInterval(() => {
+      api.repertoireProgress(item.id)
+        .then((r) => setImportProgress(r.progress))
+        .catch(() => {});
+    }, 900);
     try {
       const { project } = await api.repertoireProject(item.id);
       await loadProjects();
@@ -81,7 +93,9 @@ export function FilePage() {
       console.error(e);
       alert(`打开《${item.title}》失败：` + (e as Error).message);
     } finally {
+      clearInterval(poll);
       setImporting("");
+      setImportProgress(null);
     }
   };
 
@@ -179,7 +193,8 @@ export function FilePage() {
               <p className={styles.sectionTitle}>内置曲目</p>
               <p className={styles.sectionHint}>
                 随程序附带的真实交响乐作品，公有领域。点开会把每个声部渲染成独立音轨，
-                之后和你自己建的项目完全一样 —— 一样能改配器、一样能用身体指挥。
+                要等十几到几十秒；渲完就是一个正常项目，和你自己建的完全一样 ——
+                一样能改配器、一样能用身体指挥。
               </p>
               <div className={styles.grid}>
                 {repertoire.map((item) => (
@@ -192,23 +207,27 @@ export function FilePage() {
                     <p className={styles.cardDesc}>{item.blurb}</p>
                     <div className={styles.cardChips}>
                       <span className="mono-chip">{item.composer}</span>
-                      <span className="mono-chip">{item.license}</span>
-                      {!item.ready && <span className="mono-chip">首次要渲染</span>}
-                    </div>
-                    <div className={styles.cardFooter}>
-                      <span className="label">
-                        {importing === item.id ? "正在渲染各声部…" : "点开即可指挥"}
+                      <span className="mono-chip">
+                        {Math.round(item.duration_sec)} 秒 · {item.track_count} 个声部
                       </span>
-                      <Button
-                        variant="ghost"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          window.open(api.repertoireSourceUrl(item.id), "_blank");
-                        }}
-                      >
-                        原始 MIDI
-                      </Button>
+                      <span className="mono-chip">{item.license}</span>
                     </div>
+                    {importing === item.id ? (
+                      <RenderBar progress={importProgress} hint="正在渲染各声部…" />
+                    ) : (
+                      <div className={styles.cardFooter}>
+                        <span className="label">点开即可指挥</span>
+                        <Button
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(api.repertoireSourceUrl(item.id), "_blank");
+                          }}
+                        >
+                          原始 MIDI
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

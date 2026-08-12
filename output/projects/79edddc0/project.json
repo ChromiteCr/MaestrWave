@@ -1,0 +1,370 @@
+{
+  "project_id": "79edddc0",
+  "name": "贝多芬 · 《埃格蒙特》序曲 · 胜利尾声",
+  "created_at": "2026-08-12T03:45:24.471962Z",
+  "style_description": "贝多芬《《埃格蒙特》序曲 · 胜利尾声》 · Public Domain (CC0)",
+  "key": "",
+  "bpm": 152,
+  "time_signature": "4/4",
+  "instruments": [
+    {
+      "id": "bdc3f019",
+      "library_key": "flute",
+      "display_name": "长笛 I",
+      "family": "woodwind",
+      "role": "melody",
+      "takes": [
+        {
+          "take_id": "03952fe1",
+          "created_at": "2026-08-12T03:45:26.401270Z",
+          "audio_file": "03952fe1.wav",
+          "task_type_used": "repertoire",
+          "params": {
+            "repertoire_id": "beethoven-egmont-coda",
+            "gm_program": 73
+          }
+        }
+      ],
+      "current_take_id": "03952fe1",
+      "participation": [],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
+    },
+    {
+      "id": "8096a82a",
+      "library_key": "flute",
+      "display_name": "长笛 II",
+      "family": "woodwind",
+      "role": "melody",
+      "takes": [
+        {
+          "take_id": "509285f3",
+          "created_at": "2026-08-12T03:45:28.814321Z",
+          "audio_file": "509285f3.wav",
+          "task_type_used": "repertoire",
+          "params": {
+            "repertoire_id": "beethoven-egmont-coda",
+            "gm_program": 73
+          }
+        }
+      ],
+      "current_take_id": "509285f3",
+      "participation": [],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
+    },
+    {
+      "id": "c42f580a",
+      "library_key": "oboe",
+      "display_name": "双簧管",
+      "family": "woodwind",
+      "role": "melody",
+      "takes": [
+        {
+          "take_id": "200e26f4",
+          "created_at": "2026-08-12T03:45:31.519890Z",
+          "audio_file": "200e26f4.wav",
+          "task_type_used": "repertoire",
+          "params": {
+            "repertoire_id": "beethoven-egmont-coda",
+            "gm_program": 68
+          }
+        }
+      ],
+      "current_take_id": "200e26f4",
+      "participation": [],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
+    },
+    {
+      "id": "5ae87af1",
+      "library_key": "clarinet",
+      "display_name": "单簧管",
+      "family": "woodwind",
+      "role": "harmony",
+      "takes": [
+        {
+          "take_id": "c4661043",
+          "created_at": "2026-08-12T03:45:33.510664Z",
+          "audio_file": "c4661043.wav",
+          "task_type_used": "repertoire",
+          "params": {
+            "repertoire_id": "beethoven-egmont-coda",
+            "gm_program": 71
+          }
+        }
+      ],
+      "current_take_id": "c4661043",
+      "participation": [],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
+    },
+    {
+      "id": "26fd7030",
+      "library_key": "woodwind",
+      "display_name": "大管",
+      "family": "woodwind",
+      "role": "harmony",
+      "takes": [
+        {
+          "take_id": "2b2467e6",
+          "created_at": "2026-08-12T03:45:33.710886Z",
+          "audio_file": "2b2467e6.wav",
+          "task_type_used": "repertoire",
+          "params": {
+            "repertoire_id": "beethoven-egmont-coda",
+            "gm_program": 70
+          }
+        }
+      ],
+      "current_take_id": "2b2467e6",
+      "participation": [],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
+    },
+    {
+      "id": "008170e2",
+      "library_key": "french_horn",
+      "display_name": "圆号",
+      "family": "brass",
+      "role": "harmony",
+      "takes": [
+        {
+          "take_id": "b580b65b",
+          "created_at": "2026-08-12T03:45:37.996576Z",
+          "audio_file": "b580b65b.wav",
+          "task_type_used": "repertoire",
+          "params": {
+            "repertoire_id": "beethoven-egmont-coda",
+            "gm_program": 60
+          }
+        }
+      ],
+      "current_take_id": "b580b65b",
+      "participation": [],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
+    },
+    {
+      "id": "85bbe24f",
+      "library_key": "trumpet",
+      "display_name": "小号",
+      "family": "brass",
+      "role": "melody",
+      "takes": [
+        {
+          "take_id": "a55f9faa",
+          "created_at": "2026-08-12T03:45:38.583180Z",
+          "audio_file": "a55f9faa.wav",
+          "task_type_used": "repertoire",
+          "params": {
+            "repertoire_id": "beethoven-egmont-coda",
+            "gm_program": 56
+          }
+        }
+      ],
+      "current_take_id": "a55f9faa",
+      "participation": [],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
+    },
+    {
+      "id": "c656a232",
+      "library_key": "trombone",
+      "display_name": "长号",
+      "family": "brass",
+      "role": "harmony",
+      "takes": [
+        {
+          "take_id": "3c3e38d9",
+          "created_at": "2026-08-12T03:45:40.016525Z",
+          "audio_file": "3c3e38d9.wav",
+          "task_type_used": "repertoire",
+          "params": {
+            "repertoire_id": "beethoven-egmont-coda",
+            "gm_program": 57
+          }
+        }
+      ],
+      "current_take_id": "3c3e38d9",
+      "participation": [],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
+    },
+    {
+      "id": "14513cd0",
+      "library_key": "timpani",
+      "display_name": "定音鼓",
+      "family": "percussion",
+      "role": "rhythm",
+      "takes": [
+        {
+          "take_id": "c5865820",
+          "created_at": "2026-08-12T03:45:44.155635Z",
+          "audio_file": "c5865820.wav",
+          "task_type_used": "repertoire",
+          "params": {
+            "repertoire_id": "beethoven-egmont-coda",
+            "gm_program": 47
+          }
+        }
+      ],
+      "current_take_id": "c5865820",
+      "participation": [],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
+    },
+    {
+      "id": "37d2337f",
+      "library_key": "violin",
+      "display_name": "小提琴 I",
+      "family": "strings",
+      "role": "melody",
+      "takes": [
+        {
+          "take_id": "465062f0",
+          "created_at": "2026-08-12T03:45:48.964847Z",
+          "audio_file": "465062f0.wav",
+          "task_type_used": "repertoire",
+          "params": {
+            "repertoire_id": "beethoven-egmont-coda",
+            "gm_program": 40
+          }
+        }
+      ],
+      "current_take_id": "465062f0",
+      "participation": [],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
+    },
+    {
+      "id": "4d6b9a69",
+      "library_key": "violin",
+      "display_name": "小提琴 II",
+      "family": "strings",
+      "role": "melody",
+      "takes": [
+        {
+          "take_id": "a960def2",
+          "created_at": "2026-08-12T03:45:55.031725Z",
+          "audio_file": "a960def2.wav",
+          "task_type_used": "repertoire",
+          "params": {
+            "repertoire_id": "beethoven-egmont-coda",
+            "gm_program": 40
+          }
+        }
+      ],
+      "current_take_id": "a960def2",
+      "participation": [],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
+    },
+    {
+      "id": "310aff5f",
+      "library_key": "strings",
+      "display_name": "中提琴",
+      "family": "strings",
+      "role": "harmony",
+      "takes": [
+        {
+          "take_id": "6390b4b0",
+          "created_at": "2026-08-12T03:45:55.230987Z",
+          "audio_file": "6390b4b0.wav",
+          "task_type_used": "repertoire",
+          "params": {
+            "repertoire_id": "beethoven-egmont-coda",
+            "gm_program": 41
+          }
+        }
+      ],
+      "current_take_id": "6390b4b0",
+      "participation": [],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
+    },
+    {
+      "id": "6fb46128",
+      "library_key": "cello",
+      "display_name": "大提琴",
+      "family": "strings",
+      "role": "bass",
+      "takes": [
+        {
+          "take_id": "4291d91a",
+          "created_at": "2026-08-12T03:45:58.487274Z",
+          "audio_file": "4291d91a.wav",
+          "task_type_used": "repertoire",
+          "params": {
+            "repertoire_id": "beethoven-egmont-coda",
+            "gm_program": 42
+          }
+        }
+      ],
+      "current_take_id": "4291d91a",
+      "participation": [],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
+    },
+    {
+      "id": "693f2c5e",
+      "library_key": "cello",
+      "display_name": "低音提琴",
+      "family": "strings",
+      "role": "bass",
+      "takes": [
+        {
+          "take_id": "05864ecc",
+          "created_at": "2026-08-12T03:45:58.689454Z",
+          "audio_file": "05864ecc.wav",
+          "task_type_used": "repertoire",
+          "params": {
+            "repertoire_id": "beethoven-egmont-coda",
+            "gm_program": 43
+          }
+        }
+      ],
+      "current_take_id": "05864ecc",
+      "participation": [],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
+    }
+  ],
+  "schema_version": 2,
+  "generation_mode": "multitrack",
+  "total_duration": 45.7894,
+  "formation": null,
+  "generation_order": [],
+  "master": null,
+  "stems": [],
+  "score_blueprint": null,
+  "segment_duration": 45.7894
+}

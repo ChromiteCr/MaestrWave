@@ -176,7 +176,7 @@ export const EXAM_PIECES: ExamPiece[] = [
     levelLabel: "中级",
     // 纯文本渲染，别写 **
     tests:
-      "第一次带真正的管弦乐作品。速度全程不变、拍子清楚到不可能听错，但织体从三个声部一层层涨到全奏 —— 拍型得跟着长大。",
+      "第一次带真正的管弦乐作品。速度全程不变、拍子清楚到不可能听错，但织体从五个弦乐声部一层层涨到全奏 —— 拍型得跟着长大。",
     meter: 2,
     bpm: 76,
     covers: ["posture", "patterns", "dynamics"],
@@ -197,9 +197,9 @@ export const EXAM_PIECES: ExamPiece[] = [
     source: {
       kind: "repertoire",
       id: "beethoven-7-ii",
-      bars: 50,
-      // 50 小节正曲 + 2 小节数拍，2/4 @ 76 BPM
-      durationSec: 82,
+      bars: 26,
+      // 26 小节正曲 + 2 小节数拍 + 1 小节余韵，2/4 @ 76 BPM
+      durationSec: 46,
     },
   },
 ];

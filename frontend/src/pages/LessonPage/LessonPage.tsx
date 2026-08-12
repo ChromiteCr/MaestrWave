@@ -4,6 +4,7 @@ import { Button } from "../../components/Button/Button";
 import { AgentChat } from "../../components/AgentChat/AgentChat";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
 import { PracticeRunner } from "../../components/PracticeRunner/PracticeRunner";
+import { RenderBar } from "../../components/RenderBar/RenderBar";
 import { DIMENSIONS, findLesson, lessonIndex, LESSONS, type Lesson } from "../../lib/teaching/curriculum";
 import { PATTERNS, type Meter } from "../../lib/teaching/patterns";
 import { buildSpec } from "../../lib/teaching/piece";
@@ -210,6 +211,9 @@ export function LessonPage() {
                         ? `练习曲没生成出来（${practice.error}），跟节拍器一样能练与打分，只是评不了「力度对应」。`
                         : "跟着节拍器打，结束后按标准给你打分。"}
                 </p>
+                {practice.state === "preparing" && (
+                  <RenderBar progress={practice.progress} hint="正在写谱…" />
+                )}
                 <PracticeRunner
                   meter={meter}
                   bpm={lesson.bpm}

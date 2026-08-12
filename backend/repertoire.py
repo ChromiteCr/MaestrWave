@@ -21,7 +21,7 @@ import logging
 import math
 from dataclasses import dataclass, asdict
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 try:
     from . import config, midi_in, practice, project as projectlib, render as renderlib, score as scorelib
@@ -36,7 +36,10 @@ logger = logging.getLogger(__name__)
 
 # 改了本模块里任何影响音符的逻辑就 +1。理由同 `practice._ALGO_VERSION`：
 # 缓存键不含算法版本的话，改完逻辑后旧音频会被继续端出来。
-_ALGO_VERSION = 1
+#
+# 2：选段各缩到 45 秒左右（原来 84/98 秒，首次渲染要等太久），
+#    同时 `midi_in.has_dynamics` 的判据从「>2 种取值」改成「>1 种」。
+_ALGO_VERSION = 2
 
 ASSET_DIR = Path(__file__).resolve().parent.parent / "assets" / "repertoire"
 
@@ -115,12 +118,19 @@ ITEMS: dict[str, RepertoireItem] = {
         title="第七交响曲 第二乐章（选段）",
         composer="贝多芬",
         filename="beethoven-symphony7-mvt2.mid",
-        # 从头起 50 小节。2/4 @ 76 BPM 全乐章不变，所以窗口怎么取都是单速度单拍号；
-        # 取开头是因为织体从三个声部一层层涨到全奏，是这一乐章最要紧的那段累加。
-        start_tick=0,
-        bars=50,
+        # 第 51–76 小节（2/4 @ 76 BPM 全乐章不变，所以窗口怎么取都是单速度单拍号）。
+        #
+        # 原来取的是开头 50 小节，那是**选错了**：这一乐章前 50 小节最多只有四个
+        # 声部（第 1 小节一个木管和弦，第 3 小节起是中提琴/大提琴/低音提琴的主题，
+        # 第 27 小节小提琴 II 加进来），全奏要到第 75 小节才出现。
+        # 「织体一层层涨到全奏」那句话对旧窗口根本不成立。
+        #
+        # 51 是小提琴 I 接过主题的地方，是个结构分界；往后 67 加木管、73 加长笛
+        # 与圆号、75 全奏 —— 26 小节里织体从 5 声部长到 12，正好是要的那段累加。
+        start_tick=38400,
+        bars=26,
         blurb="拍子清楚到不可能听错：那个短-长-短-短的节奏细胞几乎不间断地重复。"
-              "织体从低音弦乐三个声部一层层涨到全奏。",
+              "从小提琴接过主题处进，木管一层层加进来，最后压成全奏。",
         license="Public Domain (CC0)",
         source_url="https://www.mutopiaproject.org/ftp/BeethovenLv/O92/Symphony7_2/Symphony7_2.mid",
         tracks=_BEETHOVEN_7_TRACKS,
@@ -131,13 +141,16 @@ ITEMS: dict[str, RepertoireItem] = {
         title="《埃格蒙特》序曲 · 胜利尾声",
         composer="贝多芬",
         filename="beethoven-egmont-overture.mid",
-        # 尾声起于 4/4 + 152 BPM 那个双重变更点（tick 357120）。选段是按
-        # 「活跃声部/音符密度/力度跨度」滑窗选出来的，正好也落在结构分界上 ——
-        # 往前挪一点就会跨进 3/4 段，`uniform_grid` 会直接报错而不是悄悄出错。
-        start_tick=357120,
+        # 尾声的**最后 28 小节**，一直到真正的终止和弦（不淡出）。4/4 + 152 BPM
+        # 那个双重变更点在 tick 357120，从那里往后每 1536 tick 一小节，全段单速度
+        # 单拍号 —— 起点往前挪就会跨进 3/4 段，`uniform_grid` 会直接报错。
+        #
+        # 起点这一小节只有长号与两把小提琴在响，是乐句之间那道缝。没有数拍的曲子
+        # 从这里进比从全奏进好得多：指挥有一小节的时间把速度立起来。
+        start_tick=407808,
         bars=0,   # 一直取到最后一个音符
-        blurb="全曲最密的一段：十四个声部全开，铜管与定音鼓压着走。"
-              "力度跨度是整首里最大的，适合用身体去推。",
+        blurb="全曲最响的收尾：十四个声部全开，铜管与定音鼓压着走，"
+              "一路推到真正的终止和弦。力度跨度是整首里最大的。",
         license="Public Domain (CC0)",
         source_url="https://www.mutopiaproject.org/ftp/BeethovenLv/O84/Egmont/Egmont.mid",
         tracks=_EGMONT_TRACKS,
@@ -147,6 +160,24 @@ ITEMS: dict[str, RepertoireItem] = {
 
 def asset_path(item: RepertoireItem) -> Path:
     return ASSET_DIR / item.filename
+
+
+# `(已完成步数, 总步数, 正在做什么)`。渲染是十几秒到一分钟的事，界面得有东西可说。
+Progress = Callable[[int, int, str], None]
+
+
+def _steps(item: RepertoireItem, *, count_in: bool) -> int:
+    """总步数 = 读谱 1 + 每声部 1 + 收尾 1。
+
+    **在解析之前就要算得出来**：进度条从第一次回报起就该有分母，否则用户先看到
+    一条不知道有多长的进度条，等解析完才突然跳成 1/15，比没有还糟。
+    声部数从清单里数，不用等解析 —— 清单本来就是逐轨人工核对过的。
+
+    `count_in`：数拍那一条也是个要渲的声部，但造项目时会跳过它。分母算错的后果
+    是进度条永远差最后一格就结束，看起来像没做完。
+    """
+    extra = 1 if (count_in and item.count_in_bars > 0) else 0
+    return len(item.tracks) + extra + 2
 
 
 def resolve_bars(item: RepertoireItem, parsed: midi_in.ParsedMidi) -> int:
@@ -253,28 +284,37 @@ def load_meta(pid: str) -> Optional[dict]:
         return None
 
 
-def render_piece(item: RepertoireItem) -> dict:
+def render_piece(item: RepertoireItem, on_progress: Optional[Progress] = None) -> dict:
     """写谱 → 逐声部渲染 → 混一条 → 落盘。**阻塞、CPU 密集，别在事件循环里直接调。**
 
     产出与 `practice.render_piece` 同形，因此 `/api/practice/{id}/*` 与前端播放器
     都不用区分这首曲子是写出来的还是读进来的。
+
+    `on_progress(已完成, 总数, 正在做什么)` 每完成一步回报一次。不给就什么都不报，
+    对现有调用方是零变化。
     """
+    report = on_progress or (lambda *_: None)
+    steps = _steps(item, count_in=True)
+
     pid = piece_id(item)
     wav_path, mid_path, meta_path = _paths(pid)
 
+    report(0, steps, "读谱")
     blueprint, parts, info = build_score(item)
     renderer = renderlib.get_renderer()
 
     total = renderer.target_samples(blueprint)
     mix = [0.0] * total
-    for part in parts:
+    for i, part in enumerate(parts):
+        report(1 + i, steps, f"渲染 {part['display_name']}")
         samples, sr = read_wav_bytes(renderer.render_part(part, blueprint))
         if sr != config.SCORE_SAMPLE_RATE:
             raise RuntimeError(f"声部 {part['display_name']} 采样率 {sr}，期望 {config.SCORE_SAMPLE_RATE}")
         gain = 0.55 if part["instrument_id"] == "count-in" else 1.0
-        for i in range(min(total, len(samples))):
-            mix[i] += samples[i] * gain
+        for k in range(min(total, len(samples))):
+            mix[k] += samples[k] * gain
 
+    report(1 + len(parts), steps, "混音落盘")
     peak = max((abs(s) for s in mix), default=0.0)
     if peak > 1e-6:
         k = 0.89 / peak
@@ -312,6 +352,7 @@ def render_piece(item: RepertoireItem) -> dict:
         "repairs": [],
     }
     meta_path.write_text(json.dumps(meta, ensure_ascii=False), encoding="utf-8")
+    report(steps, steps, "完成")
     logger.info("曲目 %s（%s）渲染完成：%s，%d 小节，%.1f 秒，力度来源 %s，渲染器 %s",
                 pid, item.id, item.title, info["music_bars"],
                 blueprint["exact_duration"], info["dynamics_source"], renderer.name)
@@ -320,9 +361,17 @@ def render_piece(item: RepertoireItem) -> dict:
 
 # ---------------- 造一个可指挥的项目 ----------------
 
-def build_project(item: RepertoireItem) -> dict:
+def build_project(item: RepertoireItem, on_progress: Optional[Progress] = None) -> dict:
     """每条 MIDI 轨 → 一个乐器 + 一条 take。造完之后走的是和自己生成的项目
-    完全一样的链路（浏览、指挥、输出），体感混音那边一行都不用改。"""
+    完全一样的链路（浏览、指挥、输出），体感混音那边一行都不用改。
+
+    进度回报同 `render_piece`：这条路比渲染还慢（每个声部都要单独落一个 wav），
+    而它是**一次阻塞请求**，前端除了转圈没别的可看。
+    """
+    report = on_progress or (lambda *_: None)
+    steps = _steps(item, count_in=False)   # 数拍那条声部下面会跳过
+
+    report(0, steps, "读谱")
     blueprint, parts, info = build_score(item)
     renderer = renderlib.get_renderer()
 
@@ -334,9 +383,10 @@ def build_project(item: RepertoireItem) -> dict:
         name=f"{item.composer} · {item.title}",
         generation_mode="multitrack",
     )
-    for part in parts:
+    for i, part in enumerate(parts):
         if part["instrument_id"] == "count-in":
             continue
+        report(1 + i, steps, f"渲染 {part['display_name']}")
         inst = projectlib.add_instrument(
             proj, part["library_key"], display_name=part.get("display_name"),
             role=part.get("role"),
@@ -344,6 +394,7 @@ def build_project(item: RepertoireItem) -> dict:
         audio = renderer.render_part(part, blueprint)
         projectlib.add_take(proj, inst["id"], audio, "repertoire",
                             {"repertoire_id": item.id, "gm_program": part["gm_program"]})
+    report(steps, steps, "完成")
     return projectlib.load_project(proj["project_id"])
 
 
@@ -392,7 +443,26 @@ def self_check() -> list[str]:
                  if not p["notes"] and p["instrument_id"] != "count-in"]
         if len(empty) > len(parts) // 2:
             problems.append(f"{tag}: 一半以上的声部是空的 {empty}，轨号大概错位了")
+
+        # 5. 选段长度。首次渲染的等待时间和这个成正比，而窗口是很容易被顺手改宽的
+        #    —— 改宽一倍，用户第一次点开就要多等一倍。上限比 45 留一点余量。
+        dur = duration_sec(item)
+        if not 35.0 <= dur <= 50.0:
+            problems.append(f"{tag}: 选段 {dur} 秒，超出 35–50 秒。"
+                            f"首次渲染的等待时间和它成正比，改宽之前先想清楚")
     return problems
+
+
+def duration_sec(item: RepertoireItem) -> float:
+    """选段渲染出来有多长。解析一次 MIDI（8–13ms），不渲染。
+
+    从 blueprint 反算而不是写死在清单里：写死会和 `start_tick/bars` 漂移，
+    而「卡片上说 46 秒、播出来 84 秒」是那种没人会去核对的错。
+    """
+    parsed = midi_in.parse(asset_path(item))
+    bpm, bpb = midi_in.uniform_grid(parsed, item.start_tick, item.start_tick + 1)
+    bars = resolve_bars(item, parsed) + 1 + item.count_in_bars   # +1 是余韵那一小节
+    return round(bars * bpb * 60.0 / bpm, 1)
 
 
 def listing() -> list[dict]:
@@ -409,6 +479,8 @@ def listing() -> list[dict]:
             "source_url": item.source_url,
             "piece_id": pid,
             "ready": is_ready(pid),
+            "duration_sec": duration_sec(item),
+            "track_count": len(item.tracks),
         })
     return out
 

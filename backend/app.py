@@ -606,6 +606,20 @@ class PracticeRequest(BaseModel):
 # 上的文件重新判断（`practice.is_ready`），不需要持久化。
 _practice_jobs: dict[str, str] = {}
 
+# 任务键 → {"done", "total", "label"}。真实曲目要渲十几个声部，几十秒起步，
+# 光转一个圈用户不知道是在动还是卡死了。任务键：渲染用 piece_id，
+# 造项目用 "project:<曲目 id>"（那条路没有 piece_id）。
+#
+# 从工作线程写、从事件循环读。dict 的单键赋值在 GIL 下是原子的，读到的要么是
+# 上一次的要么是这一次的，不会读到半个 —— 进度条读旧一格无所谓，不值得上锁。
+_job_progress: dict[str, dict] = {}
+
+
+def _progress_sink(key: str):
+    def report(done: int, total: int, label: str) -> None:
+        _job_progress[key] = {"done": done, "total": total, "label": label}
+    return report
+
 
 def _practice_status(pid: str) -> dict:
     if practice.is_ready(pid):
@@ -617,7 +631,11 @@ def _practice_status(pid: str) -> dict:
         # "ready" 但文件不在了（用户删了 output/practice）：当成没生成过
         return {"piece_id": pid, "state": "missing"}
     if state == "rendering":
-        return {"piece_id": pid, "state": "rendering"}
+        out = {"piece_id": pid, "state": "rendering"}
+        progress = _job_progress.get(pid)
+        if progress:
+            out["progress"] = progress
+        return out
     return {"piece_id": pid, "state": "error", "error": state}
 
 
@@ -625,11 +643,13 @@ async def _render_practice(spec, pid: str) -> None:
     try:
         # 渲染是纯 CPU 的（几秒到十几秒），直接在事件循环里跑会把整个后端卡住 ——
         # 摄像头指挥的 WebSocket 也在这个循环上。
-        await asyncio.to_thread(practice.render_piece, spec)
+        await asyncio.to_thread(practice.render_piece, spec, _progress_sink(pid))
         _practice_jobs[pid] = "ready"
     except Exception as e:
         logger.exception("练习曲渲染失败 %s", pid)
         _practice_jobs[pid] = f"{type(e).__name__}: {e}"
+    finally:
+        _job_progress.pop(pid, None)
 
 
 @app.post("/api/practice/generate")
@@ -699,11 +719,14 @@ def _repertoire_or_404(item_id: str):
 
 async def _render_repertoire(item, pid: str) -> None:
     try:
-        await asyncio.to_thread(repertoirelib.render_piece, item)
+        await asyncio.to_thread(repertoirelib.render_piece, item, _progress_sink(pid))
         _practice_jobs[pid] = "ready"
     except Exception as e:
         logger.exception("曲目渲染失败 %s", pid)
         _practice_jobs[pid] = f"{type(e).__name__}: {e}"
+    finally:
+        # 留着会让下一次「缓存被删了、重新渲染」先闪一下上一次的 100%
+        _job_progress.pop(pid, None)
 
 
 @app.get("/api/repertoire")
@@ -731,14 +754,28 @@ async def repertoire_project(item_id: str):
     """把曲目造成一个可指挥的项目：每条 MIDI 轨一个乐器、一条 take。
 
     造完之后走的是和自己生成的项目完全一样的链路，指挥那边一行都不用改。
+
+    **这一条是阻塞的**（几十秒），进度另走 `/progress` 那条 —— 前端一边等这个
+    响应一边轮询进度。做成任务队列要多一套状态机，而这里只有一个消费者。
     """
     item = _repertoire_or_404(item_id)
+    key = f"project:{item_id}"
     try:
-        project = await asyncio.to_thread(repertoirelib.build_project, item)
+        project = await asyncio.to_thread(
+            repertoirelib.build_project, item, _progress_sink(key))
     except Exception as e:
         logger.exception("曲目建项目失败 %s", item_id)
         raise HTTPException(status_code=500, detail=f"{type(e).__name__}: {e}")
+    finally:
+        _job_progress.pop(key, None)
     return {"project": project}
+
+
+@app.get("/api/repertoire/{item_id}/progress")
+async def repertoire_progress(item_id: str):
+    """正在造项目的进度。没有在造就返回 null —— 前端据此收掉进度条。"""
+    _repertoire_or_404(item_id)
+    return {"progress": _job_progress.get(f"project:{item_id}")}
 
 
 @app.get("/api/repertoire/{item_id}/source.mid")

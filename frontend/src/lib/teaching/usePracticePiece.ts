@@ -9,7 +9,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { api, type PracticeSpec, type PracticeStatus } from "../api";
+import { api, type PracticeSpec, type PracticeStatus, type RenderProgress } from "../api";
 
 /**
  * 曲子从哪来。
@@ -58,11 +58,17 @@ export function usePracticePiece(source: PieceSource | null): {
   state: PieceState;
   piece: PreparedPiece | null;
   error: string;
+  /**
+   * 渲染到哪一步了。后端没回报就是 null —— 真实曲目要渲十几个声部、几十秒，
+   * 只显示「渲染中…」的话用户分不出在动还是卡死了。
+   */
+  progress: RenderProgress | null;
   retry: () => void;
 } {
   const [state, setState] = useState<PieceState>("idle");
   const [piece, setPiece] = useState<PreparedPiece | null>(null);
   const [error, setError] = useState("");
+  const [progress, setProgress] = useState<RenderProgress | null>(null);
   const [attempt, setAttempt] = useState(0);
 
   // source 是每次渲染新建的对象，直接进依赖数组会无限重发。序列化成字符串比较。
@@ -88,6 +94,7 @@ export function usePracticePiece(source: PieceSource | null): {
 
     const settle = (s: PracticeStatus) => {
       if (s.state !== "ready" || !s.grid) return false;
+      setProgress(null);
       setPiece({
         pieceId: s.piece_id,
         audioUrl: api.practiceAudioUrl(s.piece_id),
@@ -114,6 +121,7 @@ export function usePracticePiece(source: PieceSource | null): {
       try {
         const s = await api.practiceStatus(pieceId);
         if (cancelled) return;
+        setProgress(s.progress ?? null);
         if (settle(s)) return;
         if (s.state === "error") return fail(s.error || "渲染失败");
         // 超时判断要放在 missing 之前：missing 会重新发起一次，
@@ -131,11 +139,14 @@ export function usePracticePiece(source: PieceSource | null): {
       setState("preparing");
       setError("");
       setPiece(null);
+      // 换曲子就清空：上一首渲到 11/15 的进度条留在这儿，看起来像新曲子已经渲了大半
+      setProgress(null);
       try {
         const s = current.kind === "spec"
           ? await api.practiceGenerate(current.spec)
           : await api.repertoirePrepare(current.id);
         if (cancelled) return;
+        setProgress(s.progress ?? null);
         if (settle(s)) return;
         if (s.state === "error") return fail(s.error || "渲染失败");
         timer = setTimeout(() => void poll(s.piece_id), POLL_MS);
@@ -151,5 +162,5 @@ export function usePracticePiece(source: PieceSource | null): {
     };
   }, [key, attempt]);
 
-  return { state, piece, error, retry: () => setAttempt((n) => n + 1) };
+  return { state, piece, error, progress, retry: () => setAttempt((n) => n + 1) };
 }

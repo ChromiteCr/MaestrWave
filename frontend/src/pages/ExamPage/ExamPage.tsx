@@ -4,6 +4,7 @@ import { CameraPreview } from "../../components/CameraPreview/CameraPreview";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
 import { LatencyCalibration } from "../../components/LatencyCalibration/LatencyCalibration";
 import { PracticeRunner } from "../../components/PracticeRunner/PracticeRunner";
+import { RenderBar } from "../../components/RenderBar/RenderBar";
 import { CameraIntentSource } from "../../lib/camera/cameraIntentSource";
 import { HandTracker } from "../../lib/camera/handTracker";
 import { findLesson } from "../../lib/teaching/curriculum";
@@ -300,6 +301,14 @@ export function ExamPage() {
                     }
                   />
                 </div>
+
+                {/*
+                  真实乐曲首次要逐声部渲十几条音轨，几十秒。这段时间里用户完全可以
+                  接着做摄像头自检和延迟校准 —— 前提是他知道曲子在动而不是卡住了。
+                */}
+                {piece.state === "preparing" && (
+                  <RenderBar progress={piece.progress} hint="正在准备曲目…" />
+                )}
 
                 {camError && <p className={styles.error}>{camError}</p>}
 

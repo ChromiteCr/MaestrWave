@@ -205,6 +205,9 @@ _ENSEMBLE: dict[str, tuple[tuple[str, str, str], ...]] = {
 # 归一化会让三角铁和铜管一样响，配器平衡当场作废。这里给的是配器上的相对音量。
 _MIX_GAIN = {"melody": 1.0, "pad": 0.55, "bass": 0.7, "timpani": 0.8, "drums": 0.65}
 
+# 进度条上显示的声部名。`kind` 是内部键，直接端到界面上就是一行英文夹在中文里。
+_PART_LABEL = {"melody": "旋律", "pad": "和声", "bass": "低音", "timpani": "定音鼓", "drums": "打击乐"}
+
 # 各声部的基准力度。乘上每小节的 dynamics 之后才是最终 velocity。
 _BASE_VEL = {"melody": 100, "pad": 62, "bass": 78, "timpani": 92, "drums": 86}
 
@@ -574,17 +577,25 @@ def load_meta(pid: str) -> Optional[dict]:
         return None
 
 
-def render_piece(spec: PieceSpec) -> dict:
-    """写谱 → 渲染每个声部 → 混成一条 → 落盘。**阻塞、CPU 密集，别在事件循环里直接调。**"""
+def render_piece(spec: PieceSpec, on_progress=None) -> dict:
+    """写谱 → 渲染每个声部 → 混成一条 → 落盘。**阻塞、CPU 密集，别在事件循环里直接调。**
+
+    `on_progress(已完成, 总数, 正在做什么)` 每完成一步回报一次，不给就什么都不报。
+    练习曲只要几秒，但界面上和真实曲目用的是同一个进度条 —— 一边有一边没有，
+    用户会以为是卡住了。
+    """
+    report = on_progress or (lambda *_: None)
     pid = piece_id(spec)
     wav_path, mid_path, meta_path = _paths(pid)
 
     bp, parts = build_score(spec)
     renderer = renderlib.get_renderer()
+    steps = len(parts) + 1
 
     total = renderer.target_samples(bp)
     mix = [0.0] * total
-    for part in parts:
+    for idx, part in enumerate(parts):
+        report(idx, steps, f"渲染 {_PART_LABEL.get(part['kind'], part['kind'])}")
         samples, sr = read_wav_bytes(renderer.render_part(part, bp))
         if sr != config.SCORE_SAMPLE_RATE:
             raise RuntimeError(f"声部 {part['kind']} 的采样率是 {sr}，期望 {config.SCORE_SAMPLE_RATE}")
@@ -598,6 +609,7 @@ def render_piece(spec: PieceSpec) -> dict:
     #
     # 之所以敢往上推（渲染器给每条声部留的余量叠起来只到 0.3 左右，太轻了）：
     # 这一条是**独自播放**的成品，不是要和别的轨叠在一起的分轨。
+    report(len(parts), steps, "混音落盘")
     peak = max((abs(s) for s in mix), default=0.0)
     if peak > 1e-6:
         k = 0.89 / peak
@@ -625,6 +637,7 @@ def render_piece(spec: PieceSpec) -> dict:
         "repairs": [w for p in parts for w in p["warnings"]],
     }
     meta_path.write_text(json.dumps(meta, ensure_ascii=False), encoding="utf-8")
+    report(steps, steps, "完成")
     logger.info("练习曲 %s 渲染完成：%s %d/4 %d BPM，%d 小节，%.1f 秒，渲染器 %s",
                 pid, spec.style, spec.meter, spec.bpm, spec.bars,
                 bp["exact_duration"], renderer.name)

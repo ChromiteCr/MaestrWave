@@ -1,0 +1,63 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  width: 0;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.35s ease;
+}
+
+/*
+  不知道进度时来回扫。用「知道多少说多少」而不是假装匀速前进 ——
+  一条走到 90% 再停住的假进度条比没有进度条更让人不信任。
+*/
+.indeterminate .fill {
+  width: 32%;
+  transition: none;
+  animation: sweep 1.4s ease-in-out infinite;
+}
+
+@keyframes sweep {
+  0% { transform: translateX(-105%); }
+  100% { transform: translateX(320%); }
+}
+
+/*
+  全局那条 reduced-motion 规则只是把动画时长压到 0.001ms，扫动条会僵在起点 ——
+  看起来就是「卡在 0%」。这里改成整条铺满、压暗，表示「在做，但说不出到哪儿了」。
+*/
+@media (prefers-reduced-motion: reduce) {
+  .indeterminate .fill {
+    width: 100%;
+    opacity: 0.35;
+    animation: none;
+  }
+}
+
+.line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.label {
+  font-size: 12.5px;
+  color: color-mix(in srgb, var(--ink) 55%, transparent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

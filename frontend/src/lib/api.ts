@@ -270,6 +270,21 @@ export interface RepertoireItem {
   piece_id: string;
   /** 渲染好了没。没好就是首次进入，要等一会儿。 */
   ready: boolean;
+  /** 选段渲染出来有多长（秒），含数拍与余韵。卡片上要说 —— 用户得知道要指挥多久。 */
+  duration_sec: number;
+  /** 有几个声部。渲染时间基本正比于它，进度条的分母也是它。 */
+  track_count: number;
+}
+
+/**
+ * 渲染进度。真实曲目要逐声部渲十几条，几十秒起步 —— 只转一个圈的话，
+ * 用户分不出「在动」和「卡死了」。
+ */
+export interface RenderProgress {
+  done: number;
+  total: number;
+  /** 正在做什么，例如「渲染 小提琴 I」。原样显示。 */
+  label: string;
 }
 
 export interface PracticeStatus {
@@ -277,6 +292,8 @@ export interface PracticeStatus {
   /** missing = 还没开始渲染（比如缓存被删了），rendering = 正在渲染。 */
   state: "missing" | "rendering" | "ready" | "error";
   error?: string;
+  /** 只在 rendering 时有。后端太旧或刚起步时也可能没有，界面要能不显示它照样跑。 */
+  progress?: RenderProgress;
   /** 拍网格。offset 是音频开头到正曲第一拍的秒数，也就是整段数拍的长度。 */
   grid?: { bpm: number; beats_per_bar: number; offset: number };
   loudness_per_bar?: number[];
@@ -519,6 +536,12 @@ export const api = {
     req<PracticeStatus>(`/api/repertoire/${itemId}/prepare`, { method: "POST" }),
   repertoireProject: (itemId: string) =>
     req<{ project: Project }>(`/api/repertoire/${itemId}/project`, { method: "POST" }),
+  /**
+   * 造项目的进度。造项目那条是**一次阻塞请求**（几十秒），拿不到中途状态 ——
+   * 所以进度单独走这条，前端一边等响应一边轮询它。没在造就是 null。
+   */
+  repertoireProgress: (itemId: string) =>
+    req<{ progress: RenderProgress | null }>(`/api/repertoire/${itemId}/progress`),
   /** 原始 MIDI，**未截取** —— 想拿全曲的人该拿到全曲。 */
   repertoireSourceUrl: (itemId: string) => `/api/repertoire/${itemId}/source.mid`,
 

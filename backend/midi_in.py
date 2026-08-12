@@ -252,9 +252,14 @@ def derive_dynamics(notes: list[Note], specs: dict[int, TrackSpec],
 
 
 def has_dynamics(notes: list[Note], track: int) -> bool:
-    """这一轨有没有真的力度信息。取值超过 2 种才算 —— 全 127 是「没写」，不是「都很响」。"""
+    """这一轨有没有真的力度信息。**恒定一个值**才算没有 —— 全 127 是「没写」，不是「都很响」。
+
+    判据曾经是「取值超过 2 种」，那会把**两级力度**误判成缺省：埃格蒙特尾声
+    最后 28 小节里有 9 条轨只有 101 与 127 两个值，那正是谱面写的 f 与 ff。
+    窗口一短，同一份文件就会从「有力度」翻成「没力度」—— 判据不该随截多长而变。
+    """
     seen = {n.vel for n in notes if n.track == track}
-    return len(seen) > 2
+    return len(seen) > 1
 
 
 # ---------------- 组装 ----------------
@@ -288,10 +293,14 @@ def build_score(
             for n in parsed.notes
             if start_tick <= n.tick < end_tick and n.track in specs]
 
-    flat_tracks = sorted(t for t in specs if not has_dynamics(kept, t))
-    derived = None
-    if flat_tracks:
-        derived = derive_dynamics(kept, specs, bars, ticks_per_bar)
+    # 反推是**整首**的决定，不是逐轨的。有力度的声部原样留着、没力度的按反推曲线
+    # 缩放，同一小节里两组声部就按两套标准变响 —— 听起来是配器失衡，不是渐强。
+    # 只有整首几乎全平（LilyPond 没写 `\dynamics` 时的默认导出）才反推。
+    flat = {t for t in specs if not has_dynamics(kept, t)}
+    flat_notes = sum(1 for n in kept if n.track in flat)
+    whole_flat = bool(kept) and flat_notes >= 0.9 * len(kept)
+    flat_tracks = sorted(flat) if whole_flat else []
+    derived = derive_dynamics(kept, specs, bars, ticks_per_bar) if whole_flat else None
 
     total_bars = bars + tail_bars
     blueprint = {
