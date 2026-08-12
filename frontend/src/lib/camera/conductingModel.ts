@@ -26,7 +26,7 @@
 import type { ConductIntent } from "../gesture";
 import {
   ACTIVE_FLOOR, MAX_BEAT_INTERVAL_MS, MIN_ACTIVE_MS, MIN_BEAT_INTERVAL_MS,
-  PULSE_TAU_MS, QUIET_HOLD_MS, RELEASE_MS, SUSTAIN_FLOOR,
+  pulseTauMs, QUIET_HOLD_MS, RELEASE_MS, SUSTAIN_FLOOR,
 } from "../gestureConstants";
 import type { Point } from "../teaching/patterns";
 import { ICTUS_WINDOW_MS, IctusTracker } from "./ictusDetector";
@@ -180,8 +180,9 @@ export class ConductingModel {
 
     const { beat, expr } = this.split(frame);
 
-    // 拍点脉冲先按时间衰减，检测到新拍点再打回 1（和 IMU 侧同一套逻辑）
-    this.beatPulse *= dt > 0 ? Math.exp(-dt / PULSE_TAU_MS) : 1;
+    // 拍点脉冲先按时间衰减，检测到新拍点再打回 1（和 IMU 侧同一套逻辑）。
+    // 衰减跟着当前速度走而不是定值，慢速时才不会提前塌到底，见 pulseTauMs。
+    this.beatPulse *= dt > 0 ? Math.exp(-dt / pulseTauMs(this.bpm)) : 1;
 
     if (beat) {
       const v = toConductorView(beat, this.opts.mirrored);

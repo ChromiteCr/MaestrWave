@@ -77,7 +77,8 @@ import {
   MAX_BEAT_INTERVAL_MS,
   MIN_ACTIVE_MS,
   MIN_BEAT_INTERVAL_MS,
-  PULSE_TAU_MS,
+  pulseTauMs,
+  RHYTHM_FLOOR,
   QUIET_HOLD_MS,
   RELEASE_MS,
   STILL_PEAK_TO_PEAK,
@@ -117,8 +118,18 @@ export function mixIntent(intent: ConductIntent): GestureParams {
       melody: lift(intent.emphasis.melody),
       harmony: lift(intent.emphasis.harmony),
       bass: lift(intent.emphasis.bass),
-      // 节奏跟拍点走：打击类声部本质是点状事件，不是连续的朝向量。
-      rhythm: lift(intent.beatPulse),
+      /*
+       * 节奏声部跟拍点走，**但拍点只做重音，不做开关**。
+       *
+       * 原来这里是 `lift(intent.beatPulse)`：脉冲一衰减，整条节奏轨就从满音量
+       * 掉到底噪，实测每拍摆动 6.3dB —— 用户听到的就是「打一拍猛地一响，
+       * 然后一路沉下去，下一拍又猛地一响」。而节奏轨放的是定音鼓写好的谱子，
+       * 它自己就有节奏；再用用户的拍点去开关它，等于把第二套节奏叠上去，
+       * 两套还不同步（音乐走自己的网格，用户的拍点会飘）。
+       *
+       * 现在地板抬到 RHYTHM_FLOOR，脉冲只在它之上加一层重音，摆幅收到约 2.4dB。
+       */
+      rhythm: lift(RHYTHM_FLOOR + (1 - RHYTHM_FLOOR) * clamp(intent.beatPulse, 0, 1)),
     },
     dynamics: intent.effort,
     tempo: intent.tempoRatio,
@@ -216,7 +227,8 @@ export class GestureInterpreter {
     if (expression === "cutoff") this.forceRelease(now);
 
     // 先衰减再检测：calcTempo 命中拍点时会把 beatPulse 直接打回 1。
-    this.beatPulse *= dt > 0 ? Math.exp(-dt / PULSE_TAU_MS) : 1;
+    // 衰减按**预测的拍长**走，不是定值：慢速下定值会让脉冲提前塌到底（见 pulseTauMs）
+    this.beatPulse *= dt > 0 ? Math.exp(-dt / pulseTauMs(this.bpm)) : 1;
     const tempoRatio = this.calcTempo(acceleration, now);
 
     return {
@@ -265,7 +277,7 @@ export class GestureInterpreter {
    * 原实现给四个角色各配一个 sigmoid，但 melody/harmony 同取 gamma 轴、bass/rhythm 同取
    * beta 轴 —— 四个"声部"其实只是两个物理轴的正负两端，既不独立也对不上音乐意义上的
    * 四类，这就是"分为主旋律、和声、低音、节奏不符合整体逻辑"。现在只产出强调倾向，
-   * 节奏声部改由拍点脉冲驱动（见 PULSE_TAU_MS），不再占用 beta 轴的负端。
+   * 节奏声部改由拍点脉冲驱动（见 pulseTauMs 与 RHYTHM_FLOOR），不再占用 beta 轴的负端。
    */
   private calcEmphasis(): ConductIntent["emphasis"] {
     const g = this.filtered.gamma; // 左右倾斜
