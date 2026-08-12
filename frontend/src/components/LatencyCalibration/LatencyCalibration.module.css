@@ -15,7 +15,7 @@
   margin: 0;
   font-size: 12.5px;
   line-height: 1.75;
-  color: color-mix(in srgb, var(--ink) 55%, transparent);
+  color: var(--ink-55);
 }
 
 .statusRow {
@@ -30,7 +30,7 @@
   padding: 0;
   font: inherit;
   font-size: 12px;
-  color: color-mix(in srgb, var(--ink) 45%, transparent);
+  color: var(--ink-45);
   text-decoration: underline;
   text-underline-offset: 3px;
   cursor: pointer;
@@ -53,7 +53,7 @@
   min-height: 132px;
   padding: 20px;
   border-radius: 10px;
-  border: 1px dashed color-mix(in srgb, var(--ink) 28%, transparent);
+  border: 1px dashed var(--ink-28);
   background: var(--surface-2);
   cursor: pointer;
   font: inherit;
@@ -65,7 +65,7 @@
 
 .tapPad:active {
   border-style: solid;
-  border-color: color-mix(in srgb, var(--ink) 55%, transparent);
+  border-color: var(--ink-55);
 }
 
 .tapBig {
@@ -76,13 +76,13 @@
 
 .tapHint {
   font-size: 12.5px;
-  color: color-mix(in srgb, var(--ink) 50%, transparent);
+  color: var(--ink-50);
 }
 
 .tapLast {
   font-family: var(--font-mono);
   font-size: 12px;
-  color: color-mix(in srgb, var(--ink) 62%, transparent);
+  color: var(--ink-62);
 }
 
 .result {
@@ -101,7 +101,7 @@
   margin: 0;
   font-size: 12.5px;
   line-height: 1.7;
-  color: color-mix(in srgb, var(--ink) 52%, transparent);
+  color: var(--ink-52);
 }
 
 .actions {

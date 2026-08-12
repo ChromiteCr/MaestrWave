@@ -16,7 +16,7 @@
   border-radius: 8px;
   border: 1px solid transparent;
   background: transparent;
-  color: color-mix(in srgb, var(--ink) 60%, transparent);
+  color: var(--ink-60);
   font-size: 14px;
   font-weight: 500;
 }
@@ -36,7 +36,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--ink) 25%, transparent);
+  background: var(--ink-25);
   flex: 0 0 auto;
 }
 
@@ -62,7 +62,7 @@
 .closeBtn {
   border: none;
   background: transparent;
-  color: color-mix(in srgb, var(--ink) 40%, transparent);
+  color: var(--ink-40);
   padding: 2px;
   border-radius: 4px;
   display: flex;
@@ -79,7 +79,7 @@
   border-radius: 8px;
   border: 1px dashed var(--line-strong);
   background: transparent;
-  color: color-mix(in srgb, var(--ink) 50%, transparent);
+  color: var(--ink-50);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -103,7 +103,7 @@
   grid-template-columns: repeat(3, minmax(96px, 1fr));
   gap: 6px;
   z-index: 20;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 12px 32px rgba(var(--shadow-rgb), calc(0.45 * var(--shadow-a)));
 }
 
 .pickerItem {

@@ -75,7 +75,7 @@
 .timeLabel {
   font-family: var(--font-mono);
   font-size: 13px;
-  color: color-mix(in srgb, var(--ink) 55%, transparent);
+  color: var(--ink-55);
   min-width: 104px;
 }
 
@@ -121,7 +121,7 @@
 }
 
 .emptyState {
-  color: color-mix(in srgb, var(--ink) 40%, transparent);
+  color: var(--ink-40);
   font-size: 14px;
   padding: 40px 0;
   text-align: center;
@@ -161,12 +161,12 @@
   font-size: 10.5px;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--ink) 44%, transparent);
+  color: var(--ink-44);
 }
 
 .backendName {
   font-size: 13px;
-  color: color-mix(in srgb, var(--ink) 82%, transparent);
+  color: var(--ink-82);
 }
 
 .backendWarn {
@@ -195,7 +195,7 @@
   font-family: var(--font-mono);
   font-size: 13px;
   font-variant-numeric: tabular-nums;
-  color: color-mix(in srgb, var(--ink) 58%, transparent);
+  color: var(--ink-58);
 }
 
 @keyframes wavingPulse {
@@ -224,7 +224,7 @@
   align-items: center;
   gap: 7px;
   font-size: 12px;
-  color: color-mix(in srgb, var(--ink) 62%, transparent);
+  color: var(--ink-62);
 }
 
 /* 图例的两个小方块直接复用卷帘里的两种画法，颜色改一处就得两处一起改 */
@@ -240,14 +240,14 @@
 }
 
 .legendOther {
-  background: color-mix(in srgb, var(--ink) 17%, transparent);
+  background: var(--ink-17);
 }
 
 .scoreMeta {
   margin-left: auto;
   font-family: var(--font-mono);
   font-size: 12px;
-  color: color-mix(in srgb, var(--ink) 48%, transparent);
+  color: var(--ink-48);
 }
 
 /* 「修了什么」不能做成静默的：颜色比正文淡，但必须在页面上 */
@@ -255,7 +255,7 @@
   margin: 0;
   font-size: 12.5px;
   line-height: 1.6;
-  color: color-mix(in srgb, var(--ink) 58%, transparent);
+  color: var(--ink-58);
 }
 
 /* 下载走 <a download>，样式对齐 Button 的 ghost */

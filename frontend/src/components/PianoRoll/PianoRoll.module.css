@@ -18,7 +18,7 @@
   border-radius: 8px;
   background: var(--surface-2);
   border: 1px dashed var(--line);
-  color: rgba(243, 237, 221, 0.4);
+  color: var(--ink-40);
   font-size: 13px;
   text-align: center;
 }

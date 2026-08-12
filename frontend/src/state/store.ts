@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { buildAgentContext } from "../lib/agentContext";
 import { sharedAudioEngine } from "../lib/audioEngine";
 import { DEFAULT_CONDUCT_MODE, type ConductMode } from "../lib/conductMode";
+import { applyTheme, readTheme, saveTheme, type Theme } from "../lib/theme";
 import {
   api,
   ApiError,
@@ -159,6 +160,13 @@ interface AppState {
   setConductMode: (mode: ConductMode) => void;
 
   /**
+   * 深色 / 浅色外观（见 lib/theme.ts）。同样存 localStorage：在明亮的场地
+   * 或白色展板前演示时切成浅色，回到工位切回来，不该每次重挑。
+   */
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
+
+  /**
    * 对话式 Agent。
    *
    * 状态放 store 而不是组件里，是因为它有**两个入口**：右侧常驻侧栏，和课程页里
@@ -261,6 +269,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       // 存不下就只在本次会话里生效，不值得为此报错
     }
     set({ conductMode: mode });
+  },
+
+  theme: readTheme(),
+  setTheme: (theme) => {
+    applyTheme(theme); // 先落到 DOM，再进 store：切换是即时的，不等重渲染
+    saveTheme(theme);
+    set({ theme });
   },
 
   // 折叠状态是个长期偏好，记在 localStorage，别每次刷新都弹回来

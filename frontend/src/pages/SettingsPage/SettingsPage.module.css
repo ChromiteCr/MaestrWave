@@ -35,7 +35,7 @@
 
 .sectionHint {
   font-size: 12px;
-  color: color-mix(in srgb, var(--ink) 40%, transparent);
+  color: var(--ink-40);
 }
 
 .grid {
@@ -81,11 +81,11 @@
   margin: 0;
   font-size: 12px;
   line-height: 1.7;
-  color: color-mix(in srgb, var(--ink) 50%, transparent);
+  color: var(--ink-50);
 }
 
 .note strong {
-  color: color-mix(in srgb, var(--ink) 78%, transparent);
+  color: var(--ink-78);
   font-weight: 600;
 }
 
@@ -95,11 +95,11 @@
   margin: 0;
   font-size: 11.5px;
   line-height: 1.65;
-  color: color-mix(in srgb, var(--ink) 38%, transparent);
+  color: var(--ink-38);
 }
 
 .fineprint strong {
-  color: color-mix(in srgb, var(--ink) 62%, transparent);
+  color: var(--ink-62);
   font-weight: 600;
 }
 
@@ -140,7 +140,7 @@
 .statLabel {
   display: flex;
   align-items: center;
-  color: color-mix(in srgb, var(--ink) 55%, transparent);
+  color: var(--ink-55);
   white-space: nowrap;
 }
 
@@ -159,7 +159,7 @@
   display: inline-block;
   margin-right: 8px;
   flex: 0 0 auto;
-  background: color-mix(in srgb, var(--ink) 30%, transparent);
+  background: var(--ink-30);
 }
 
 .dotOk {
@@ -180,7 +180,7 @@
 
 .fieldLabel {
   font-size: 12px;
-  color: color-mix(in srgb, var(--ink) 55%, transparent);
+  color: var(--ink-55);
   display: flex;
   align-items: baseline;
   gap: 8px;
@@ -189,7 +189,7 @@
 .masked {
   font-family: var(--font-mono);
   font-size: 11px;
-  color: color-mix(in srgb, var(--ink) 40%, transparent);
+  color: var(--ink-40);
 }
 
 .field input,
@@ -275,5 +275,5 @@
 .optionHint {
   font-size: 12px;
   line-height: 1.55;
-  color: color-mix(in srgb, var(--ink) 45%, transparent);
+  color: var(--ink-45);
 }

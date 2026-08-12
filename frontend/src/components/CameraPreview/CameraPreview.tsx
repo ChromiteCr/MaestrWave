@@ -86,12 +86,15 @@ export function CameraPreview({
       wrap.appendChild(video);
     }
 
-    const colors = {
+    /* 每帧重取：主题可以随时切，写死在 effect 里抓一次的话，
+       切过去之后这块 canvas 会保持上一套主题的颜色直到下次重挂。 */
+    const readColors = () => ({
       accent: cssVar("--accent", "#7cb2e8"),
       wave: cssVar("--wave-4", "#bcdcf7"),
-      expr: "#6fd6c4",
+      expr: cssVar("--expr", "#6fd6c4"),
       ink: cssVar("--ink", "#f3eddd"),
-    };
+      flash: cssVar("--flash", "#ffffff"),
+    });
     // 「减少动态效果」：波纹不扩散，改成一圈定尺寸的淡环。光迹保留 —— 它跟的是
     // 用户自己的手，不是我们凭空加的动画，去掉反而让人不知道识别到没有。
     const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
@@ -124,6 +127,7 @@ export function CameraPreview({
     };
 
     const draw = () => {
+      const colors = readColors();
       rafRef.current = requestAnimationFrame(draw);
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -247,7 +251,7 @@ export function CameraPreview({
         ctx.arc(head.x, head.y, glowR, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.fillStyle = flash > 0 ? "#ffffff" : colors.wave;
+        ctx.fillStyle = flash > 0 ? colors.flash : colors.wave;
         ctx.beginPath();
         ctx.arc(head.x, head.y, r, 0, Math.PI * 2);
         ctx.fill();

@@ -30,8 +30,8 @@
   --accent-dim: #4d6f96;
   --wine: #b8453a;
   --ink: #f3eddd;
-  --line: rgba(243, 237, 221, 0.1);
-  --line-strong: rgba(243, 237, 221, 0.18);
+  --line: var(--ink-10);
+  --line-strong: var(--ink-18);
 
   /* 波浪渐变用到的几支蓝，深浅/冷暖略有差异，叠加时才有层次 */
   --wave-1: #8fc1f0;
@@ -54,7 +54,146 @@
   */
   --font-mono: "Source Serif 4", "Noto Serif SC", Georgia, serif;
 
+  /*
+    次级文字/分隔线的「淡墨」阶梯。全项目的 `color-mix(in srgb, var(--ink) N%,
+    transparent)` 都收敛到这里，**因为这些百分比必须随主题变**：同样是 45% 的墨，
+    压在深底上和压在浅底上，合成后的对比度差很多。近白底会把半透明的黑迅速冲淡，
+    深底则不会。浅色那份按 `out = (in/100)^0.716` 抬过，逐档实测不低于深色的对比度
+    （见下方 light 块）。
+    档位就是历史上实际用到的那 34 个，不做归并 —— 归并会改动深色的现有观感。
+  */
+  --ink-3: color-mix(in srgb, var(--ink) 3%, transparent);
+  --ink-10: color-mix(in srgb, var(--ink) 10%, transparent);
+  --ink-12: color-mix(in srgb, var(--ink) 12%, transparent);
+  --ink-16: color-mix(in srgb, var(--ink) 16%, transparent);
+  --ink-17: color-mix(in srgb, var(--ink) 17%, transparent);
+  --ink-18: color-mix(in srgb, var(--ink) 18%, transparent);
+  --ink-24: color-mix(in srgb, var(--ink) 24%, transparent);
+  --ink-25: color-mix(in srgb, var(--ink) 25%, transparent);
+  --ink-28: color-mix(in srgb, var(--ink) 28%, transparent);
+  --ink-30: color-mix(in srgb, var(--ink) 30%, transparent);
+  --ink-34: color-mix(in srgb, var(--ink) 34%, transparent);
+  --ink-35: color-mix(in srgb, var(--ink) 35%, transparent);
+  --ink-36: color-mix(in srgb, var(--ink) 36%, transparent);
+  --ink-38: color-mix(in srgb, var(--ink) 38%, transparent);
+  --ink-40: color-mix(in srgb, var(--ink) 40%, transparent);
+  --ink-42: color-mix(in srgb, var(--ink) 42%, transparent);
+  --ink-44: color-mix(in srgb, var(--ink) 44%, transparent);
+  --ink-45: color-mix(in srgb, var(--ink) 45%, transparent);
+  --ink-46: color-mix(in srgb, var(--ink) 46%, transparent);
+  --ink-48: color-mix(in srgb, var(--ink) 48%, transparent);
+  --ink-50: color-mix(in srgb, var(--ink) 50%, transparent);
+  --ink-52: color-mix(in srgb, var(--ink) 52%, transparent);
+  --ink-55: color-mix(in srgb, var(--ink) 55%, transparent);
+  --ink-58: color-mix(in srgb, var(--ink) 58%, transparent);
+  --ink-60: color-mix(in srgb, var(--ink) 60%, transparent);
+  --ink-62: color-mix(in srgb, var(--ink) 62%, transparent);
+  --ink-65: color-mix(in srgb, var(--ink) 65%, transparent);
+  --ink-66: color-mix(in srgb, var(--ink) 66%, transparent);
+  --ink-68: color-mix(in srgb, var(--ink) 68%, transparent);
+  --ink-70: color-mix(in srgb, var(--ink) 70%, transparent);
+  --ink-72: color-mix(in srgb, var(--ink) 72%, transparent);
+  --ink-76: color-mix(in srgb, var(--ink) 76%, transparent);
+  --ink-78: color-mix(in srgb, var(--ink) 78%, transparent);
+  --ink-80: color-mix(in srgb, var(--ink) 80%, transparent);
+  --ink-82: color-mix(in srgb, var(--ink) 82%, transparent);
+  --ink-88: color-mix(in srgb, var(--ink) 88%, transparent);
+  /*
+    下面三个是 RGB 三元组而不是颜色。用在 alpha 需要 calc 算出来的地方
+    —— `color-mix()` 的百分比位置放 calc 各家浏览器支持不齐，而解析失败时
+    整条声明会被丢掉，是那种没有报错的坏法。`rgba(var(--x-rgb), calc(...))`
+    则是老写法，到处都稳。
+  */
+  /* 表情手（左手）的青色，和右手的蓝拉开；拍点闪白用的高光色 */
+  --expr: #6fd6c4;
+  --flash: #ffffff;
+  /* 语义色：警告的琥珀、错误框里的字（底是 wine 的淡色块） */
+  --warn: #d8a657;
+  --danger-ink: #f0b8b2;
+
+  --accent-rgb: 124, 178, 232;
+  --shadow-rgb: 0, 0, 0;
+  /* 阴影总强度。各处保留自己的相对权重，只由这一个系数整体缩放。 */
+  --shadow-a: 1;
+
   color-scheme: dark;
+}
+
+/*
+  浅色主题（M7s）：给白色展板/明亮环境用。深色那套是「月光下的水面」，
+  这一套是同一片水在白天 —— 底色保留暖调（纸白而非冷白），和深色基底的暖炭黑
+  同源；主色仍是同一支蓝的色相（209°），只是压深到能当正文色用。
+
+  为什么 accent 不能原样照搬：#7cb2e8 在浅底上只有 1.7:1，而全项目有 48 处
+  把 --accent 直接当文字色（.eyebrow 等）。色相不变、明度压深，是这里唯一
+  能同时满足「蓝色主题不变」和「所有内容清晰可见」的解法。
+*/
+:root[data-theme="light"] {
+  --bg: #f2eee4;
+  --surface: #fbf8f1;
+  --surface-2: #e9e3d5;
+  --surface-3: #ddd5c2;
+  --accent: #1b6aa8;
+  --accent-dim: #5c7f9e;
+  --wine: #a0362b;
+  --ink: #1b1811;
+
+  /* 波浪在浅底上要压深，否则 0.02~0.16 的透明度叠上去等于没有 */
+  --wave-1: #4d8ec9;
+  --wave-2: #2f6ba6;
+  --wave-3: #1d5182;
+  --wave-4: #6ba5d6;
+
+  --ink-3: color-mix(in srgb, var(--ink) 8%, transparent);
+  --ink-10: color-mix(in srgb, var(--ink) 19%, transparent);
+  --ink-12: color-mix(in srgb, var(--ink) 22%, transparent);
+  --ink-16: color-mix(in srgb, var(--ink) 27%, transparent);
+  --ink-17: color-mix(in srgb, var(--ink) 28%, transparent);
+  --ink-18: color-mix(in srgb, var(--ink) 29%, transparent);
+  --ink-24: color-mix(in srgb, var(--ink) 36%, transparent);
+  --ink-25: color-mix(in srgb, var(--ink) 37%, transparent);
+  --ink-28: color-mix(in srgb, var(--ink) 40%, transparent);
+  --ink-30: color-mix(in srgb, var(--ink) 42%, transparent);
+  --ink-34: color-mix(in srgb, var(--ink) 46%, transparent);
+  --ink-35: color-mix(in srgb, var(--ink) 47%, transparent);
+  --ink-36: color-mix(in srgb, var(--ink) 48%, transparent);
+  --ink-38: color-mix(in srgb, var(--ink) 50%, transparent);
+  --ink-40: color-mix(in srgb, var(--ink) 52%, transparent);
+  --ink-42: color-mix(in srgb, var(--ink) 54%, transparent);
+  --ink-44: color-mix(in srgb, var(--ink) 56%, transparent);
+  --ink-45: color-mix(in srgb, var(--ink) 56%, transparent);
+  --ink-46: color-mix(in srgb, var(--ink) 57%, transparent);
+  --ink-48: color-mix(in srgb, var(--ink) 59%, transparent);
+  --ink-50: color-mix(in srgb, var(--ink) 61%, transparent);
+  --ink-52: color-mix(in srgb, var(--ink) 63%, transparent);
+  --ink-55: color-mix(in srgb, var(--ink) 65%, transparent);
+  --ink-58: color-mix(in srgb, var(--ink) 68%, transparent);
+  --ink-60: color-mix(in srgb, var(--ink) 69%, transparent);
+  --ink-62: color-mix(in srgb, var(--ink) 71%, transparent);
+  --ink-65: color-mix(in srgb, var(--ink) 74%, transparent);
+  --ink-66: color-mix(in srgb, var(--ink) 74%, transparent);
+  --ink-68: color-mix(in srgb, var(--ink) 76%, transparent);
+  --ink-70: color-mix(in srgb, var(--ink) 77%, transparent);
+  --ink-72: color-mix(in srgb, var(--ink) 79%, transparent);
+  --ink-76: color-mix(in srgb, var(--ink) 82%, transparent);
+  --ink-78: color-mix(in srgb, var(--ink) 84%, transparent);
+  --ink-80: color-mix(in srgb, var(--ink) 85%, transparent);
+  --ink-82: color-mix(in srgb, var(--ink) 87%, transparent);
+  --ink-88: color-mix(in srgb, var(--ink) 91%, transparent);
+  /* 浅底上青色要压深才看得见；闪光反过来用深色，白底上闪白等于没闪 */
+  --expr: #0f8d7a;
+  --flash: #0a2a44;
+  /* 这两支在浅底上要整个翻过来：原本是「深底上的亮色」，现在得是「亮底上的深色」 */
+  --warn: #8a6114;
+  --danger-ink: #8c2b21;
+
+  --accent-rgb: 27, 106, 168;
+  /* 浅色下的投影用暖墨色而非纯黑，纯黑压在暖纸上会发灰发脏 */
+  --shadow-rgb: 27, 24, 17;
+  /* 深色底上 0.45 的黑几乎看不出，浅色底上却是一块脏印子，整体压到三成 */
+  --shadow-a: 0.32;
+
+  color-scheme: light;
 }
 
 * {
@@ -108,7 +247,7 @@ body {
 
 .label {
   font-size: 12px;
-  color: color-mix(in srgb, var(--ink) 55%, transparent);
+  color: var(--ink-55);
   letter-spacing: 0.01em;
 }
 
@@ -119,7 +258,7 @@ body {
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.04em;
-  color: color-mix(in srgb, var(--ink) 70%, transparent);
+  color: var(--ink-70);
   background: var(--surface-2);
   border: 1px solid var(--line);
   border-radius: 5px;
@@ -134,7 +273,7 @@ body {
   font-weight: 500;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--ink) 48%, transparent);
+  color: var(--ink-48);
 }
 
 button {
@@ -157,7 +296,7 @@ select {
 
 textarea::placeholder,
 input::placeholder {
-  color: color-mix(in srgb, var(--ink) 38%, transparent);
+  color: var(--ink-38);
 }
 
 textarea:focus,

@@ -8,7 +8,7 @@
   max-width: 660px;
   font-size: 14.5px;
   line-height: 1.75;
-  color: color-mix(in srgb, var(--ink) 68%, transparent);
+  color: var(--ink-68);
 }
 
 .units {
@@ -37,7 +37,7 @@
   margin: 0 0 16px;
   font-size: 12.5px;
   line-height: 1.55;
-  color: color-mix(in srgb, var(--ink) 45%, transparent);
+  color: var(--ink-45);
 }
 
 .lessons {
@@ -89,5 +89,5 @@
 .lessonGoal {
   font-size: 12px;
   line-height: 1.5;
-  color: color-mix(in srgb, var(--ink) 45%, transparent);
+  color: var(--ink-45);
 }

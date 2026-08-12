@@ -80,11 +80,13 @@ export function BeatPatternDemo({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const colors = {
+    /* 每帧重取：主题可以随时切，写死在 effect 里抓一次的话，
+       切过去之后这块 canvas 会保持上一套主题的颜色直到下次重挂。 */
+    const readColors = () => ({
       ink: cssVar("--ink", "#f3eddd"),
       accent: cssVar("--accent", "#7cb2e8"),
       bg: cssVar("--bg", "#15130f"),
-    };
+    });
 
     const pattern = PATTERNS[meter];
     const path = samplePattern(pattern, 40);
@@ -108,6 +110,7 @@ export function BeatPatternDemo({
     ro.observe(canvas);
 
     const draw = (ts: number) => {
+      const colors = readColors();
       rafRef.current = requestAnimationFrame(draw);
       if (!w || !h) return;
 

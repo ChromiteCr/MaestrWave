@@ -8,7 +8,7 @@
   max-width: 700px;
   font-size: 14.5px;
   line-height: 1.75;
-  color: color-mix(in srgb, var(--ink) 68%, transparent);
+  color: var(--ink-68);
 }
 
 .grid {
@@ -76,7 +76,7 @@
   margin: 7px 0 10px;
   font-size: 12.5px;
   line-height: 1.6;
-  color: color-mix(in srgb, var(--ink) 55%, transparent);
+  color: var(--ink-55);
 }
 
 .pieceMeta {
@@ -99,11 +99,11 @@
   margin: 10px 0 0;
   font-size: 12px;
   line-height: 1.7;
-  color: color-mix(in srgb, var(--ink) 45%, transparent);
+  color: var(--ink-45);
 }
 
 .provenance a {
-  color: color-mix(in srgb, var(--ink) 60%, transparent);
+  color: var(--ink-60);
 }
 
 /* 及格与否。分数本身在 ScoreReport 里，这里只下结论，所以给足字号与留白 */
@@ -118,7 +118,7 @@
 
 .pass {
   color: var(--ink);
-  border-color: color-mix(in srgb, var(--ink) 24%, transparent);
+  border-color: var(--ink-24);
   background: var(--surface-2);
 }
 
@@ -154,14 +154,14 @@
   margin: 5px 0 0;
   font-size: 12.5px;
   line-height: 1.6;
-  color: color-mix(in srgb, var(--ink) 58%, transparent);
+  color: var(--ink-58);
 }
 
 .covers {
   margin: 22px 0 0;
   font-size: 12.5px;
   line-height: 1.8;
-  color: color-mix(in srgb, var(--ink) 45%, transparent);
+  color: var(--ink-45);
 }
 
 .link {
@@ -178,7 +178,7 @@
   margin: 6px 0 16px;
   font-size: 12.5px;
   line-height: 1.6;
-  color: color-mix(in srgb, var(--ink) 48%, transparent);
+  color: var(--ink-48);
 }
 
 .checks {
@@ -193,7 +193,7 @@
   align-items: center;
   gap: 9px;
   font-size: 13px;
-  color: color-mix(in srgb, var(--ink) 42%, transparent);
+  color: var(--ink-42);
 }
 
 .checkOn {
@@ -231,7 +231,7 @@
   margin: 18px 0 0;
   font-size: 12.5px;
   line-height: 1.75;
-  color: color-mix(in srgb, var(--ink) 42%, transparent);
+  color: var(--ink-42);
 }
 
 .todo code {

@@ -37,7 +37,7 @@
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--ink) 45%, transparent);
+  color: var(--ink-45);
 }
 
 /* 音轨没加载出来时顶掉 .rowRole 的位置。用酒红是因为它在这套配色里就是「出了状况」 */
@@ -83,7 +83,7 @@
 }
 
 .emptyState {
-  color: color-mix(in srgb, var(--ink) 40%, transparent);
+  color: var(--ink-40);
   font-size: 14px;
   padding: 40px 0;
   text-align: center;

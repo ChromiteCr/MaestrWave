@@ -32,7 +32,7 @@
 
 .grade {
   font-size: 14px;
-  color: color-mix(in srgb, var(--ink) 55%, transparent);
+  color: var(--ink-55);
 }
 
 .summary {
@@ -76,7 +76,7 @@
 
 .dimOff .dimScore {
   font-size: 12px;
-  color: color-mix(in srgb, var(--ink) 45%, transparent);
+  color: var(--ink-45);
 }
 
 .bar {
@@ -100,20 +100,20 @@
   font-variant-numeric: tabular-nums;
   font-size: 12px;
   line-height: 1.6;
-  color: color-mix(in srgb, var(--ink) 58%, transparent);
+  color: var(--ink-58);
 }
 
 .advice {
   margin: 6px 0 0;
   font-size: 13.5px;
   line-height: 1.7;
-  color: color-mix(in srgb, var(--ink) 80%, transparent);
+  color: var(--ink-80);
 }
 
 .weight {
   margin: 6px 0 0;
   font-size: 11.5px;
-  color: color-mix(in srgb, var(--ink) 35%, transparent);
+  color: var(--ink-35);
 }
 
 /*
@@ -148,7 +148,7 @@
 
 .timelineLegend {
   font-size: 11.5px;
-  color: color-mix(in srgb, var(--ink) 40%, transparent);
+  color: var(--ink-40);
 }
 
 /*
@@ -164,7 +164,7 @@
   padding: 0 2px;
   border-radius: 6px;
   background: var(--surface-2);
-  border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
+  border: 1px solid var(--ink-12);
 }
 
 .timelineZero {
@@ -173,7 +173,7 @@
   right: 0;
   top: 50%;
   height: 1px;
-  background: color-mix(in srgb, var(--ink) 30%, transparent);
+  background: var(--ink-30);
 }
 
 /* 一格 = 一拍，占满整个高度；真正的柱子是里面那个绝对定位的子元素 */
@@ -189,7 +189,7 @@
   left: 0;
   right: 0;
   border-radius: 1px;
-  background: color-mix(in srgb, var(--ink) 45%, transparent);
+  background: var(--ink-45);
 }
 
 /* 落在容差里的拍子用强调色——一眼看出「哪几下是准的」 */
@@ -199,12 +199,12 @@
 
 /* 小节的第一拍加深，这样「每小节第 1 拍都抢」这种规律才看得出来 */
 .tickDown {
-  background: color-mix(in srgb, var(--ink) 78%, transparent);
+  background: var(--ink-78);
 }
 
 .tickGood.tickDown {
   background: var(--accent);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 45%, transparent);
+  box-shadow: 0 0 0 1px var(--ink-45);
 }
 
 /* 没打出来的拍子：中线上一小段酒红，不画柱子 */

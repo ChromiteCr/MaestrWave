@@ -43,11 +43,13 @@ export function ConductingTrace({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const colors = {
+    /* 每帧重取：主题可以随时切，写死在 effect 里抓一次的话，
+       切过去之后这块 canvas 会保持上一套主题的颜色直到下次重挂。 */
+    const readColors = () => ({
       ink: cssVar("--ink", "#f3eddd"),
       accent: cssVar("--accent", "#7cb2e8"),
       wave: cssVar("--wave-4", "#bcdcf7"),
-    };
+    });
 
     // 尊重「减少动态效果」：直接画一个静止的完整四拍图形，不做任何动画。
     const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
@@ -106,6 +108,7 @@ export function ConductingTrace({
     };
 
     const draw = (ts: number) => {
+      const colors = readColors();
       rafRef.current = requestAnimationFrame(draw);
       if (!w || !h) return;
 

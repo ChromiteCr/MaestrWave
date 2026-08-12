@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import styles from "./Waveform.module.css";
+import { cssVar, withAlpha } from "../../lib/canvasColor";
 
 export type WaveformState = "empty" | "pending" | "ready";
 
@@ -28,9 +29,17 @@ export function Waveform({ peaks, state, height = 72, accent, isPlaying, getProg
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const accentColor = accent || getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#7cb2e8";
+    /*
+      每帧重取，而不是在 effect 外算一次：主题可以随时切，取色必须跟着当前
+      主题走。getComputedStyle 一帧一次的开销可以忽略，波形本来就在 rAF 里。
+    */
+    const colors = () => ({
+      accent: accent || cssVar("--accent", "#7cb2e8"),
+      ink: cssVar("--ink", "#f3eddd"),
+    });
 
     const draw = () => {
+      const c = colors();
       const dpr = window.devicePixelRatio || 1;
       const rect = canvas.getBoundingClientRect();
       const w = Math.max(1, rect.width);
@@ -44,7 +53,7 @@ export function Waveform({ peaks, state, height = 72, accent, isPlaying, getProg
       const mid = h / 2;
 
       if (state === "empty") {
-        ctx.strokeStyle = "rgba(243,237,221,0.16)";
+        ctx.strokeStyle = withAlpha(c.ink, 0.16);
         ctx.lineWidth = 1;
         ctx.setLineDash([2, 4]);
         ctx.beginPath();
@@ -64,7 +73,7 @@ export function Waveform({ peaks, state, height = 72, accent, isPlaying, getProg
           const phase = pulseRef.current + i * 0.35;
           const amp = (Math.sin(phase) * 0.5 + 0.5) * 0.55 + 0.08;
           const barH = amp * h * 0.6;
-          ctx.fillStyle = `rgba(124,178,232,${0.18 + amp * 0.22})`;
+          ctx.fillStyle = withAlpha(c.accent, 0.18 + amp * 0.22);
           ctx.fillRect(i * gap, mid - barH / 2, Math.max(1.5, gap - 2), barH);
         }
         rafRef.current = requestAnimationFrame(draw);
@@ -79,22 +88,22 @@ export function Waveform({ peaks, state, height = 72, accent, isPlaying, getProg
         const amp = Math.max(0.03, peaks[i]);
         const barH = amp * h * 0.86;
         const played = i / n < progress;
-        ctx.fillStyle = played ? accentColor : "rgba(243,237,221,0.22)";
+        ctx.fillStyle = played ? c.accent : withAlpha(c.ink, 0.22);
         ctx.fillRect(i * gap, mid - barH / 2, Math.max(1, gap - 1), barH);
       }
 
       // 播放头 + "指挥棒尖端"光点
       const x = progress * w;
-      ctx.strokeStyle = accentColor;
+      ctx.strokeStyle = c.accent;
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(x, 2);
       ctx.lineTo(x, h - 2);
       ctx.stroke();
 
-      ctx.shadowColor = accentColor;
+      ctx.shadowColor = c.accent;
       ctx.shadowBlur = isPlaying ? 8 : 0;
-      ctx.fillStyle = accentColor;
+      ctx.fillStyle = c.accent;
       ctx.beginPath();
       ctx.arc(x, 4, 3, 0, Math.PI * 2);
       ctx.fill();

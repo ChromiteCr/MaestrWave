@@ -17,7 +17,7 @@
   padding: 12px 14px;
   border-radius: 10px;
   background: var(--surface-2);
-  border: 1px solid color-mix(in srgb, var(--ink) 10%, transparent);
+  border: 1px solid var(--ink-10);
 }
 
 .meterBadge {
@@ -44,14 +44,14 @@
 .briefDim {
   font-family: var(--font-mono);
   font-size: 12px;
-  color: color-mix(in srgb, var(--ink) 45%, transparent);
+  color: var(--ink-45);
 }
 
 .briefSub {
   margin: 4px 0 0;
   font-size: 12.5px;
   line-height: 1.6;
-  color: color-mix(in srgb, var(--ink) 58%, transparent);
+  color: var(--ink-58);
 }
 
 /* 摄像头 + 压在它角上的拍型小窗 */
@@ -69,7 +69,7 @@
   /* 画面是活动的，小窗得自己撑住可读性：不透明底 + 一点点模糊 */
   background: color-mix(in srgb, var(--bg) 82%, transparent);
   backdrop-filter: blur(6px);
-  border: 1px solid color-mix(in srgb, var(--ink) 16%, transparent);
+  border: 1px solid var(--ink-16);
   /* CameraPreview 里的 video 是后插进 DOM 的，不给 z-index 就会盖住这里 */
   z-index: 3;
 }
@@ -84,16 +84,16 @@
 .guideTitle {
   font-family: var(--font-mono);
   font-size: 11.5px;
-  color: color-mix(in srgb, var(--ink) 70%, transparent);
+  color: var(--ink-70);
 }
 
 .guideToggle,
 .guideOpen {
   padding: 2px 6px;
   font-size: 11px;
-  color: color-mix(in srgb, var(--ink) 50%, transparent);
+  color: var(--ink-50);
   background: none;
-  border: 1px solid color-mix(in srgb, var(--ink) 18%, transparent);
+  border: 1px solid var(--ink-18);
   border-radius: 5px;
   cursor: pointer;
 }
@@ -101,7 +101,7 @@
 .guideToggle:hover,
 .guideOpen:hover {
   color: var(--ink);
-  border-color: color-mix(in srgb, var(--ink) 36%, transparent);
+  border-color: var(--ink-36);
 }
 
 .guideMnemonic {
@@ -151,7 +151,7 @@
   height: 10px;
   border-radius: 5px;
   background: var(--surface-2);
-  border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
+  border: 1px solid var(--ink-12);
   overflow: hidden;
 }
 
@@ -169,7 +169,7 @@
   bottom: 0;
   left: 50%;
   width: 1px;
-  background: color-mix(in srgb, var(--ink) 40%, transparent);
+  background: var(--ink-40);
 }
 
 .meterNeedle {
@@ -188,12 +188,12 @@
   display: flex;
   justify-content: space-between;
   font-size: 11.5px;
-  color: color-mix(in srgb, var(--ink) 40%, transparent);
+  color: var(--ink-40);
 }
 
 .meterValue {
   font-family: var(--font-mono);
-  color: color-mix(in srgb, var(--ink) 68%, transparent);
+  color: var(--ink-68);
 }
 
 .actions {
@@ -205,7 +205,7 @@
 
 .hint {
   font-size: 12px;
-  color: color-mix(in srgb, var(--ink) 42%, transparent);
+  color: var(--ink-42);
 }
 
 .error {

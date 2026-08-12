@@ -4,6 +4,7 @@ import { Button } from "../../components/Button/Button";
 import { LatencyCalibration } from "../../components/LatencyCalibration/LatencyCalibration";
 import { api, type LokrOption, type LLMStatus, type ScoreStatus } from "../../lib/api";
 import { CONDUCT_MODES } from "../../lib/conductMode";
+import { THEMES } from "../../lib/theme";
 import { useAppStore } from "../../state/store";
 import styles from "./SettingsPage.module.css";
 
@@ -60,6 +61,8 @@ export function SettingsPage() {
   const bumpLlmConfig = useAppStore((s) => s.bumpLlmConfig);
   const conductMode = useAppStore((s) => s.conductMode);
   const setConductMode = useAppStore((s) => s.setConductMode);
+  const theme = useAppStore((s) => s.theme);
+  const setTheme = useAppStore((s) => s.setTheme);
 
   const [lokrOptions, setLokrOptions] = useState<LokrOption[]>([]);
   const caps = health?.capabilities;
@@ -138,6 +141,28 @@ export function SettingsPage() {
     <div>
       <PageHeader eyebrow="MaestrWave" title="设置" />
       <div className={styles.body}>
+        <Section title="外观" hint="界面在什么环境下被看">
+          <Card
+            title="主题"
+            note="深色是默认。在明亮的房间、投影或白色展板前演示时切成浅色，主色仍是同一支蓝，只是压深到在纸白底上也读得清。选择会记住。"
+          >
+            <div className={styles.optionList}>
+              {THEMES.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  aria-pressed={theme === t.id}
+                  className={`${styles.option} ${theme === t.id ? styles.optionActive : ""}`}
+                  onClick={() => setTheme(t.id)}
+                >
+                  <span className={styles.optionLabel}>{t.label}</span>
+                  <span className={styles.optionHint}>{t.hint}</span>
+                </button>
+              ))}
+            </div>
+          </Card>
+        </Section>
+
         <Section title="指挥" hint="手势怎么进来，声音怎么对上">
           <Card
             title="指挥方式"

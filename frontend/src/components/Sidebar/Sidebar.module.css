@@ -71,7 +71,7 @@
   border: none;
   background: transparent;
   text-align: left;
-  color: color-mix(in srgb, var(--ink) 50%, transparent);
+  color: var(--ink-50);
   transition: color 0.15s ease, background 0.15s ease;
 }
 
@@ -109,7 +109,7 @@
 .sectionHint {
   font-size: 10.5px;
   line-height: 1.3;
-  color: color-mix(in srgb, var(--ink) 40%, transparent);
+  color: var(--ink-40);
   white-space: nowrap;
 }
 
@@ -125,7 +125,7 @@
   border: none;
   background: transparent;
   text-align: left;
-  color: color-mix(in srgb, var(--ink) 45%, transparent);
+  color: var(--ink-45);
   transition: color 0.15s ease, background 0.15s ease;
 }
 
@@ -178,7 +178,7 @@
   font-size: 10.5px;
   line-height: 1.4;
   letter-spacing: 0.04em;
-  color: color-mix(in srgb, var(--ink) 34%, transparent);
+  color: var(--ink-34);
 }
 
 .lesson {
@@ -191,7 +191,7 @@
   border: none;
   background: transparent;
   text-align: left;
-  color: color-mix(in srgb, var(--ink) 44%, transparent);
+  color: var(--ink-44);
   transition: color 0.15s ease, background 0.15s ease;
 }
 
@@ -215,7 +215,7 @@
   flex: 0 0 auto;
   font-family: var(--font-mono);
   font-size: 10px;
-  color: color-mix(in srgb, var(--ink) 30%, transparent);
+  color: var(--ink-30);
 }
 
 .lessonActive .lessonNo {

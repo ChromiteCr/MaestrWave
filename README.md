@@ -1,6 +1,6 @@
 # MaestrWave
 
-![version](https://img.shields.io/badge/version-M7r1-blue)
+![version](https://img.shields.io/badge/version-M7s-blue)
 ![last commit](https://img.shields.io/github/last-commit/ChromiteCr/MaestrWave)
 ![commit activity](https://img.shields.io/github/commit-activity/m/ChromiteCr/MaestrWave)
 ![stars](https://img.shields.io/github/stars/ChromiteCr/MaestrWave)
@@ -65,7 +65,7 @@ MaestrWave-{平台}.zip
 
 ## 版本记录
 
-当前版本 **M7r1**。完整的变更历史、版本号规则，以及 M0 到 M6 的阶段记录，都在
+当前版本 **M7s**。完整的变更历史、版本号规则，以及 M0 到 M6 的阶段记录，都在
 [docs/CHANGELOG.md](docs/CHANGELOG.md)。
 
 ## 用云端 API 生成（不占本机显存）

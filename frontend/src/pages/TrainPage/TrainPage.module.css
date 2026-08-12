@@ -61,7 +61,7 @@
 .vramUnit {
   font-family: var(--font-mono);
   font-size: 14px;
-  color: color-mix(in srgb, var(--ink) 55%, transparent);
+  color: var(--ink-55);
 }
 
 .vramCaption {
@@ -69,13 +69,13 @@
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--ink) 45%, transparent);
+  color: var(--ink-45);
 }
 
 .vramNote {
   font-size: 13px;
   line-height: 1.65;
-  color: color-mix(in srgb, var(--ink) 60%, transparent);
+  color: var(--ink-60);
 }
 
 .pendingNote {

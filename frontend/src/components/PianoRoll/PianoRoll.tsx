@@ -66,10 +66,12 @@ export function PianoRoll({ score, instrumentId, isPlaying, getProgress, height 
     const bp = score?.blueprint;
     if (!canvas || !bp) return;
 
-    const colors = {
+    /* 每帧重取：主题可以随时切，写死在 effect 里抓一次的话，
+       切过去之后这块 canvas 会保持上一套主题的颜色直到下次重挂。 */
+    const readColors = () => ({
       ink: cssVar("--ink", "#f3eddd"),
       accent: cssVar("--accent", "#7cb2e8"),
-    };
+    });
 
     const parts = score.parts;
     const mine = parts.find((p) => p.instrument_id === instrumentId) ?? null;
@@ -91,6 +93,7 @@ export function PianoRoll({ score, instrumentId, isPlaying, getProgress, height 
     ro.observe(canvas);
 
     function draw() {
+      const colors = readColors();
       const ctx = canvas?.getContext("2d");
       if (!ctx || !canvas || !bp || !w || !h) return;
       const dpr = window.devicePixelRatio || 1;
