@@ -120,7 +120,7 @@ export function PracticeRunner({
     recorderRef.current = null;
 
     if (!rec) {
-      setError("没录到任何画面 —— 摄像头可能没认到手。");
+      setError("没录到任何画面，摄像头可能没认到手。");
       setPhase("error");
       return;
     }
@@ -332,7 +332,7 @@ export function PracticeRunner({
         <span className={styles.hint}>
           {piece
             ? "跟练习曲，力度也在评分之内"
-            : "跟节拍器，只有点没有音乐 —— 评不了「力度对应」"}
+            : "跟节拍器，只有点没有音乐，评不了「力度对应」"}
         </span>
       </div>
 

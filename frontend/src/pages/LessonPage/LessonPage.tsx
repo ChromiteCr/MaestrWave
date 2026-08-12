@@ -157,7 +157,7 @@ export function LessonPage() {
                 <div>
                   <p className="eyebrow">示范</p>
                   <p className={styles.demoHint}>
-                    {PATTERNS[meter].mnemonic.join(" → ")} · 第 {beat} 拍 ——
+                    {PATTERNS[meter].mnemonic.join(" → ")} · 第 {beat} 拍。
                     光点走的就是标准轨迹，跟练与评分照着比的也是它。
                   </p>
                 </div>
@@ -223,7 +223,7 @@ export function LessonPage() {
                   {practice.state === "ready"
                     ? "跟着练习曲打，结束后按标准给你打分。"
                     : practice.state === "preparing"
-                      ? "练习曲正在生成 —— 先看讲解和示范，好了会自动换上。现在开始跟练的话跟的是节拍器。"
+                      ? "练习曲正在生成。先看讲解和示范，好了会自动换上。现在开始跟练的话，跟的是节拍器。"
                       : practice.state === "error"
                         ? `练习曲没生成出来（${practice.error}），跟节拍器一样能练与打分，只是评不了「力度对应」。`
                         : "跟着节拍器打，结束后按标准给你打分。"}

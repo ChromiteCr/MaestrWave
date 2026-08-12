@@ -134,7 +134,7 @@ export function LatencyCalibration({ compact = false }: { compact?: boolean }) {
           </p>
           <p className={styles.resultNote}>
             {result.spreadMs > UNRELIABLE_SPREAD_MS
-              ? "这几下自己就差得挺多，这个值不太可信 —— 建议重来一次，跟着咔哒声放松地敲。"
+              ? "这几下自己就差得挺多，这个值不太可信。建议重来一次，跟着咔哒声放松地敲。"
               : Math.abs(result.offsetMs) > 120
                 ? "偏移这么大，基本可以确定是无线耳机或外接音箱的延迟。用上它，分数才反映你真实的水平。"
                 : "偏移不大，属于正常范围。用不用都行，用上会更准一点。"}

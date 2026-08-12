@@ -57,6 +57,7 @@ export function SettingsPage() {
   const refreshHealth = useAppStore((s) => s.refreshHealth);
   const loraPath = useAppStore((s) => s.loraPath);
   const setLoraPath = useAppStore((s) => s.setLoraPath);
+  const bumpLlmConfig = useAppStore((s) => s.bumpLlmConfig);
   const conductMode = useAppStore((s) => s.conductMode);
   const setConductMode = useAppStore((s) => s.setConductMode);
 
@@ -95,7 +96,13 @@ export function SettingsPage() {
   const [baseUrl, setBaseUrl] = useState("");
   const [model, setModel] = useState("");
   const [apiKey, setApiKey] = useState("");
-  const [llmToken, setLlmToken] = useState(() => localStorage.getItem("mw_llm_token") || "");
+  const [llmToken, setLlmToken] = useState(() => {
+    try {
+      return localStorage.getItem("mw_llm_token") || "";
+    } catch {
+      return ""; // 隐私模式下 localStorage 会抛，和本仓库其它读取保持一致
+    }
+  });
   const [llmSaving, setLlmSaving] = useState(false);
   const [llmError, setLlmError] = useState<string | null>(null);
 
@@ -114,9 +121,11 @@ export function SettingsPage() {
     setLlmError(null);
     try {
       // api_key 传空字符串 = 保持原 key 不动，这样可以只改 base_url 不必重填
-      const s = await api.saveLlmConfig({ base_url: baseUrl, model, api_key: apiKey });
+      const s = await api.saveLlmConfig({ base_url: baseUrl, model, api_key: apiKey }, llmToken);
       setLlm(s);
       setApiKey("");
+      // 告诉常驻的助手面板重新查一次 —— 它那句「还没配 key」只在收到这个信号时才更新
+      bumpLlmConfig();
       if (!s.host_allowed) setLlmError(s.host_reason);
     } catch (e) {
       setLlmError(e instanceof Error ? e.message : String(e));
@@ -158,7 +167,7 @@ export function SettingsPage() {
         <Section title="生成" hint="谁来写这份谱、谁来演奏它">
           <Card
             title="语言模型"
-            note={<>把你的意图翻译成段落结构与乐器编配（构型页用）。只支持 <strong>OpenAI 兼容</strong>的端点 —— DeepSeek、智谱、Kimi、OpenRouter、Ollama、OpenAI 都可以，换 base_url 即用。</>}
+            note={<>把你的意图翻译成段落结构与乐器编配（构型页用）。只支持 <strong>OpenAI 兼容</strong>的端点：DeepSeek、智谱、Kimi、OpenRouter、Ollama、OpenAI 都可以，换 base_url 即用。</>}
           >
             <label className={styles.field}>
               <span className={styles.fieldLabel}>base_url</span>
@@ -181,7 +190,14 @@ export function SettingsPage() {
               <label className={styles.field}>
                 <span className={styles.fieldLabel}>本机令牌（隧道运行中才需要）</span>
                 <input value={llmToken}
-                  onChange={(e) => { setLlmToken(e.target.value); localStorage.setItem("mw_llm_token", e.target.value); }}
+                  onChange={(e) => {
+                    setLlmToken(e.target.value);
+                    try {
+                      localStorage.setItem("mw_llm_token", e.target.value);
+                    } catch {
+                      // 存不下就只在本次会话里有效，不该因此让输入框失灵
+                    }
+                  }}
                   placeholder="见后端启动日志" />
               </label>
             )}
@@ -194,8 +210,8 @@ export function SettingsPage() {
               每次来都要用的。放在最上面等于每次都拿一段读过的字挡住要填的东西。
             */}
             <p className={styles.fineprint}>
-              key <strong>只存在后端</strong>、文件权限 600、不进仓库、任何接口都不会回显明文 ——
-              这个项目的隧道功能会把服务暴露到公网，存在浏览器里等于直接泄露。
+              key <strong>只存在后端</strong>、文件权限 600、不进仓库、任何接口都不会回显明文。
+              这个项目的隧道功能会把服务暴露到公网，key 存在浏览器里等于直接泄露。
             </p>
 
             <div className={styles.cardFoot}>
@@ -261,7 +277,7 @@ export function SettingsPage() {
                 </div>
               </div>
               <p className={styles.fineprint}>
-                只接受本机或局域网地址。接口契约见 docs/SYMBOLIC_COMPOSER_API.md ——
+                只接受本机或局域网地址。接口契约见 docs/SYMBOLIC_COMPOSER_API.md，
                 任何符号音乐模型自己包一层薄服务就能接进来，后端不用改。
               </p>
 
@@ -354,7 +370,7 @@ export function SettingsPage() {
           而且各自只有两三行 —— 拆开纯粹是在制造行数和留白。
         */}
         <Section title="系统" hint="这台机器上后端的状态">
-          <Card title="后端状态" note="这些是只读的 —— 改它们得动环境变量或重启后端。" wide>
+          <Card title="后端状态" note="这些是只读的。要改得动环境变量，或者重启后端。" wide>
             <div className={styles.statGrid}>
               <div className={styles.statRow}>
                 <span className={styles.statLabel}>

@@ -35,12 +35,17 @@ export function AgentChat({ suggestions, maxHeight, emptyHint }: Props) {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, busy]);
 
-  // 先问一下有没有配 key，别等用户打完一段字才报错
+  // 先问一下有没有配 key，别等用户打完一段字才报错。
+  //
+  // 依赖 `llmConfigRev` 而不是空数组：悬浮球那个实例是**常驻挂载**的
+  // （App.tsx 里和页面平级），只查一次的话，用户去设置页配好 key 回来，
+  // 看到的还是「问不了」—— 而那时其实已经能问了。
+  const llmConfigRev = useAppStore((s) => s.llmConfigRev);
   useEffect(() => {
     api.llmConfig()
       .then((s) => setNeedKey(!s.ready))
       .catch(() => setNeedKey(false));
-  }, []);
+  }, [llmConfigRev]);
 
   const send = async (text: string) => {
     const q = text.trim();

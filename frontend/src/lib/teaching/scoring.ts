@@ -469,8 +469,8 @@ export function scoreSession(rec: Recording, opts: ScoreOptions): SessionScore {
         `围绕自己的中心偏差 ${spread.toFixed(0)}ms（拍长 ${beatMs.toFixed(0)}ms 的 ${((spread / beatMs) * 100).toFixed(0)}%）` +
         `，整体${bias < 0 ? "早" : "晚"} ${absBias.toFixed(0)}ms，对上 ${offsets.length}/${pairs.length} 拍`,
       advice: looksLikeLatency
-        ? `你的每一拍都稳定地${bias > 0 ? "晚" : "早"}了 ${absBias.toFixed(0)}ms —— 这么整齐的偏移通常不是人打出来的，` +
-          "而是声音传到耳朵的延迟（蓝牙耳机常见 150~250ms）。先做一次延迟校准，再看这一维的分数。"
+        ? `你的每一拍都稳定地${bias > 0 ? "晚" : "早"}了 ${absBias.toFixed(0)}ms。这么整齐的偏移多半来自声音传到耳朵的延迟，` +
+          "蓝牙耳机常见 150~250ms。先做一次延迟校准，再看这一维的分数。"
         : coverage < 0.8
           ? `有 ${pairs.length - offsets.length} 拍没打出来或偏得太远，先保证每一拍都有一个明确的落点。`
           : absBias <= BIAS_FREE_MS
@@ -478,8 +478,8 @@ export function scoreSession(rec: Recording, opts: ScoreOptions): SessionScore {
               ? "拍点很准，落点也稳。"
               : "落点的中心是对的，就是每一拍散了一点。放慢速度打几遍，先把手的路线练到不用想。"
             : bias < 0
-              ? `你整体早了 ${absBias.toFixed(0)}ms —— 在抢拍。等音乐先响再落手，别用手去追。`
-              : `你整体晚了 ${absBias.toFixed(0)}ms —— 在拖拍。拍点要落在音上，不是听到音再落手。`,
+              ? `你整体早了 ${absBias.toFixed(0)}ms，在抢拍。等音乐先响再落手，别用手去追。`
+              : `你整体晚了 ${absBias.toFixed(0)}ms，在拖拍。拍点要和音同时落下，别等听到声音再动手。`,
     });
   } else {
     raw.set("ictusTiming", {
@@ -553,16 +553,16 @@ export function scoreSession(rec: Recording, opts: ScoreOptions): SessionScore {
       advice:
         off > TEMPO_MATCH_PERFECT
           ? ratio > 1
-            ? `你整体比音乐慢了 ${((ratio - 1) * 100).toFixed(0)}%${ratio > 1.7 ? "（像是在打半速）" : ""} —— 稳是稳的，但不是这首的速度。`
-            : `你整体比音乐快了 ${((1 - ratio) * 100).toFixed(0)}%${ratio < 0.6 ? "（像是在打双倍拍）" : ""} —— 稳是稳的，但不是这首的速度。`
+            ? `你整体比音乐慢了 ${((ratio - 1) * 100).toFixed(0)}%${ratio > 1.7 ? "（像是在打半速）" : ""}。稳是稳的，只是跟这首曲子的速度对不上。`
+            : `你整体比音乐快了 ${((1 - ratio) * 100).toFixed(0)}%${ratio < 0.6 ? "（像是在打双倍拍）" : ""}。稳是稳的，只是跟这首曲子的速度对不上。`
           : driftUsable && driftScore < wobbleScore
             ? `你越打越${speeding ? "快" : "慢"}了：后半段的拍长比前半段${speeding ? "短" : "长"} ${(drift * 100).toFixed(0)}%。` +
-              `${speeding ? "赶拍通常是因为反弹越抬越小 —— 手来不及走完就急着落下。" : "拖是因为反弹越抬越高，回来的路变长了。"}` +
+              `${speeding ? "赶拍通常是因为反弹越抬越小，手来不及走完就急着落下。" : "拖是因为反弹越抬越高，回来的路变长了。"}` +
               "把注意力放在反弹的「顶点高度」上，让它每一拍都一样。"
             : cv <= CV_PERFECT
               ? "速度非常稳。"
               : cv < 0.14
-                ? "小节之间的速度有一点飘。注意反弹的速度 —— 乐手是靠它预判下一拍什么时候到的，反弹忽快忽慢，速度就跟着变。"
+                ? "小节之间的速度有一点飘。注意反弹的速度，乐手靠它预判下一拍什么时候到。反弹忽快忽慢，速度就跟着变。"
                 : "速度在飘。先不管拍型好不好看，把注意力放在「每一小节走完的时间一样长」上。",
     });
   } else {
@@ -585,7 +585,7 @@ export function scoreSession(rec: Recording, opts: ScoreOptions): SessionScore {
         d <= SHAPE_PERFECT
           ? "形状很准。"
           : opts.meter === 4
-            ? "对照示范再走几遍。四拍最常见的错是第 2 拍往右打了 —— 它应该去你自己的左边。"
+            ? "对照示范再走几遍。四拍最常见的错是第 2 拍往右打了，它应该去你自己的左边。"
             : "对照示范再走几遍，注意每一拍走向的先后顺序。",
     });
   } else {
@@ -610,8 +610,8 @@ export function scoreSession(rec: Recording, opts: ScoreOptions): SessionScore {
         clarity >= target
           ? "拍点很清楚，乐手一眼就能看出哪一下是拍。"
           : clarity >= target * 0.75
-            ? "拍点还能看出来，但不够干脆。落下的最后一小段要再加速一点 —— 是「砸」到平面上，不是「放」上去。"
-            : "拍点糊了 —— 你在匀速划圈。离开拍点后要减速，到反弹顶点最慢，再加速砸下去。",
+            ? "拍点还能看出来，但不够干脆。落下的最后一小段要再加速一点，让手「砸」到平面上，而非轻轻放上去。"
+            : "拍点糊了，你在匀速划圈。离开拍点后要减速，到反弹顶点最慢，再加速砸下去。",
     });
   } else {
     raw.set("ictusClarity", {
@@ -678,8 +678,8 @@ export function scoreSession(rec: Recording, opts: ScoreOptions): SessionScore {
         detail: `这一首力度全程不变，你的拍型大小波动 ${(cv * 100).toFixed(0)}%`,
         advice:
           cv <= 0.08
-            ? "拍型大小很稳 —— 音乐没有力度变化时，拍型也不该忽大忽小。"
-            : "音乐的力度没变，拍型大小却在变 —— 乐队会以为你在要求渐强渐弱。",
+            ? "拍型大小很稳。音乐没有力度变化时，拍型也不该忽大忽小。"
+            : "音乐的力度没变，拍型大小却在变，乐队会以为你在要求渐强渐弱。",
       });
     } else {
       const r = pearson(sizes, target);
@@ -690,8 +690,8 @@ export function scoreSession(rec: Recording, opts: ScoreOptions): SessionScore {
           r > 0.6
             ? "拍型大小跟着音乐走，对了。"
             : r > 0.2
-              ? "方向对了但跟得不够 —— 渐强要从第一小节就开始逐格变大，不能到高潮才突然放大。"
-              : "音乐变响时拍型要跟着变大，高度和宽度一起变 —— 只变高看起来像速度变了。",
+              ? "方向对了但跟得不够。渐强要从第一小节就开始逐格变大，到高潮才突然放大来不及。"
+              : "音乐变响时拍型要跟着变大，高度和宽度一起变。只变高看起来像速度变了。",
       });
     }
   } else {

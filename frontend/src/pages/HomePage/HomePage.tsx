@@ -45,7 +45,7 @@ export function HomePage() {
             然后用手指挥它。
           </h1>
           <p className={styles.lede}>
-            摄像头认你的手，音量、力度、进出场跟着你走。不会指挥也没关系 ——
+            摄像头认你的手，音量、力度、进出场跟着你走。不会指挥也没关系，
             这里从第一课开始教，练完还能给你打分。
           </p>
           <div className={styles.heroActions}>
@@ -108,7 +108,7 @@ export function HomePage() {
                 className={styles.doorBtnQuiet}
                 onClick={() => setActivePage("teach-exam")}
               >
-                或者直接考试 —— 用示例曲目给你打分
+                或者直接考试，用示例曲目给你打分
               </button>
             </div>
           </section>

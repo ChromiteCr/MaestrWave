@@ -251,10 +251,21 @@ export class AudioEngine {
     return ((elapsed % dur) + dur) % dur;
   }
 
+  /**
+   * 写之前先把值收进 [0, 4]。
+   *
+   * 调用方算的是 `(activation * dynamics) ** VOLUME_GAMMA`，而**负底数的分数次幂是
+   * NaN** —— 现在 activation 和 dynamics 都恒正（靠的是 gestureConstants 里
+   * BED_LEVEL / ACTIVE_FLOOR / SUSTAIN_FLOOR 三个正数下限），可那个不变量在**另一个
+   * 文件**里，这里一个断言都没有。哪天有人把 BED_LEVEL 调成 0，
+   * `setTargetAtTime(NaN)` 要么抛、要么让这条轨永久静音，而报错信息完全不会
+   * 指向常量文件。上界 4 是防手滑，正常值不会超过 1。
+   */
   setTrackVolume(id: string, value: number): void {
     const track = this.tracks.get(id);
     if (track && this.ctx) {
-      track.gain.gain.setTargetAtTime(value, this.ctx.currentTime, VOLUME_TIME_CONSTANT);
+      const v = Number.isFinite(value) ? Math.min(4, Math.max(0, value)) : 0;
+      track.gain.gain.setTargetAtTime(v, this.ctx.currentTime, VOLUME_TIME_CONSTANT);
     }
   }
 

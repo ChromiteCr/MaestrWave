@@ -91,23 +91,23 @@ export function ScoreReport({ score, beatMs }: { score: SessionScore; beatMs?: n
       {score.suspectLatency && (
         <p className={styles.banner}>
           你的每一拍都稳定地{score.bias > 0 ? "晚" : "早"} {Math.abs(score.bias).toFixed(0)}ms，
-          而彼此之间只差 {score.spread.toFixed(0)}ms —— 这么整齐的偏移通常是声音的传输延迟
-          （蓝牙耳机常见 150~250ms），不是你的问题。去「设置」里做一次音画延迟校准，
+          而彼此之间只差 {score.spread.toFixed(0)}ms。这么整齐的偏移多半来自声音的传输延迟
+          （蓝牙耳机常见 150~250ms），跟你的手没关系。去「设置」里做一次音画延迟校准，
           再打一遍看看。
         </p>
       )}
       {score.tooSmall && (
         <p className={styles.banner}>
-          你的拍型只占画面的 {(score.patternSize * 100).toFixed(0)}% ——
-          太小了，摄像头看不清，几个维度的分数都会跟着失真。
+          你的拍型只占画面的 {(score.patternSize * 100).toFixed(0)}%，太小了。
+          摄像头看不清，几个维度的分数都会跟着失真。
           手抬到胸口与肩之间，把动作放大到画面的三分之一左右再来一遍。
         </p>
       )}
 
       {!score.scorable && (
         <p className={styles.banner}>
-          这一课要评的几个维度还没有实现自动评分（需要看懂左手在做什么，现在的信号
-          给不出来）。下面列出的只是记录，<strong>不是</strong>你的成绩 ——
+          这一课要评的几个维度还没有实现自动评分（需要看懂表情手在做什么，现在的信号
+          给不出来）。下面列出的只是记录，<strong>不是</strong>你的成绩，
           别照着它判断自己练得怎么样。
         </p>
       )}

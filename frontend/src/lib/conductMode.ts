@@ -19,7 +19,7 @@ export const CONDUCT_MODES: { id: ConductMode; label: string; hint: string }[] =
   {
     id: "camera",
     label: "摄像头模式",
-    hint: "不用手机，直接对着电脑摄像头指挥。能识别双手——打拍手控制拍点与速度，表情手控制力度与声部平衡。",
+    hint: "不用手机，直接对着电脑摄像头指挥。能识别双手：打拍手控制拍点与速度，表情手控制力度与声部平衡。",
   },
   {
     id: "stage",

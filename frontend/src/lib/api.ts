@@ -507,8 +507,18 @@ export const api = {
 
   // ---- BYOK 语言模型 ----
   llmConfig: () => req<LLMStatus>("/api/llm/config"),
-  saveLlmConfig: (body: { base_url?: string; model?: string; api_key?: string }) =>
-    req<LLMStatus>("/api/llm/config", { method: "POST", body: JSON.stringify(body) }),
+  /**
+   * 令牌和 agentChat 那几个接口同一套：隧道开着时后端才要求它。
+   *
+   * 写配置比读配置更需要这道门 —— 拿到隧道链接的人不需要令牌就能把用户的
+   * base_url / key 覆盖掉，而 key 只回掩码，原值覆盖了就再也拿不回来。
+   */
+  saveLlmConfig: (body: { base_url?: string; model?: string; api_key?: string }, token?: string) =>
+    req<LLMStatus>("/api/llm/config", {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: token ? { "X-MW-Token": token } : undefined,
+    }),
 
   // ---- 写谱演奏模式：音源与作曲器 ----
   /** 选择在设置页做，落到后端的偏好文件；env 只作为默认值。 */

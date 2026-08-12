@@ -130,7 +130,7 @@ export function GeneratePage() {
     const rev = p.blueprint_revision;
     const cur = score?.blueprint?.revision;
     if (typeof rev === "number" && typeof cur === "number" && rev < cur) {
-      scoreNotices.push(`这一轨是按第 ${rev} 版蓝图写的，当前已是第 ${cur} 版 —— 重新生成才会跟上。`);
+      scoreNotices.push(`这一轨是按第 ${rev} 版蓝图写的，当前已是第 ${cur} 版，重新生成才会跟上。`);
     }
     const bars = p.repainted_bars;
     if (Array.isArray(bars) && bars.length === 2) {

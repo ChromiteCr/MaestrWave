@@ -239,7 +239,7 @@ export function ExamPage() {
                 <a className={styles.link} href={piece.piece.midiUrl} download>
                   下载 MIDI
                 </a>
-                —— 曲子本来就是写出来的，拖进 MuseScore 就能对着看。
+                。曲子本来就是写出来的，拖进 MuseScore 就能对着看。
               </p>
             )}
           </section>
@@ -336,7 +336,7 @@ export function ExamPage() {
                 <p className="eyebrow" style={{ marginTop: 26 }}>音画延迟校准</p>
                 <p className={styles.checkHint}>
                   戴无线耳机或用外接音箱的话，先做这一步。声音晚到多少，你的拍点就会
-                  被判成晚了多少 —— 这是分数无缘无故很低的头号原因。
+                  被判成晚了多少。这是分数无缘无故很低的头号原因。
                 </p>
                 <LatencyCalibration compact />
 

@@ -1,13 +1,14 @@
 from fastapi import FastAPI, Header, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pathlib import Path
 from typing import Optional
 import asyncio
 import io
 import json
 import logging
+import re
 import time
 import urllib.parse
 import zipfile
@@ -66,6 +67,21 @@ FRONTEND_DIR = BASE_DIR / "frontend"
 FRONTEND_DIST_DIR = FRONTEND_DIR / "dist"
 AUDIO_DIR = Path(OUTPUT_DIR)
 AUDIO_DIR.mkdir(parents=True, exist_ok=True)
+
+# 允许出现在路径里的一段标识符。字母数字加 `-` `_` `.`，且不能是 `.` 或 `..`。
+_SAFE_SEGMENT_RE = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
+
+
+def _valid_path_segment(value: str, field: str) -> str:
+    """凡是**用户可控、又要拼进文件路径**的值，落盘前都得过这里。
+
+    JSON body 里的字段尤其危险：它不像路径参数那样天然「不含 /」，
+    绝对路径还会让 `Path(a) / b` 把左边整段丢掉（`Path("/x") / "/etc"` == `/etc`）。
+    """
+    v = (value or "").strip()
+    if v in (".", "..") or not _SAFE_SEGMENT_RE.match(v):
+        raise HTTPException(status_code=400, detail=f"{field} 格式不对")
+    return v
 Path(LOKR_WEIGHTS_DIR).mkdir(parents=True, exist_ok=True)
 Path(PROJECTS_DIR).mkdir(parents=True, exist_ok=True)
 
@@ -166,7 +182,9 @@ async def get_network_info():
     局域网地址。「输出」页在电脑模式下用它拼出手机扫码用的 URL——
     浏览器自己拿不到本机局域网 IP，必须问后端（见 backend/netinfo.py）。
     """
-    info = network_info()
+    # network_info 里会起 openssl 子进程查自签证书（netinfo.cert_info，timeout=10），
+    # 同步跑就是把事件循环押上十秒。这一页正是指挥台，堵不起。
+    info = await asyncio.to_thread(network_info)
     info["conduct_rooms"] = conduct_hub.room_stats()
     return info
 
@@ -363,11 +381,17 @@ async def repaint_segment(req: RepaintRequest):
     if req.start_time < 0 or req.end_time <= req.start_time:
         raise HTTPException(status_code=400, detail="invalid repaint time range")
 
-    session_dir = AUDIO_DIR / req.session_id
+    # session_id / target 是 **POST body 字段**，不像路径参数那样受「不含 /」的限制，
+    # 可以是绝对路径也可以带 `..`。而 `Path("/a/b") / "/etc"` 会把左边整段丢掉、
+    # 直接得到 `/etc` —— 下面既要判存在（任意路径的存在性探测器），又要往里写文件。
+    # 这是 `_valid_piece_id` 同一类的防护，那边注释写得很清楚：
+    # 「落到文件名之前必须校验，否则 `../` 就能读任意文件」。
+    session_id = _valid_path_segment(req.session_id, "session_id")
+    session_dir = AUDIO_DIR / session_id
     if not session_dir.exists():
         raise HTTPException(status_code=404, detail="session not found")
 
-    target = (req.target or "full_mix").strip().lower()
+    target = _valid_path_segment((req.target or "full_mix").strip().lower(), "target")
     target_file = session_dir / f"{target}.wav"
     if not target_file.exists():
         raise HTTPException(status_code=404, detail=f"target wav not found: {target}.wav")
@@ -402,15 +426,26 @@ async def repaint_segment(req: RepaintRequest):
 # 新的 project 模型 API：分乐器按需生成 + lego 和声机制（见 project_gen.py）
 # ============================================================
 
+# 时长与速度的硬上界。
+#
+# 渲染缓冲区是按 `时长 × 采样率` 一次性分配的纯 Python list
+# （render.py 的 `buf = [0.0] * (n + …)`），没有上界的话
+# `PATCH /api/projects/{id} {"total_duration": 1000000}` 之后点一次生成，
+# 就是几十 GB 的分配 —— 进程被 OOM killer 杀掉，正在进行的指挥连接一起断。
+# 现有项目实测 16–60 秒、76–152 BPM，这两个界留了十倍以上余量，卡不到任何真实用法。
+MAX_DURATION_SEC = 600.0
+MIN_BPM, MAX_BPM = 20, 300
+
+
 class CreateProjectRequest(BaseModel):
     style_description: str
     key: str = "D major"
-    bpm: int = 80
+    bpm: int = Field(default=80, ge=MIN_BPM, le=MAX_BPM)
     time_signature: str = "4/4"
     # total_duration 是 M4d 起的正式字段；segment_duration 保留为兼容入参，
     # 两者都收，projectlib.set_duration 会一起写。
-    total_duration: Optional[float] = None
-    segment_duration: float = 16.0
+    total_duration: Optional[float] = Field(default=None, gt=0, le=MAX_DURATION_SEC)
+    segment_duration: float = Field(default=16.0, gt=0, le=MAX_DURATION_SEC)
     name: str = ""
     generation_mode: str = "multitrack"
 
@@ -418,10 +453,10 @@ class CreateProjectRequest(BaseModel):
 class UpdateProjectRequest(BaseModel):
     style_description: Optional[str] = None
     key: Optional[str] = None
-    bpm: Optional[int] = None
+    bpm: Optional[int] = Field(default=None, ge=MIN_BPM, le=MAX_BPM)
     time_signature: Optional[str] = None
-    total_duration: Optional[float] = None
-    segment_duration: Optional[float] = None
+    total_duration: Optional[float] = Field(default=None, gt=0, le=MAX_DURATION_SEC)
+    segment_duration: Optional[float] = Field(default=None, gt=0, le=MAX_DURATION_SEC)
     name: Optional[str] = None
     generation_mode: Optional[str] = None
     formation: Optional[dict] = None
@@ -526,7 +561,18 @@ async def get_llm_config():
 
 
 @app.post("/api/llm/config")
-async def set_llm_config(req: LLMConfigRequest):
+async def set_llm_config(req: LLMConfigRequest, x_mw_token: Optional[str] = Header(default=None)):
+    """**写配置比用 LLM 更需要这道门。**
+
+    `_guard_llm` 本来是为了「拿到隧道链接的人别白嫖 key 额度」，但它只装在了
+    「用」的那几个接口上，唯独漏了真正改 `base_url` / `api_key` 的这一个 ——
+    而这里 `api_key` 传空字符串是「保持原值」、传 null 是「清除」，任何拿到
+    隧道链接、不知道令牌的人都能把用户的 key 覆盖或抹掉。key 只回掩码，
+    覆盖了就再也拿不回来。
+
+    隧道没开时 `_guard_llm` 直接放行，本机使用完全不受影响。
+    """
+    _guard_llm(x_mw_token)
     llmlib.save_config(base_url=req.base_url, model=req.model, api_key=req.api_key)
     return llmlib.public_status()
 

@@ -545,7 +545,7 @@ export function OutputPage() {
                   {/* 隧道模式的 HTTP 提醒；局域网模式已由上面的自检覆盖，不重复报 */}
                   {insecureWarning && pairMethod === "tunnel" && (
                     <p className={styles.warn}>
-                      手机访问地址是 HTTP。iOS 只在 HTTPS 下才允许运动传感器权限——隧道地址应该是
+                      手机访问地址是 HTTP。iOS 只在 HTTPS 下才允许运动传感器权限，隧道地址应该是
                       https://，检查一下粘贴的网址。
                     </p>
                   )}

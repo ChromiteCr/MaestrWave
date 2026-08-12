@@ -11,6 +11,7 @@ generate/regenerate/repaint 都追加一个新 take，不覆盖旧的），curre
 from __future__ import annotations
 
 import json
+import os
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -158,11 +159,25 @@ def load_project(project_id: str) -> dict:
 
 
 def save_project(project: dict) -> None:
+    """原子写：先写同目录的临时文件，再 `os.replace` 换上去。
+
+    直接 `write_text` 的问题不是并发，是**中途死掉**：写到一半断电／被 OOM killer
+    杀掉／磁盘满，project.json 就成了半截 JSON —— 而它是整个项目唯一的索引，
+    坏了等于所有已生成的音轨全部失联（wav 还在磁盘上，但没人知道它们属于谁）。
+    `os.replace` 在同一文件系统上是原子的，读者要么看到旧的完整版本，要么看到新的。
+
+    临时文件必须和目标**同目录**：跨文件系统 rename 不是原子操作。
+    """
     d = project_dir(project["project_id"])
     d.mkdir(parents=True, exist_ok=True)
-    (d / "project.json").write_text(
-        json.dumps(project, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    target = d / "project.json"
+    tmp = d / f".project.json.{os.getpid()}.tmp"
+    try:
+        tmp.write_text(json.dumps(project, ensure_ascii=False, indent=2), encoding="utf-8")
+        os.replace(tmp, target)
+    except Exception:
+        tmp.unlink(missing_ok=True)
+        raise
 
 
 def list_projects() -> list[dict]:
@@ -267,8 +282,55 @@ def add_take(project: dict, instrument_id: str, audio_bytes: bytes,
     }
     instrument["takes"].append(take)
     instrument["current_take_id"] = take_id
-    save_project(project)
+    # 内存副本照旧更新（调用方还要用），**但落盘走合并，不整体覆盖** —— 见 _merge_take
+    _merge_take(project["project_id"], instrument_id, take)
     return take
+
+
+def _merge_take(project_id: str, instrument_id: str, take: dict) -> None:
+    """把这一条 take 合并进**磁盘上最新的**项目。
+
+    为什么不能直接 `save_project(project)`：生成一条要几秒到几十秒，这期间用户
+    很可能已经让另一件乐器也生成完、写过盘了。拿调用方手上那份几十秒前的内存副本
+    整体覆盖，会把人家刚写进去的 take 抹掉 —— wav 还躺在磁盘上，但 project.json
+    里没有记录，界面上等于从没生成过。
+
+    另一个方向同样要防：生成期间这件乐器被删了，整体覆盖会把它连同 takes 一起
+    复活。这里的做法是**不写**，并且把刚落地的那个孤儿 wav 一起收掉。
+    """
+    try:
+        fresh = load_project(project_id)
+    except (FileNotFoundError, OSError, ValueError):
+        return
+    try:
+        inst = get_instrument(fresh, instrument_id)
+    except KeyError:
+        (takes_dir(project_id, instrument_id) / take["audio_file"]).unlink(missing_ok=True)
+        return
+    inst["takes"] = [t for t in inst["takes"] if t.get("take_id") != take["take_id"]]
+    inst["takes"].append(take)
+    inst["current_take_id"] = take["take_id"]
+    save_project(fresh)
+
+
+def update_take_params(project_id: str, instrument_id: str, take_id: str, **params) -> None:
+    """给已经落盘的某条 take 补几个 params 字段。
+
+    存在的理由和 `_merge_take` 一样：调用方手上的 `project` 可能已经过期，
+    为了补一个字段而整体覆盖，代价是抹掉别人这期间写进去的东西。
+    """
+    if not params:
+        return
+    try:
+        fresh = load_project(project_id)
+        inst = get_instrument(fresh, instrument_id)
+    except (FileNotFoundError, OSError, ValueError, KeyError):
+        return
+    for t in inst["takes"]:
+        if t.get("take_id") == take_id:
+            t.setdefault("params", {}).update(params)
+            save_project(fresh)
+            return
 
 
 def current_take_path(project: dict, instrument_id: str) -> Optional[Path]:

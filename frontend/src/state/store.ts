@@ -87,6 +87,24 @@ function readConductMode(): ConductMode {
   }
 }
 
+function readAgentOpen(): boolean {
+  try {
+    return localStorage.getItem(AGENT_OPEN_KEY) === "1";
+  } catch {
+    // 这一行原来是裸的，而它在 store 工厂里**同步执行** —— 抛出来就不是
+    // 「助手面板不记得展开状态」，是整个 app 白屏。
+    return false;
+  }
+}
+
+/**
+ * 提问轮次。「清空」把它 +1，在飞的那一轮回来时就知道自己已经不算数了。
+ *
+ * 放在模块作用域而不是 state 里：它是个纯粹的并发标记，没有任何界面读它，
+ * 进了 state 只会让每个订阅者白白多一次重渲染。
+ */
+let agentEpoch = 0;
+
 /** 点一级导航时落到哪一页。 */
 export const SECTION_HOME: Record<Exclude<Section, "global">, PageId> = {
   teach: "teach",
@@ -155,6 +173,15 @@ interface AppState {
   /** 返回是否成功。失败时调用方可以把问题原文放回输入框。 */
   askAgent: (question: string) => Promise<boolean>;
   clearAgent: () => void;
+  /**
+   * 语言模型配置改过几次。设置页保存成功后 +1。
+   *
+   * 助手面板是**常驻挂载**的（App.tsx 里和页面平级，展开收起走 CSS），
+   * 它那句「还没配 key，问不了」只在挂载时查一次 —— 没有这个信号，
+   * 用户配好 key 回来看到的仍然是「问不了」，而其实已经能用了。
+   */
+  llmConfigRev: number;
+  bumpLlmConfig: () => void;
 
   project: Project | null;
   setProject: (project: Project | null) => void;
@@ -212,12 +239,19 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   activeLessonId: null,
   openLesson: (id) =>
-    set((s) => ({
-      activeLessonId: id,
-      activePage: "teach-lesson",
-      navSection: "teach",
-      navHistory: pushNav(s.navHistory, { page: s.activePage, lessonId: s.activeLessonId }),
-    })),
+    set((s) => {
+      // 和 setActivePage 同一个守卫：已经在这一课上就什么都不做。
+      // 少了它，点侧栏里那条已经高亮的课会往历史栈里压一条**指向自己**的记录
+      // （pushNav 只跟栈顶去重，不知道新条目和目的地是同一个），
+      // 于是「返回」第一次原地不动，得按第二次才真的离开。
+      if (s.activePage === "teach-lesson" && s.activeLessonId === id) return {};
+      return {
+        activeLessonId: id,
+        activePage: "teach-lesson",
+        navSection: "teach",
+        navHistory: pushNav(s.navHistory, { page: s.activePage, lessonId: s.activeLessonId }),
+      };
+    }),
 
   conductMode: readConductMode(),
   setConductMode: (mode) => {
@@ -230,7 +264,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   // 折叠状态是个长期偏好，记在 localStorage，别每次刷新都弹回来
-  agentOpen: typeof localStorage !== "undefined" && localStorage.getItem(AGENT_OPEN_KEY) === "1",
+  agentOpen: readAgentOpen(),
   setAgentOpen: (open) => {
     try {
       localStorage.setItem(AGENT_OPEN_KEY, open ? "1" : "0");
@@ -248,14 +282,21 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!q || s.agentBusy) return false;
 
     const next: AgentMessage[] = [...s.agentMessages, { role: "user", content: q }];
+    // 这一轮提问的编号。回复回来时若已经不是当前这一轮（中途点了「清空」），
+    // 就什么都别写 —— 下面两个分支都是**整体覆盖** agentMessages 的，
+    // 不拦住的话被清掉的历史会原样复活，而用户根本不知道自己点的清空被撤销了。
+    const epoch = agentEpoch;
     set({ agentMessages: next, agentBusy: true, agentError: "" });
     try {
       // 上下文在这里现算：用户可能问到一半切了页，要以**发问那一刻**的位置为准
       const ctx = buildAgentContext(s.activePage, s.project, s.activeLessonId);
       const { reply } = await api.agentChat(next, ctx);
+      // 一个字段都不能碰：这时可能已经有新的一轮在飞，连 agentBusy 都是它的
+      if (epoch !== agentEpoch) return false;
       set({ agentMessages: [...next, { role: "assistant", content: reply }], agentBusy: false });
       return true;
     } catch (e) {
+      if (epoch !== agentEpoch) return false;
       // 失败就把这一轮整个撤回，别在对话里留一句没人回答的话
       set({
         agentMessages: s.agentMessages,
@@ -265,7 +306,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       return false;
     }
   },
-  clearAgent: () => set({ agentMessages: [], agentError: "" }),
+  clearAgent: () => {
+    // 作废在飞的那一轮，并且**自己把 agentBusy 落下来** —— 那一轮回来时会
+    // 直接 return，不再有人负责关掉「正在想…」。
+    agentEpoch++;
+    set({ agentMessages: [], agentError: "", agentBusy: false });
+  },
+  llmConfigRev: 0,
+  bumpLlmConfig: () => set((s) => ({ llmConfigRev: s.llmConfigRev + 1 })),
 
   project: null,
   setProject: (project) => {

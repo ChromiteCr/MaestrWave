@@ -188,7 +188,7 @@ export function FormationPage() {
           </div>
           <p className={styles.lead}>
             管弦乐编配是专业知识，这一步让语言模型把你的意图翻译成段落结构与乐器编配。
-            <strong>没配也没关系</strong> —— 下面的模版和编辑器不需要联网。
+            <strong>没配也没关系</strong> 。下面的模版和编辑器不需要联网。
           </p>
 
           <label className={styles.field}>
@@ -309,8 +309,7 @@ export function FormationPage() {
             <section className={styles.card}>
               <h2 className={styles.cardTitle}>编配</h2>
               <p className={styles.lead}>
-                参与度决定每件乐器在各段落的音量占比。0 表示该段不出声 ——
-                这会在指挥时以增益包络的形式真正生效。
+                参与度决定每件乐器在各段落的音量占比。0 表示该段不出声。这会在指挥时以增益包络的形式真正生效。
               </p>
               <table className={styles.table}>
                 <thead>

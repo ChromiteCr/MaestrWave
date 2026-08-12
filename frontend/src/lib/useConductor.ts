@@ -42,6 +42,17 @@ export function useConductor() {
   const noDataTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gotSampleRef = useRef(false);
   const prevPulseRef = useRef(0);
+  /**
+   * 第几次启动。`stop()` 把它 +1，在飞的那次 `start()` 就此作废。
+   *
+   * **不能只靠 `sourceRef` 判断**：`start()` 从头到尾全是 await —— 十四条音轨串行
+   * 下载解码，再是 `getUserMedia`（权限弹窗，用户不点就一直等），再是 MediaPipe 的
+   * wasm 与模型（一到三秒）。这整段时间里按钮已经显示「停止」了（`status` 一进门就
+   * 变成 requesting），而用户这时点停止，`start()` 并不会因此中断：它会继续走到
+   * `playAll()`，摄像头亮灯、音乐起播 —— 如果人已经切去别的页，`OutputPage` 连同
+   * 它持有的 `cameraRef` 一起卸载了，就再也没有任何东西能停下这台摄像头。
+   */
+  const runIdRef = useRef(0);
 
   /**
    * M4b：每个乐器每帧只写一次音量。
@@ -70,9 +81,15 @@ export function useConductor() {
   };
 
   const start = async (project: Project, source: IntentSource) => {
+    // 这一轮的编号。每个 await 之后都要问一次「我还是当前这一轮吗」，不是了就
+    // 收摊走人：既不能再 setStatus（会把界面从 idle 拽回 active），也不能起播。
+    const runId = ++runIdRef.current;
+    const cancelled = () => runIdRef.current !== runId;
+
     setStatus("requesting");
     await sharedAudioEngine.init();
     await sharedAudioEngine.resume();
+    if (cancelled()) return;
 
     // 一条声部加载不出来**不能拖垮整场指挥**。原来这里是裸的 await，任何一条抛出
     // （解码偶发失败、文件被删）都会让 start() 整个挂掉，用户看到的是「点了开始指挥
@@ -88,6 +105,8 @@ export function useConductor() {
         failed.push(inst.display_name || inst.id);
         console.error("指挥前加载音轨失败", inst.id, e);
       }
+      // 十四条轨串行下载解码，是整个启动流程里最长的一段等待
+      if (cancelled()) return;
     }
     if (failed.length && sharedAudioEngine.trackIds().length === 0) {
       setStatus("error");
@@ -95,13 +114,30 @@ export function useConductor() {
     }
 
     source.setBaseBpm(project.bpm);
+    // **先挂上再启动。** `stop()` 唯一够得着源的手段就是 `sourceRef`，晚一步挂，
+    // 就等于 `source.start()` 那几秒里怎么点停止都没用。两种源的 `stop()` 都只是
+    // 清 listener、对 null 做空操作，没启动就停是安全的。
+    sourceRef.current = source;
     try {
       await source.start();
     } catch (e) {
+      if (sourceRef.current === source) sourceRef.current = null;
+      // 已经被叫停就不要再报错：用户主动取消不是失败，弹一句「启动失败」是在说谎
+      if (cancelled()) return;
       setStatus("error");
       throw e;
     }
-    sourceRef.current = source;
+    /*
+     * 到这里摄像头已经真的打开了。若这期间用户点过停止，`stop()` 那一次
+     * `source.stop()` 很可能什么都没关掉 —— HandTracker 的 stream 与 landmarker
+     * 都是 await 之后才赋值的，停的时候它们还是 null。所以必须在这里再收一次，
+     * 这一次才真的关得掉设备；并且绝不能往下走到 `playAll()`。
+     */
+    if (cancelled()) {
+      source.stop();
+      if (sourceRef.current === source) sourceRef.current = null;
+      return;
+    }
 
     setStatus("waiting");
     sharedAudioEngine.playAll();
@@ -132,6 +168,8 @@ export function useConductor() {
   };
 
   const stop = () => {
+    // 先作废在飞的那次 start()，再收摊。顺序反了的话，它还能走完剩下的 await 起播。
+    runIdRef.current++;
     if (noDataTimerRef.current) {
       clearTimeout(noDataTimerRef.current);
       noDataTimerRef.current = null;

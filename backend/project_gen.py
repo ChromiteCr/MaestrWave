@@ -13,6 +13,7 @@
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import uuid
 from pathlib import Path
@@ -80,7 +81,9 @@ async def generate_instrument(project: dict, instrument_id: str, backend: Genera
         task_type = "text2music"
         src_ref = None
     else:
-        mix_path = _bounce_mix(project, others, instrument_id)
+        # 混音是纯 Python 逐采样循环，十几条长音轨要跑好几秒。
+        # 放进线程，别把事件循环（摄像头指挥的 WebSocket 也在上面）堵住。
+        mix_path = await asyncio.to_thread(_bounce_mix, project, others, instrument_id)
         audio = await backend.lego(prompt=prompt, src_audio_path=str(mix_path), **common)
         task_type = "lego"
         src_ref = str(mix_path)

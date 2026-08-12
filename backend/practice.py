@@ -67,12 +67,30 @@ MAX_COUNT_IN = 2
 
 PIECE_ID_RE = re.compile(r"^[0-9a-f]{16}$")
 
+# 「打 1 拍」那一课，一小节内部实际有几个音乐拍。
+#
+# **meter=1 说的是「指挥打几下」，不是乐曲的拍号。** 真实的谐谑曲是快速三拍，
+# 乐队照常演奏第 2、3 拍，只有指挥把一小节归成一下 —— 课程的 standard 原文就是
+# 「小节内部的第 2、3 拍交给乐手自己数」。而这里以前是拿 bpb=1 直接去写谱的，
+# `_melody_rhythm` / `_pad_hits` / `_bass_hits` / `_drum_hits` 在 bpb==1 时全部
+# 塌成「一小节一个音头」，渲染出来就是一首字面意义上的 1/4 拍曲子：90BPM 下
+# 每 667ms 一个孤立的脉冲，内部没有任何细分。教的和练的不是一回事。
+#
+# 做法是写谱时用 **3 拍 @ 三倍速**：小节长度分毫不差（3 × 60/270 = 60/90），
+# 音频总长、数拍偏移、每小节力度全都不变，只是小节内部终于有了三分细分。
+# 指挥用的拍网格（`beat_grid`）仍然照实报 1 拍 —— 用户打的还是一小节一下。
+#
+# 为什么不直接写三连音：谱子要过 `score.validate_and_repair_part`，它把拍点
+# 量化到 1/4 拍，1/3 会被抹成 0.25/0.5，三拍感荡然无存。只有走整数拍才立得住。
+CONDUCTED_IN_ONE_SUBDIVISION = 3
+
 
 @dataclass(frozen=True)
 class PieceSpec:
     """一首练习曲的完整定义。**同一份 spec 永远渲染出同一份音频。**"""
 
     style: str
+    """指挥一小节打几下。**不是乐曲拍号** —— 见 CONDUCTED_IN_ONE_SUBDIVISION。"""
     meter: int
     bpm: int
     """正曲小节数，不含数拍与尾巴。"""
@@ -84,6 +102,16 @@ class PieceSpec:
     """弱起：正曲第一个强拍之前先出一个音（在数拍的最后一拍上）。"""
     pickup: bool
     seed: int
+
+    @property
+    def music_meter(self) -> int:
+        """写谱用的每小节拍数。除了「打 1 拍」，都等于 meter。"""
+        return CONDUCTED_IN_ONE_SUBDIVISION if self.meter == 1 else self.meter
+
+    @property
+    def music_bpm(self) -> int:
+        """写谱用的速度。和 music_meter 成对出现，保证小节长度不变。"""
+        return self.bpm * CONDUCTED_IN_ONE_SUBDIVISION if self.meter == 1 else self.bpm
 
 
 def _clamp(v, lo, hi):
@@ -158,7 +186,10 @@ def parse_spec(raw: dict) -> PieceSpec:
 # 「同一个 id ⇒ 同一份音频」才是真的成立。旧文件成为孤儿，下次重渲染几秒钟。
 #
 # 2 = M7k：重音层次（`_beat_accent`）、`_vel` 的 accent 参数、强拍不再被拆分
-_ALGO_VERSION = 2
+# 3：「打 1 拍」改成快速三拍写谱（见 CONDUCTED_IN_ONE_SUBDIVISION）。
+# **改了写谱逻辑就必须动这个数**，否则同一份 spec 会命中旧缓存，
+# 用户听到的仍然是修之前那首曲子，而且再也没有别的办法让它重渲染。
+_ALGO_VERSION = 3
 
 
 def piece_id(spec: PieceSpec) -> str:
@@ -287,7 +318,8 @@ def _melody_rhythm(style: str, bpb: int, rng: random.Random,
     句尾用长音收住 —— 一路匀速的四分音符听着像练习册，学生也就分不清乐句在哪断。
     """
     if is_phrase_end or bpb == 1:
-        # 一小节一拍时旋律也只能一小节一个音，再拆就跨出小节了
+        # bpb==1 现在走不到了（`music_meter` 最小是 2，「打 1 拍」在这里是 3），
+        # 留着只当防御 —— 真要有人塞进来一小节一拍，也只能写一个音。
         return [(0.0, float(bpb))]
     if style == "lyric":
         if bpb >= 4:
@@ -378,8 +410,9 @@ def build_blueprint(spec: PieceSpec) -> dict:
     播放设计的；练习曲只放一遍，不留这几小节的话，最后一个和弦的衰减会盖在
     数拍的第一声上 —— 一个只在「跟着音乐从头打」时才听得见的怪响。
     """
-    bpb, unit = spec.meter, 4
-    bar_s = scorelib.bar_seconds(spec.bpm, bpb, unit)
+    # 写谱一律用 music_* —— 「打 1 拍」在这里是 3 拍 @ 三倍速，小节长度不变。
+    bpb, unit = spec.music_meter, 4
+    bar_s = scorelib.bar_seconds(spec.music_bpm, bpb, unit)
     tail_bars = max(1, int(math.ceil(renderlib.TAIL_SECONDS / bar_s)))
     total_bars = spec.count_in_bars + spec.bars + tail_bars
 
@@ -400,13 +433,13 @@ def build_blueprint(spec: PieceSpec) -> dict:
     return {
         "schema_version": scorelib.SCORE_SCHEMA_VERSION,
         "revision": 1,
-        "bpm": spec.bpm,
+        "bpm": spec.music_bpm,
         "key": spec.key,
         "time_signature": f"{bpb}/{unit}",
         "beats_per_bar": bpb,
         "beat_unit": unit,
         "bars": total_bars,
-        "exact_duration": round(scorelib.exact_duration(total_bars, spec.bpm, bpb, unit), 4),
+        "exact_duration": round(scorelib.exact_duration(total_bars, spec.music_bpm, bpb, unit), 4),
         "sections": [
             {"id": "count-in", "label": "数拍", "start_bar": 1,
              "end_bar": max(1, spec.count_in_bars), "intensity": 0.5, "is_climax": False},
@@ -426,7 +459,8 @@ def build_blueprint(spec: PieceSpec) -> dict:
 
 def _compose(spec: PieceSpec, blueprint: dict) -> list[dict]:
     """写出各声部的原始音符。返回 `[{instrument, notes}]`，交给 score 校验。"""
-    bpb = spec.meter
+    # 和 build_blueprint 必须取同一个数，否则音符会写到小节外面去
+    bpb = spec.music_meter
     key = scorelib.parse_key(spec.key)
     dyn = dynamics_per_bar(spec)
     offset = spec.count_in_bars

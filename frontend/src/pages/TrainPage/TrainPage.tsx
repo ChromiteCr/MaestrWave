@@ -43,7 +43,7 @@ export function TrainPage() {
             <input type="number" min={1} max={8} value={batchSize} onChange={(e) => setBatchSize(Number(e.target.value))} />
           </div>
 
-          <Button variant="primary" disabled title="训练任务编排（M3）还未接入——需要先确认训练机器上用 Gradio LoRA Training 标签页还是 Side-Step CLI">
+          <Button variant="primary" disabled title="训练任务编排（M3）还未接入。需要先确认训练机器上用 Gradio LoRA Training 标签页，还是 Side-Step CLI">
             开始训练
           </Button>
           <span className={styles.pendingNote}>训练任务编排还没接入（M3），这里先把参数面板和显存提示做好。</span>

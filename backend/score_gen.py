@@ -159,7 +159,10 @@ async def generate_instrument_score(project: dict, instrument_id: str,
         existing_parts=others, seed=seed,
     )
     part = scorelib.validate_and_repair_part(raw, instrument=instrument, blueprint=bp)
-    audio = renderer.render_part(part, bp)
+    # 渲染是纯 CPU（fluidsynth 那条还是个最长 180 秒的 subprocess），
+    # 直接在事件循环里跑会把整个后端卡住 —— 摄像头指挥的 WebSocket 也在这个循环上。
+    # practice.py / repertoire.py 一直是这么包的，主链路这里之前漏了。
+    audio = await asyncio.to_thread(renderer.render_part, part, bp)
 
     # 实际写这一条的是谁。LLM 通路失败会退到规则作曲，这里如实记下来 ——
     # 让退化后的结果冒充模型输出，用户就再也判断不了模型到底行不行。
@@ -190,7 +193,10 @@ async def generate_instrument_score(project: dict, instrument_id: str,
 
     part["take_id"] = take["take_id"]
     take["params"]["score_file"] = save_part(project["project_id"], take["take_id"], part)
-    projectlib.save_project(project)
+    # 只补这一个字段，不整体覆盖 —— 蓝图与 take 本身在 ensure_blueprint / add_take
+    # 里已经各自落过盘了，这里再 save 整份就会把别人这期间写的东西抹掉。
+    projectlib.update_take_params(project["project_id"], instrument_id, take["take_id"],
+                                  score_file=take["params"]["score_file"])
     return take
 
 
@@ -236,7 +242,8 @@ async def repaint_instrument_score(project: dict, instrument_id: str,
     merged["notes"] = sorted(kept + new, key=lambda n: (n[scorelib.N_BAR], n[scorelib.N_BEAT]))
     merged["warnings"] = fresh["warnings"]
 
-    audio = renderer.render_part(merged, bp)
+    # 同上：别把事件循环堵在渲染上
+    audio = await asyncio.to_thread(renderer.render_part, merged, bp)
     take = projectlib.add_take(project, instrument_id, audio, "score", params={
         "composer": composer.name,
         "renderer": renderer.name,
@@ -250,7 +257,9 @@ async def repaint_instrument_score(project: dict, instrument_id: str,
         "duration": bp["exact_duration"],
     })
     take["params"]["score_file"] = save_part(project["project_id"], take["take_id"], merged)
-    projectlib.save_project(project)
+    # 同上：只补字段，不整体覆盖
+    projectlib.update_take_params(project["project_id"], instrument_id, take["take_id"],
+                                  score_file=take["params"]["score_file"])
     return take
 
 

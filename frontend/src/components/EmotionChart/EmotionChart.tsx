@@ -230,7 +230,7 @@ export function EmotionChart({
   };
 
   if (total <= 0) {
-    return <div className={styles.empty}>还没有段落结构 —— 选一个模版或让 AI 生成构型。</div>;
+    return <div className={styles.empty}>还没有段落结构。选一个模版，或者让 AI 生成构型。</div>;
   }
 
   return (
