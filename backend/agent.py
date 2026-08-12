@@ -58,10 +58,19 @@ def read_guide() -> str:
     if _guide_cache and _guide_cache[0] == mtime:
         return _guide_cache[1]
     try:
-        text = GUIDE_PATH.read_text(encoding="utf-8")[:MAX_GUIDE_CHARS]
+        full = GUIDE_PATH.read_text(encoding="utf-8")
     except OSError as e:
         logger.warning("读取用户指南失败：%s", e)
         return ""
+    # 截断要出声。指南最后一节写的是「这个软件不做什么」—— 恰恰是防止助手瞎编的
+    # 那一段，而它在文件末尾，一旦超限就是第一个被切掉的。静默截断的表现是
+    # 「助手又开始编了」，而没人会想到去查一个字符数上限。
+    if len(full) > MAX_GUIDE_CHARS:
+        logger.warning(
+            "用户指南 %d 字，超过 %d 的上限，尾部被截断 —— 助手读不到最后那几节了",
+            len(full), MAX_GUIDE_CHARS,
+        )
+    text = full[:MAX_GUIDE_CHARS]
     _guide_cache = (mtime, text)
     return text
 
