@@ -8,7 +8,16 @@
 由 scripts/package/assemble.sh 组装成最终发布包。
 """
 
+import os
+
 from PyInstaller.utils.hooks import collect_all
+
+# PyInstaller 6 起，spec 里的相对路径按 **spec 文件所在目录** 解析，不再按运行时
+# 的当前目录。写 "scripts/package/entry.py" 会被拼成
+# scripts/package/scripts/package/entry.py 而找不到文件，所以下面一律用
+# SPECPATH（PyInstaller 注入的 spec 所在目录）拼绝对路径。
+SPEC_DIR = os.path.abspath(SPECPATH)  # noqa: F821 —— 由 PyInstaller 注入
+ROOT = os.path.abspath(os.path.join(SPEC_DIR, os.pardir, os.pardir))
 
 # uvicorn[standard] 的依赖多为动态导入，逐个 collect_all 保证运行时能找到
 datas, binaries, hiddenimports = [], [], []
@@ -19,8 +28,8 @@ for _pkg in ("uvicorn", "websockets", "httpx", "aiofiles", "httptools", "watchfi
     hiddenimports += _h
 
 a = Analysis(
-    ["scripts/package/entry.py"],
-    pathex=["."],  # 项目根：让 `from backend import app` 及包内相对导入可解析
+    [os.path.join(SPEC_DIR, "entry.py")],
+    pathex=[ROOT],  # 项目根：让 `from backend import app` 及包内相对导入可解析
     binaries=binaries,
     datas=datas,
     hiddenimports=hiddenimports,

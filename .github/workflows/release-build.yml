@@ -86,9 +86,11 @@ jobs:
           OUTPUT_DIR: /tmp/mw-smoke/sessions
           PROJECTS_DIR: /tmp/mw-smoke/projects
         run: |
-          cp -R frontend/dist "dist/MaestrWave/frontend-dist-tmp"
-          # 组装冒烟环境：模拟发布包布局（解压根/frontend/dist）
-          mv "dist/MaestrWave/frontend-dist-tmp" "dist/MaestrWave/frontend-dist"
+          # 组装冒烟环境：模拟发布包布局。entry.py 找的是 解压根/frontend/dist，
+          # 放错位置的话 app.py 的 / 路由会返回「前端还没有构建产物」的 JSON 兜底，
+          # 那也是 200 —— 测试照样通过，却什么都没验证到。
+          mkdir -p "dist/MaestrWave/frontend"
+          cp -R frontend/dist "dist/MaestrWave/frontend/dist"
           ./dist/MaestrWave/MaestrWave > /tmp/mw-smoke.log 2>&1 &
           BGPID=$!
           CODE=""
@@ -97,10 +99,16 @@ jobs:
             [ "$CODE" = "200" ] && break
             sleep 1
           done
+          BODY="$(curl -s "http://localhost:3199/" | head -c 200 || true)"
+          API=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3199/api/projects" || true)
           kill $BGPID 2>/dev/null || true
-          echo "HTTP status: $CODE"
-          test "$CODE" = "200" || { echo "!! 冒烟测试失败，日志如下："; cat /tmp/mw-smoke.log; exit 1; }
-          rm -rf "dist/MaestrWave/frontend-dist"
+          echo "GET / -> $CODE ; GET /api/projects -> $API"
+          fail() { echo "!! 冒烟测试失败：$1"; echo "--- 后端日志 ---"; cat /tmp/mw-smoke.log; exit 1; }
+          test "$CODE" = "200" || fail "首页没返回 200"
+          # 必须是真的 index.html，不能是兜底 JSON —— 后者说明前端没打进包里
+          case "$BODY" in *"<!doctype html>"*|*"<!DOCTYPE html>"*) ;; *) fail "首页返回的不是 index.html：$BODY" ;; esac
+          test "$API" = "200" || fail "/api/projects 没返回 200"
+          rm -rf "dist/MaestrWave/frontend"
 
       # ---------- fluidsynth：收进发布包，让用户不必自己装 ----------
       # 这是「音源」的可选第二条路：默认走 backend/sf2.py 的内置采样播放器
