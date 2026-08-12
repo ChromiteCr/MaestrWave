@@ -33,14 +33,47 @@ export class AudioEngine {
   private tracks = new Map<string, TrackInfo>();
   /** 解码排队用的尾指针。理由见 `loadTrack`：并发解码正是失败的病因。 */
   private decodeChain: Promise<unknown> = Promise.resolve();
+  /** 总线上的移调节点。拿不到（浏览器不支持 AudioWorklet）就是 null，变速会变调。 */
+  private pitchNode: AudioWorkletNode | null = null;
   isPlaying = false;
+
+  // ---- 曲子走到第几秒 ----
+  // 不能用「墙上时间 × 1」算：变速之后墙上一秒不等于曲子一秒。这里按**倍速积分**，
+  // 每次改速度先把上一段按旧倍速结算掉。拍号指示器和播放头都依赖它。
+  private rate = 1;
+  private rateSince = 0;
+  private musicElapsed = 0;
 
   async init(): Promise<void> {
     if (this.ctx) return;
     const Ctor = window.AudioContext || (window as any).webkitAudioContext;
     this.ctx = new Ctor();
     this.masterGain = this.ctx.createGain();
-    this.masterGain.connect(this.ctx.destination);
+    await this.attachPitchShifter();
+  }
+
+  /**
+   * 总线接上移调节点，把变速带来的音高变化抵消掉（见 `pitchShifter.worklet.js`）。
+   *
+   * 接不上就直连 —— 变速会变调，但至少有声音。这条退路是认真的：AudioWorklet 要
+   * 安全上下文，而这个软件在局域网 http 下用手机访问是**正常用法**（扫码指挥）。
+   */
+  private async attachPitchShifter(): Promise<void> {
+    const ctx = this.ctx!;
+    const master = this.masterGain!;
+    try {
+      const url = new URL("./pitchShifter.worklet.js", import.meta.url);
+      await ctx.audioWorklet.addModule(url);
+      this.pitchNode = new AudioWorkletNode(ctx, "pitch-shifter", {
+        numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2],
+      });
+      master.connect(this.pitchNode);
+      this.pitchNode.connect(ctx.destination);
+    } catch (e) {
+      console.warn("移调节点没装上，变速时音高会跟着变", e);
+      this.pitchNode = null;
+      master.connect(ctx.destination);
+    }
   }
 
   async resume(): Promise<void> {
@@ -148,6 +181,7 @@ export class AudioEngine {
     for (const track of this.tracks.values()) {
       this._start(track, startTime);
     }
+    this._resetClock(startTime);
     this.isPlaying = true;
   }
 
@@ -159,7 +193,13 @@ export class AudioEngine {
     this.stop();
     const startTime = this.ctx.currentTime + 0.03;
     this._start(track, startTime);
+    this._resetClock(startTime);
     this.isPlaying = true;
+  }
+
+  private _resetClock(startTime: number): void {
+    this.musicElapsed = 0;
+    this.rateSince = startTime;
   }
 
   private _start(track: TrackInfo, startTime: number): void {
@@ -186,14 +226,28 @@ export class AudioEngine {
       }
     }
     this.isPlaying = false;
+    this.rate = 1;
+    this.musicElapsed = 0;
+    this.pitchNode?.parameters.get("ratio")?.setValueAtTime(1, this.ctx?.currentTime ?? 0);
+  }
+
+  /**
+   * 从起播到现在，**曲子**走了多少秒（没取模，会一直涨）。
+   *
+   * 按倍速积分而不是数墙上时间：指挥把速度压到 0.7 倍时，墙上一秒只走了 0.7 秒
+   * 音乐 —— 拿墙上时间去算第几拍，拍号指示器会越走越前。
+   */
+  musicSeconds(): number {
+    if (!this.ctx || !this.isPlaying) return 0;
+    return this.musicElapsed + Math.max(0, this.ctx.currentTime - this.rateSince) * this.rate;
   }
 
   /** 播放头位置（秒），供波形组件渲染；轨道未播放时返回 0。 */
   playheadSeconds(id: string): number {
     const track = this.tracks.get(id);
     if (!this.ctx || !track?.source) return 0;
-    const elapsed = this.ctx.currentTime - track.startedAtCtxTime;
     const dur = track.buffer.duration || 1;
+    const elapsed = this.musicSeconds();
     return ((elapsed % dur) + dur) % dur;
   }
 
@@ -210,11 +264,33 @@ export class AudioEngine {
     }
   }
 
+  /**
+   * 变速。十几个声部共用同一个倍速，所以彼此的相位关系不变。
+   *
+   * **同时把音高按 1/rate 移回去**：`playbackRate` 改的是「放磁带的速度」，速度和
+   * 音高一起变。指挥的速度范围是 0.7–1.3 倍，换算成音高是 ±5 个半音 —— 一首曲子
+   * 被拖慢就换了个调，乐队不会这样。移调节点见 `pitchShifter.worklet.js`；
+   * 装不上时这一步是空操作，退回「变速也变调」。
+   */
   setPlaybackRate(rate: number): void {
     if (!this.ctx) return;
-    for (const track of this.tracks.values()) {
-      track.source?.playbackRate.linearRampToValueAtTime(rate, this.ctx.currentTime + 0.1);
+    const now = this.ctx.currentTime;
+    // 先按旧倍速把这一段结算掉，再换新倍速。顺序反了的话，刚才那段会被按新倍速
+    // 重算一遍，拍号指示器会跟着手势抖
+    if (this.isPlaying) {
+      this.musicElapsed += Math.max(0, now - this.rateSince) * this.rate;
+      this.rateSince = now;
     }
+    this.rate = rate;
+    for (const track of this.tracks.values()) {
+      track.source?.playbackRate.linearRampToValueAtTime(rate, now + 0.1);
+    }
+    this.pitchNode?.parameters.get("ratio")?.linearRampToValueAtTime(1 / rate, now + 0.1);
+  }
+
+  /** 当前倍速。界面上要照实说 —— 用户得知道自己把乐队带快了还是带慢了。 */
+  playbackRate(): number {
+    return this.rate;
   }
 
   trackIds(): string[] {

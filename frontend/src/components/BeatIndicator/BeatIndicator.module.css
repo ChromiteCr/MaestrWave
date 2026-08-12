@@ -1,0 +1,75 @@
+/*
+  它压在摄像头画面的角上（和跟练页的拍型小窗同一个做法）：指挥时眼睛盯着自己的手
+  在画面里的位置，视线离开画面去别处对照，手就跟着歪了。所以要有自己的半透明底，
+  否则花花的视频背景一衬，浅色的轨迹线就没了。
+*/
+.wrap {
+  width: 160px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 10px 9px;
+  border-radius: 12px;
+  background: rgba(21, 19, 15, 0.72);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(6px);
+}
+
+.title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: color-mix(in srgb, var(--ink) 42%, transparent);
+}
+
+.dots {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  height: 104px;
+}
+
+/*
+  拍号没有对应图形拍型（6/8 之类）时的退路。圆点而不是数字：指挥时视线在手上，
+  余光只认得出「亮的那个在第几个位置」，认不出数字。强拍画大一圈。
+*/
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  transition: background 0.06s linear, box-shadow 0.06s linear;
+}
+
+.dotDown {
+  width: 17px;
+  height: 17px;
+}
+
+.dotOn {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.readout {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--ink) 62%, transparent);
+}
+
+.readout strong {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* 亮灭本身就是信息，动画只是修饰 —— 关掉动画不影响可读性 */
+@media (prefers-reduced-motion: reduce) {
+  .dot {
+    transition: none;
+  }
+}

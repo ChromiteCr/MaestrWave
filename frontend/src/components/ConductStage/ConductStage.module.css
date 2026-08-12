@@ -1,0 +1,251 @@
+/*
+  铺满整屏宽：负外边距顶掉 `OutputPage` 的 40px 内边距。
+  两侧的音量条必须真的贴在屏幕边上 —— 内缩 40px 的话它就还是「页面里的一个控件」，
+  而不是余光扫得到的边界。
+*/
+.stage {
+  position: relative;
+  width: calc(100% + 80px);
+  margin-inline: -40px;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 20px 0;
+  border-block: 1px solid var(--line);
+  background:
+    radial-gradient(120% 100% at 50% 0%, rgba(124, 178, 232, 0.06), transparent 62%),
+    var(--bg);
+  overflow: hidden;
+}
+
+/*
+  力度驱动的整块辉光。`--dyn` 由 JS 每帧写进来（0-1）。
+  用 inset box-shadow 而不是改背景色：它只在边缘发生，正中间的画面不受影响。
+*/
+.stageLive {
+  box-shadow: inset 0 0 120px rgba(124, 178, 232, calc(var(--dyn, 0) * 0.22));
+}
+
+/* ---------- 拍点提示：整块屏幕闪一下 ---------- */
+
+.beatFlash {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 0 2px var(--wave-4),
+    inset 0 0 60px rgba(188, 220, 247, 0.34);
+  animation: beatFlash 240ms ease-out forwards;
+}
+
+@keyframes beatFlash {
+  from { opacity: 0.9; }
+  to { opacity: 0; }
+}
+
+/*
+  「减少动态效果」：拍点确认是**信息**，不能因为关了动画就没有反馈。
+  改成短促的一下硬切，不带渐隐的扩散感。
+*/
+@media (prefers-reduced-motion: reduce) {
+  .beatFlash {
+    box-shadow: inset 0 0 0 2px var(--wave-4);
+    animation-duration: 120ms;
+    animation-timing-function: steps(2, end);
+  }
+}
+
+/* ---------- 两侧音量条 ---------- */
+
+.rail {
+  flex: none;
+  display: flex;
+  gap: 10px;
+  padding: 0 14px;
+}
+
+.meter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+/* flex:1 → 条子自己撑满指挥台的高度，中间画面多高它就多高 */
+.meterTrack {
+  flex: 1;
+  width: 26px;
+  min-height: 120px;
+  border-radius: 13px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+
+.meterFill {
+  width: 100%;
+  background: linear-gradient(180deg, var(--wave-4), var(--accent) 42%, var(--wine));
+  box-shadow: 0 0 16px rgba(124, 178, 232, 0.45);
+  transition: height 0.08s linear;
+}
+
+/*
+  竖排的声部名。横排要么写不下（「主旋律」三个字比条子宽一倍），要么就得把条子
+  加宽到读得下三个字为止 —— 那时它就不是一条边界，而是一块面板了。
+*/
+.meterLabel {
+  writing-mode: vertical-rl;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: color-mix(in srgb, var(--ink) 46%, transparent);
+}
+
+/* ---------- 中间：动作轨迹 ---------- */
+
+.center {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0 10px;
+}
+
+/*
+  轨迹这块是这一屏的主角，所以按视口高度长，而不是给一个写死的像素高度。
+  高度写在这里、不写 flex:1：整个指挥台的高度就是由它定的，两侧的音量条
+  再靠 align-items: stretch 跟上来。反过来的话（条子定高、画面 flex:1）
+  高度就没有源头了。
+*/
+.viewport {
+  position: relative;
+  height: clamp(300px, 54vh, 560px);
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-2);
+}
+
+/* ---------- HUD：压在画面上的读数 ---------- */
+
+/*
+  z-index 是必须的：`CameraPreview` 的 <video> 是 appendChild 进去的，
+  排在 DOM 后面，不显式压上去就会把整层读数盖掉（见 CameraPreview.module.css
+  里同一个坑的记录）。
+*/
+.hud {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 12px;
+}
+
+.hudLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.hudNum {
+  font-family: var(--font-display);
+  font-size: 40px;
+  line-height: 1;
+  font-weight: 600;
+  color: var(--ink);
+  text-shadow: 0 2px 14px rgba(21, 19, 15, 0.9);
+}
+
+.hudUnit {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  color: color-mix(in srgb, var(--ink) 58%, transparent);
+  text-shadow: 0 1px 8px rgba(21, 19, 15, 0.9);
+}
+
+.hudSub {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--ink) 34%, transparent);
+  text-shadow: 0 1px 8px rgba(21, 19, 15, 0.9);
+}
+
+/* 拍型小窗的位置。左边的读数为空时也得把它顶在右边，所以两侧各占一格。 */
+.hudRight {
+  flex: none;
+}
+
+/* ---------- 电脑模式：没有画面时的脉动 ---------- */
+
+.pulse {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+.pulseHalo {
+  grid-area: 1 / 1;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(124, 178, 232, 0.55), rgba(124, 178, 232, 0) 68%);
+  transition: transform 0.09s linear, opacity 0.09s linear;
+}
+
+.pulseCore {
+  grid-area: 1 / 1;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--wave-4);
+}
+
+.pulseHint {
+  grid-area: 1 / 1;
+  align-self: end;
+  margin-bottom: 34px;
+  font-size: 13px;
+  color: color-mix(in srgb, var(--ink) 46%, transparent);
+  text-align: center;
+  padding: 0 20px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulseHalo,
+  .meterFill {
+    transition: none;
+  }
+}
+
+/*
+  窄屏：两侧的条子收窄，画面优先。
+  再窄（手机竖屏）就不该用这一页了 —— 指挥台假设人是站在电脑前面的。
+*/
+@media (max-width: 900px) {
+  .rail {
+    padding: 0 8px;
+    gap: 6px;
+  }
+
+  .meterTrack {
+    width: 16px;
+  }
+
+  .meterLabel {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+  }
+
+  .hudNum {
+    font-size: 30px;
+  }
+}

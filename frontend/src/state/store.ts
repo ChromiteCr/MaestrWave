@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { buildAgentContext } from "../lib/agentContext";
 import { sharedAudioEngine } from "../lib/audioEngine";
+import { DEFAULT_CONDUCT_MODE, type ConductMode } from "../lib/conductMode";
 import {
   api,
   ApiError,
@@ -75,6 +76,16 @@ export const PAGE_SECTION: Record<PageId, Section> = {
 };
 
 const AGENT_OPEN_KEY = "mw.agent.open";
+const CONDUCT_MODE_KEY = "mw.conductMode";
+
+function readConductMode(): ConductMode {
+  try {
+    const v = localStorage.getItem(CONDUCT_MODE_KEY);
+    return v === "camera" || v === "stage" ? v : DEFAULT_CONDUCT_MODE;
+  } catch {
+    return DEFAULT_CONDUCT_MODE; // 隐私模式下 localStorage 会抛
+  }
+}
 
 /** 点一级导航时落到哪一页。 */
 export const SECTION_HOME: Record<Exclude<Section, "global">, PageId> = {
@@ -94,6 +105,13 @@ interface AppState {
   /** 当前打开的课程（`teach-lesson` 页读它）。 */
   activeLessonId: string | null;
   openLesson: (id: string) => void;
+
+  /**
+   * 用什么设备打拍子（见 lib/conductMode.ts）。存 localStorage：这是个装好就不
+   * 再动的选择，每次打开软件都要重挑一遍的话，等于没搬进「设置」。
+   */
+  conductMode: ConductMode;
+  setConductMode: (mode: ConductMode) => void;
 
   /**
    * 对话式 Agent。
@@ -144,6 +162,16 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   activeLessonId: null,
   openLesson: (id) => set({ activeLessonId: id, activePage: "teach-lesson", navSection: "teach" }),
+
+  conductMode: readConductMode(),
+  setConductMode: (mode) => {
+    try {
+      localStorage.setItem(CONDUCT_MODE_KEY, mode);
+    } catch {
+      // 存不下就只在本次会话里生效，不值得为此报错
+    }
+    set({ conductMode: mode });
+  },
 
   // 折叠状态是个长期偏好，记在 localStorage，别每次刷新都弹回来
   agentOpen: typeof localStorage !== "undefined" && localStorage.getItem(AGENT_OPEN_KEY) === "1",

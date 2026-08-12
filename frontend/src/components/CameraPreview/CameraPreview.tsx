@@ -54,7 +54,8 @@ interface Props {
   source: CameraIntentSource | null;
   /** 打拍手与表情手是否互换，只影响标记的文字。 */
   swapHands: boolean;
-  height?: number;
+  /** 也接受 CSS 长度串（指挥台要按视口高度铺开，写不成定值）。 */
+  height?: number | string;
   /** 摄像头没开时显示什么。默认是「输出」页的说法，考试页那边的按钮叫别的名字。 */
   placeholder?: string;
 }
@@ -287,6 +288,12 @@ export function CameraPreview({
     return () => {
       cancelAnimationFrame(rafRef.current);
       if (video && video.parentElement === wrap) wrap.removeChild(video);
+      // 停下来时把标记层擦掉。canvas 不会因为没人再画它就自己清空 —— 最后一帧
+      // 会**原样留在屏幕上**：席位分区线、光迹、还有「没认到手，站远一点」那行字，
+      // 全都压在「点开始指挥」的占位文字上，看着像是刚报了个错。
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext("2d");
+      if (canvas && ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
     };
   }, [source, swapHands]);
 

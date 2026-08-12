@@ -101,6 +101,27 @@ DRUM_ALTERNATIVES: dict[int, tuple[int, ...]] = {
     81: (80, 51, 49),          # 三角铁 → 闷三角铁 → 叮叮 → 吊镲
 }
 
+# 旋律音色缺失时的替代链，按「音色最接近」排。
+#
+# 裁剪过的音源缺音色是常态：随仓库分发的 `orchestral.sf2` 只有 12 个音色，
+# **没有中提琴（41）、低音提琴（43）、大管（70）**，也没有 GM 钢琴（0）。
+# 原来的退路是「同 bank 的 0 号 → GM 钢琴」，这两个它一个都没有，于是整条声部
+# 悄悄变成静音 —— 轨还在、长度也对、不报错，只是没声音。贝多芬第七第二乐章
+# 的主题正好在中提琴与低音提琴上，听起来就是「这首曲子没声音」。
+#
+# 表里只写**同族的**替代：中提琴退到弦乐合奏而不是小提琴（音区差一截），
+# 低音提琴退到大提琴，大管退到单簧管（都是低音区还有样本的木管）。
+# 表外的按 GM 家族（每 8 个一族）就近找，再不行才在全部音色里找最近的号。
+MELODIC_ALTERNATIVES: dict[int, tuple[int, ...]] = {
+    41: (48, 40, 42),          # 中提琴 → 弦乐合奏 → 小提琴 → 大提琴
+    43: (42, 48, 58),          # 低音提琴 → 大提琴 → 弦乐合奏 → 大号
+    70: (71, 68, 57),          # 大管 → 单簧管 → 双簧管 → 长号
+    69: (68, 71),              # 英国管 → 双簧管 → 单簧管
+    58: (57, 61),              # 大号 → 长号 → 铜管组
+    45: (48, 40),              # 拨弦弦乐 → 弦乐合奏 → 小提琴
+    46: (48, 40),              # 竖琴 → 弦乐合奏
+}
+
 
 def timecents_to_seconds(tc: float) -> float:
     """timecents → 秒。-12000 及以下当作 0（规范里表示「没有这一段」）。"""
@@ -217,6 +238,10 @@ class SoundFont:
         for i, p in enumerate(self._phdr[:-1]):        # 最后一条是终止记录 EOP
             self._presets[(p["bank"], p["program"])] = i
         self._zone_cache: dict[tuple[int, int, int, int], list[Zone]] = {}
+        # 缺失音色 → 替代音色的 phdr 下标（None 表示确实没得替）。缓存是为了
+        # 那条 warning 只打一次，不是为了性能 —— 一个声部几千个音符
+        # 每个都打一行日志的话，真正的问题会被淹掉
+        self._preset_fallback: dict[tuple[int, int], Optional[int]] = {}
 
     @staticmethod
     def _read_phdr(buf, s, e):
@@ -361,9 +386,7 @@ class SoundFont:
 
         pi = self._presets.get((bank, program))
         if pi is None:
-            # 音色缺失时退到同 bank 的 0 号，再不行退到 GM 钢琴 —— 裁剪过的
-            # 音源难免缺东西，缺一件乐器不该让整轨变成静音
-            pi = self._presets.get((bank, 0)) or self._presets.get((0, 0))
+            pi = self._melodic_fallback(bank, program)
             if pi is None:
                 self._zone_cache[ck] = []
                 return []
@@ -392,6 +415,42 @@ class SoundFont:
 
         self._zone_cache[ck] = out
         return out
+
+    def _melodic_fallback(self, bank: int, program: int) -> Optional[int]:
+        """音色缺失时挑一个最接近的，挑不到返回 None。
+
+        三层，一层比一层粗：①手写的同族替代表；②同一个 GM 家族（每 8 个一族，
+        弦乐/木管/铜管各自成组）里号最近的；③整个音源里号最近的。
+
+        **不再退到 GM 钢琴**：裁剪过的音源往往连 0 号都没有（随仓库那份就没有），
+        退到一个不存在的音色等于静音，而静音是所有失败模式里最难查的一种 ——
+        不报错、轨还在、长度也对。这里退不到就**记一条警告**。
+        """
+        if (bank, program) in self._preset_fallback:
+            return self._preset_fallback[(bank, program)]
+
+        same_bank = sorted(p for (b, p) in self._presets if b == bank)
+        pick: Optional[int] = None
+        for alt in MELODIC_ALTERNATIVES.get(program, ()):
+            if (bank, alt) in self._presets:
+                pick = alt
+                break
+        if pick is None:
+            family = program // 8
+            in_family = [p for p in same_bank if p // 8 == family]
+            pool = in_family or same_bank
+            if pool:
+                pick = min(pool, key=lambda p: abs(p - program))
+
+        pi = self._presets.get((bank, pick)) if pick is not None else None
+        if pi is None:
+            logger.warning("音源里没有 %d:%d，也找不到替代音色，这一声部会是静音",
+                           bank, program)
+        else:
+            logger.info("音源里没有 %d:%d，改用 %d:%d（%s）",
+                        bank, program, bank, pick, self._phdr[pi]["name"])
+        self._preset_fallback[(bank, program)] = pi
+        return pi
 
     def _drum_fallback(self, bank: int, program: int, key: int, vel: int) -> list["Zone"]:
         """鼓件缺失时换一件音色最接近的。

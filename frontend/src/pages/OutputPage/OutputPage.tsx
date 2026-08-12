@@ -3,22 +3,15 @@ import { PageHeader } from "../../components/PageHeader/PageHeader";
 import { QrCode } from "../../components/QrCode/QrCode";
 import { useConductor } from "../../lib/useConductor";
 import { ConductLink, newRoomCode, type LinkStatus } from "../../lib/conductLink";
-import { LocalSensorSource, RemoteSensorSource } from "../../lib/sensorSource";
+import { RemoteSensorSource } from "../../lib/sensorSource";
 import { ImuIntentSource, type IntentSource } from "../../lib/intentSource";
 import { CameraIntentSource } from "../../lib/camera/cameraIntentSource";
 import { HandTracker } from "../../lib/camera/handTracker";
-import { CameraPreview } from "../../components/CameraPreview/CameraPreview";
-import type { InstrumentRole } from "../../lib/gesture";
+import { ConductStage } from "../../components/ConductStage/ConductStage";
+import { CONDUCT_MODES } from "../../lib/conductMode";
 import { api, type NetworkInfo, type TunnelStatus } from "../../lib/api";
 import { useAppStore } from "../../state/store";
 import styles from "./OutputPage.module.css";
-
-const ROLE_LABELS: Record<InstrumentRole, string> = {
-  melody: "主旋律",
-  harmony: "和声",
-  bass: "低音",
-  rhythm: "节奏",
-};
 
 const STATUS_LABEL: Record<string, string> = {
   idle: "未开始",
@@ -28,18 +21,6 @@ const STATUS_LABEL: Record<string, string> = {
   nodata: "无传感器数据",
   error: "权限被拒绝",
 };
-
-/** 单机 = 手机自己采自己放；电脑 = 手机采、这台电脑放。 */
-type ConductMode = "solo" | "stage" | "camera";
-
-const MODES: { id: ConductMode; label: string; hint: string }[] = [
-  { id: "solo", label: "单机模式",
-    hint: "用手机打开本页面，手机自己采集手势并出声。零延迟、不依赖网络。" },
-  { id: "stage", label: "电脑模式",
-    hint: "手机扫码当指挥棒，声音从这台电脑放出。手机可以走局域网，也可以走公网隧道。" },
-  { id: "camera", label: "摄像头模式",
-    hint: "不用手机，直接对着电脑摄像头指挥。能识别双手 —— 打拍手控制拍点与速度，表情手控制力度与声部平衡。" },
-];
 
 /** 电脑模式下手机怎么连过来：同一局域网，还是走公网隧道。 */
 type PairMethod = "lan" | "tunnel";
@@ -60,9 +41,11 @@ function readStoredTunnelUrl(): string {
 
 export function OutputPage() {
   const project = useAppStore((s) => s.project);
-  const { status, roleActivation, dynamics, start, stop } = useConductor();
+  const setActivePage = useAppStore((s) => s.setActivePage);
+  const { status, roleActivation, dynamics, tempo, beatCount, start, stop } = useConductor();
 
-  const [mode, setMode] = useState<ConductMode>("solo");
+  // 指挥方式现在是「设置」页的一项（见 lib/conductMode.ts），这一页只读它。
+  const mode = useAppStore((s) => s.conductMode);
   // 摄像头模式：交换双手职能（左撇子指挥）。教材明确说持棒手左右都可以。
   const [swapHands, setSwapHands] = useState(false);
   const cameraRef = useRef<CameraIntentSource | null>(null);
@@ -96,11 +79,25 @@ export function OutputPage() {
   const running = status !== "idle" && status !== "error";
 
   const readyCount = project?.instruments.filter((i) => i.current_take_id).length ?? 0;
-  const soloSensorAvailable = LocalSensorSource.isAvailable();
+  // 拍号的分子就是每小节几拍。拿不到就按 4 拍走 —— 指示器少一格好过整块不显示
+  const beatsPerBar = Math.max(1, parseInt(project?.time_signature?.split("/")[0] ?? "4", 10) || 4);
 
   useEffect(() => {
     api.networkInfo().then(setNetInfo).catch(() => setNetInfo(null));
   }, []);
+
+  /**
+   * 离开这一页时收摊。
+   *
+   * 音频引擎和摄像头都活在这个组件外面（一个是模块级单例，一个是浏览器设备），
+   * 不主动停的话，人切到「设置」页时音乐还在放、摄像头指示灯还亮着，而这一页
+   * 已经卸载了，`stop` 按钮再也点不到。
+   *
+   * 指挥方式的开关搬进「设置」之后，这条路径每换一次模式都要走一遍，必须收干净。
+   */
+  const stopRef = useRef(stop);
+  stopRef.current = stop;
+  useEffect(() => () => stopRef.current(), []);
 
   // 电脑模式下，这台电脑作为舞台端常驻连着房间，手机随时可以扫码接入。
   useEffect(() => {
@@ -273,12 +270,10 @@ export function OutputPage() {
       const cam = new CameraIntentSource({ swapHands, mirrored: true });
       cameraRef.current = cam;
       source = cam;
-    } else if (mode === "stage") {
+    } else {
       const link = linkRef.current;
       if (!link) return;
       source = new ImuIntentSource(new RemoteSensorSource(link));
-    } else {
-      source = new ImuIntentSource(new LocalSensorSource());
     }
     try {
       await start(project, source);
@@ -287,12 +282,20 @@ export function OutputPage() {
     }
   };
 
-  const switchMode = (next: ConductMode) => {
-    if (next === mode) return;
-    if (running) stop();
-    setError(null);
-    setMode(next);
-  };
+  const modeLabel = CONDUCT_MODES.find((m) => m.id === mode)?.label ?? mode;
+  /**
+   * 画面中央那一句话。说的是**下一步做什么**，不是「未开始」。
+   *
+   * 电脑模式下这句必须跟着状态走：起播了但手机还没连上时说「手机在打拍子」是
+   * 在说一件没发生的事 —— 而这一刻用户最需要知道的恰恰是「东西没接上」。
+   */
+  const hint = mode === "camera"
+    ? "点「开始指挥」后打开摄像头"
+    : !running
+      ? (remoteCount > 0 ? "手机已接入，点「开始指挥」" : "先用下面的二维码把手机接进来")
+      : status === "active"
+        ? "手机在打拍子"
+        : "等着手机发来手势…";
 
   return (
     <div>
@@ -306,28 +309,49 @@ export function OutputPage() {
         <div className={styles.emptyState}>先在「文件」页打开一个项目。</div>
       ) : (
         <div className={styles.body}>
-          <div className={styles.modeToggle}>
-            {MODES.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                className={`${styles.modeBtn} ${mode === m.id ? styles.modeActive : ""}`}
-                onClick={() => switchMode(m.id)}
-              >
-                {m.label}
+          <ConductStage
+            mode={mode}
+            running={running}
+            camera={running ? cameraRef.current : null}
+            swapHands={swapHands}
+            roleActivation={roleActivation}
+            dynamics={dynamics}
+            tempo={tempo}
+            baseBpm={project.bpm}
+            beatsPerBar={beatsPerBar}
+            beatCount={beatCount}
+            hint={hint}
+          />
+
+          <div className={styles.controls}>
+            <span className={`${styles.statusBadge} ${status === "active" ? styles.statusActive : ""} ${status === "error" ? styles.statusError : ""}`}>
+              {STATUS_LABEL[status]}
+            </span>
+
+            <button
+              className={`${styles.startBtn} ${running ? styles.startBtnActive : ""}`}
+              disabled={readyCount === 0}
+              onClick={handleToggle}
+            >
+              {running ? "停止" : "开始指挥"}
+            </button>
+
+            <span className={styles.modeLine}>
+              {modeLabel}
+              {mode === "stage" && ` · ${remoteCount} 台手机`}
+              <button type="button" className={styles.modeLink} onClick={() => setActivePage("settings")}>
+                换一种
               </button>
-            ))}
+            </span>
           </div>
-          <p className={styles.modeHint}>{MODES.find((m) => m.id === mode)?.hint}</p>
 
           {mode === "camera" && (
-            <div className={styles.card}>
+            <div className={styles.cameraOpts}>
               {!HandTracker.isSecureContextOk() && (
                 <p className={styles.warnLine}>
                   摄像头需要安全上下文。用 localhost 访问，或以 HTTPS 启动（npm run dev:https）。
                 </p>
               )}
-              <CameraPreview source={running ? cameraRef.current : null} swapHands={swapHands} />
               <label className={styles.swapRow}>
                 <input
                   type="checkbox"
@@ -347,7 +371,11 @@ export function OutputPage() {
             </div>
           )}
 
-          {mode === "stage" && (
+          {/*
+            配对卡片只在没开始时出现。指挥起来之后它就是一整块和当下无关的配置，
+            压在指挥台下面只会把人的视线往下拉 —— 而这一刻人该看的是自己的手。
+          */}
+          {mode === "stage" && !running && (
             <>
               <div className={styles.methodToggle}>
                 <button
@@ -526,38 +554,12 @@ export function OutputPage() {
             </>
           )}
 
-          <span className={`${styles.statusBadge} ${status === "active" ? styles.statusActive : ""} ${status === "error" ? styles.statusError : ""}`}>
-            {STATUS_LABEL[status]}
-          </span>
-
-          <button
-            className={`${styles.startBtn} ${running ? styles.startBtnActive : ""}`}
-            disabled={readyCount === 0}
-            onClick={handleToggle}
-          >
-            {running ? "停止" : "开始指挥"}
-          </button>
-
-          <div className={styles.meters}>
-            {(Object.keys(ROLE_LABELS) as InstrumentRole[]).map((role) => (
-              <div className={styles.meter} key={role}>
-                <div className={styles.meterTrack}>
-                  <div className={styles.meterFill} style={{ height: `${Math.round(roleActivation[role] * dynamics * 100)}%` }} />
-                </div>
-                <span className={styles.meterLabel}>{ROLE_LABELS[role]}</span>
-              </div>
-            ))}
-          </div>
-
           {error && <span className={styles.warn}>{error}</span>}
-          {status === "nodata" && mode === "solo" && (
-            <span className="label">没有收到传感器数据。这台设备可能没有传感器——用手机打开本页面，或切换到「电脑模式」。</span>
-          )}
           {status === "nodata" && mode === "stage" && (
-            <span className="label">还没有手机在发送数据。用手机扫上面的二维码接入。</span>
+            <span className="label">还没有手机在发送数据。停下来，用二维码把手机接进去。</span>
           )}
-          {mode === "solo" && !soloSensorAvailable && (
-            <span className="label">当前设备没有传感器，用手机打开本页面可获得完整指挥体验。</span>
+          {status === "nodata" && mode === "camera" && (
+            <span className="label">摄像头没认到手。站远一点，让上半身和手都完整进画面。</span>
           )}
         </div>
       )}

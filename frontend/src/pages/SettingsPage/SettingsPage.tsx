@@ -3,6 +3,7 @@ import { PageHeader } from "../../components/PageHeader/PageHeader";
 import { Button } from "../../components/Button/Button";
 import { LatencyCalibration } from "../../components/LatencyCalibration/LatencyCalibration";
 import { api, type LokrOption, type LLMStatus, type ScoreStatus } from "../../lib/api";
+import { CONDUCT_MODES } from "../../lib/conductMode";
 import { useAppStore } from "../../state/store";
 import styles from "./SettingsPage.module.css";
 
@@ -11,6 +12,8 @@ export function SettingsPage() {
   const refreshHealth = useAppStore((s) => s.refreshHealth);
   const loraPath = useAppStore((s) => s.loraPath);
   const setLoraPath = useAppStore((s) => s.setLoraPath);
+  const conductMode = useAppStore((s) => s.conductMode);
+  const setConductMode = useAppStore((s) => s.setConductMode);
 
   const [lokrOptions, setLokrOptions] = useState<LokrOption[]>([]);
   const caps = health?.capabilities;
@@ -81,6 +84,28 @@ export function SettingsPage() {
     <div>
       <PageHeader eyebrow="MaestrWave" title="设置" />
       <div className={styles.body}>
+        <div className={styles.card}>
+          <p className={styles.cardTitle}>指挥方式（输出页用）</p>
+          <p className={styles.note}>
+            用什么设备打拍子。两种方式解析出来的是同一种「指挥意图」，声部逻辑、
+            力度与速度的算法完全一样，差别只在手势从哪儿采集。
+          </p>
+          <div className={styles.rendererList}>
+            {CONDUCT_MODES.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                aria-pressed={conductMode === m.id}
+                className={`${styles.renderer} ${conductMode === m.id ? styles.rendererActive : ""}`}
+                onClick={() => setConductMode(m.id)}
+              >
+                <span className={styles.rendererLabel}>{m.label}</span>
+                <span className={styles.rendererHint}>{m.hint}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className={styles.card}>
           <p className={styles.cardTitle}>语言模型（构型页用）</p>
           <p className={styles.note}>

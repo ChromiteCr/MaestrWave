@@ -27,9 +27,20 @@ export function useConductor() {
     melody: 0, harmony: 0, bass: 0, rhythm: 0,
   });
   const [dynamics, setDynamics] = useState(0);
+  /** 相对项目基准速度的倍率。指挥台把它乘回 bpm 显示成「你现在打的速度」。 */
+  const [tempo, setTempo] = useState(1);
+  /**
+   * 用户打完的拍数，每确认一个拍点 +1。
+   *
+   * 给界面当**事件**用：值本身没有意义，变了才有意义（指挥台靠它闪一下）。
+   * 不直接把 `beatPulse` 交出去 —— 那是个每帧都在衰减的连续量，界面拿它去判
+   * 「是不是新的一拍」只能设阈值，而一拍之内它会在阈值上停留好几帧。
+   */
+  const [beatCount, setBeatCount] = useState(0);
   const sourceRef = useRef<IntentSource | null>(null);
   const noDataTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gotSampleRef = useRef(false);
+  const prevPulseRef = useRef(0);
 
   /**
    * M4b：每个乐器每帧只写一次音量。
@@ -96,6 +107,7 @@ export function useConductor() {
     // legacy 版本里有这个「5 秒无数据」检测，M2 移植时漏掉了，导致桌面端
     // 点了开始后音乐在放、界面却永远停在「等待手势…」。这里补回来。
     gotSampleRef.current = false;
+    prevPulseRef.current = 0;
     if (noDataTimerRef.current) clearTimeout(noDataTimerRef.current);
     noDataTimerRef.current = setTimeout(() => {
       if (!gotSampleRef.current) setStatus("nodata");
@@ -107,6 +119,12 @@ export function useConductor() {
       setStatus("active");
       setRoleActivation(params.roles);
       setDynamics(params.dynamics);
+      setTempo(params.tempo);
+      // 拍点 = beatPulse 的**上升沿**。它平时只会随时间指数衰减，唯一会变大的
+      // 时刻就是解析器把它打回 1 的那一帧（gesture.ts / conductingModel.ts），
+      // 所以严格大于就是「刚刚打了一拍」，不需要任何阈值。
+      if (intent.beatPulse > prevPulseRef.current) setBeatCount((n) => n + 1);
+      prevPulseRef.current = intent.beatPulse;
       applyToAudio(project, params);
     });
   };
@@ -121,8 +139,9 @@ export function useConductor() {
     sharedAudioEngine.stop();
     setRoleActivation({ melody: 0, harmony: 0, bass: 0, rhythm: 0 });
     setDynamics(0);
+    setTempo(1);
     setStatus("idle");
   };
 
-  return { status, roleActivation, dynamics, start, stop };
+  return { status, roleActivation, dynamics, tempo, beatCount, start, stop };
 }
