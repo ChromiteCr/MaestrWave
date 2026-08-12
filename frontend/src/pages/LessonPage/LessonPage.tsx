@@ -60,10 +60,11 @@ export function LessonPage() {
   // 速度用**本课的** bpm，不用下面那个滑块：滑块是「示范速度」，拖一下就是一个
   // 新的 spec，也就是一次新的渲染和一个新的缓存文件 —— 从 40 拖到 180 会留下
   // 一百多首没人再听的曲子。练习曲该有的速度是课程定的那个。
-  const spec = lesson
-    ? buildSpec(lesson.music, { meter, bpm: lesson.bpm, id: lesson.id })
-    : null;
-  const practice = usePracticePiece(spec);
+  const practice = usePracticePiece(
+    lesson
+      ? { kind: "spec", spec: buildSpec(lesson.music, { meter, bpm: lesson.bpm, id: lesson.id }) }
+      : null,
+  );
 
   // 换课时把示范参数拉回本课的默认值，否则会带着上一课的 168 BPM 进来
   useEffect(() => {

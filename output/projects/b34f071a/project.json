@@ -1,0 +1,19 @@
+{
+  "project_id": "b34f071a",
+  "name": "123",
+  "created_at": "2026-08-12T02:53:18.091807Z",
+  "style_description": "",
+  "key": "D major",
+  "bpm": 92,
+  "time_signature": "4/4",
+  "instruments": [],
+  "schema_version": 2,
+  "generation_mode": "score",
+  "total_duration": 16.0,
+  "formation": null,
+  "generation_order": [],
+  "master": null,
+  "stems": [],
+  "score_blueprint": null,
+  "segment_duration": 16.0
+}

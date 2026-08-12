@@ -252,6 +252,26 @@ export interface PracticeSpec {
   seed?: number;
 }
 
+/**
+ * 一首随仓库分发的真实交响乐曲目。
+ *
+ * 和 `PracticeSpec` 的区别是**曲子不由参数决定**：那边是「同一份 spec 渲染出同一首」，
+ * 这边是「同一个文件截同一段」。所以前端只拿得到一个 id，曲子长什么样是后端的事。
+ */
+export interface RepertoireItem {
+  id: string;
+  title: string;
+  composer: string;
+  /** 这一段在讲什么，卡片上原样显示。 */
+  blurb: string;
+  /** 许可。随仓库分发就得说清出处，界面上要显示。 */
+  license: string;
+  source_url: string;
+  piece_id: string;
+  /** 渲染好了没。没好就是首次进入，要等一会儿。 */
+  ready: boolean;
+}
+
 export interface PracticeStatus {
   piece_id: string;
   /** missing = 还没开始渲染（比如缓存被删了），rendering = 正在渲染。 */
@@ -260,8 +280,14 @@ export interface PracticeStatus {
   /** 拍网格。offset 是音频开头到正曲第一拍的秒数，也就是整段数拍的长度。 */
   grid?: { bpm: number; beats_per_bar: number; offset: number };
   loudness_per_bar?: number[];
+  /** 力度曲线是谱面写的还是从配器推导的。真实曲目才可能是 derived。 */
+  dynamics_source?: "score" | "derived";
   count_in_bars?: number;
   music_bars?: number;
+  /** 真实曲目才有：标题、作曲家、许可，界面上要显示出处。 */
+  title?: string;
+  composer?: string;
+  license?: string;
   duration?: number;
   renderer?: string;
   instruments?: { library_key: string; kind: string; note_count: number }[];
@@ -484,6 +510,17 @@ export const api = {
   practiceAudioUrl: (pieceId: string) => `/api/practice/${pieceId}.wav`,
   /** 练习曲的谱子。想看「标准答案」的人可以拖进 MuseScore。 */
   practiceMidiUrl: (pieceId: string) => `/api/practice/${pieceId}.mid`,
+
+  // ---- 随仓库分发的真实曲目 ----
+  // 渲染产物与练习曲同形同目录，所以状态查询、音频、MIDI 三条**复用上面的**，
+  // 这里只有「列清单」「开始渲染」「造项目」「下原始文件」。
+  repertoireList: () => req<{ items: RepertoireItem[] }>("/api/repertoire"),
+  repertoirePrepare: (itemId: string) =>
+    req<PracticeStatus>(`/api/repertoire/${itemId}/prepare`, { method: "POST" }),
+  repertoireProject: (itemId: string) =>
+    req<{ project: Project }>(`/api/repertoire/${itemId}/project`, { method: "POST" }),
+  /** 原始 MIDI，**未截取** —— 想拿全曲的人该拿到全曲。 */
+  repertoireSourceUrl: (itemId: string) => `/api/repertoire/${itemId}/source.mid`,
 
   // ---- 对话式 Agent ----
   /** 和构型页共用同一条 BYOK 通路，所以同样要带隧道令牌。 */

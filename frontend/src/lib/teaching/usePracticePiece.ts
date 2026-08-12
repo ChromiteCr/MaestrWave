@@ -11,6 +11,19 @@
 import { useEffect, useRef, useState } from "react";
 import { api, type PracticeSpec, type PracticeStatus } from "../api";
 
+/**
+ * 曲子从哪来。
+ *
+ * - `spec`：照规格写谱（`backend/practice.py`），同一份 spec 永远是同一首。
+ * - `repertoire`：随仓库分发的真实交响乐（`backend/repertoire.py`），同一个文件截同一段。
+ *
+ * 两条路的**产出是同形的**（同样的 wav/mid/网格/力度曲线），所以除了这里发起
+ * 请求的那一行，底下的轮询、播放、录制、评分全都不分辨曲子是哪来的。
+ */
+export type PieceSource =
+  | { kind: "spec"; spec: PracticeSpec }
+  | { kind: "repertoire"; id: string };
+
 export interface PreparedPiece {
   pieceId: string;
   audioUrl: string;
@@ -23,8 +36,15 @@ export interface PreparedPiece {
   countInBars: number;
   /** 正曲小节数 —— 打满就停。 */
   bars: number;
-  /** 每小节写下的力度，喂给「力度对应」那一维。 */
+  /** 每小节的力度真值，喂给「力度对应」那一维。 */
   loudnessPerBar: number[];
+  /**
+   * 这条力度曲线是**谱面写的**还是**从配器推导的**。
+   *
+   * 必须一路带到界面上：推导出来的曲线是我们算的，不是作曲家写的，
+   * 让用户以为自己在跟贝多芬的力度是不诚实的。
+   */
+  dynamicsSource: "score" | "derived";
 }
 
 export type PieceState = "idle" | "preparing" | "ready" | "error";
@@ -34,7 +54,7 @@ const POLL_MS = 1000;
 /** 等这么久还没好就报错，免得界面永远转圈。 */
 const TIMEOUT_MS = 120_000;
 
-export function usePracticePiece(spec: PracticeSpec | null): {
+export function usePracticePiece(source: PieceSource | null): {
   state: PieceState;
   piece: PreparedPiece | null;
   error: string;
@@ -45,10 +65,10 @@ export function usePracticePiece(spec: PracticeSpec | null): {
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
 
-  // spec 是每次渲染新建的对象，直接进依赖数组会无限重发。序列化成字符串比较。
-  const key = spec ? JSON.stringify(spec) : "";
-  const specRef = useRef(spec);
-  specRef.current = spec;
+  // source 是每次渲染新建的对象，直接进依赖数组会无限重发。序列化成字符串比较。
+  const key = source ? JSON.stringify(source) : "";
+  const specRef = useRef(source);
+  specRef.current = source;
 
   useEffect(() => {
     const current = specRef.current;
@@ -62,6 +82,10 @@ export function usePracticePiece(spec: PracticeSpec | null): {
     let timer: ReturnType<typeof setTimeout> | null = null;
     const deadline = Date.now() + TIMEOUT_MS;
 
+    // 曲目那条路没有本地 spec 可退，一切都以后端返回的为准；写谱那条路保留
+    // 原有的「后端没给就用 spec 里的」兜底
+    const fallback = current.kind === "spec" ? current.spec : null;
+
     const settle = (s: PracticeStatus) => {
       if (s.state !== "ready" || !s.grid) return false;
       setPiece({
@@ -71,9 +95,10 @@ export function usePracticePiece(spec: PracticeSpec | null): {
         bpm: s.grid.bpm,
         meter: s.grid.beats_per_bar,
         gridOffsetSec: s.grid.offset,
-        countInBars: s.count_in_bars ?? current.count_in_bars,
-        bars: s.music_bars ?? current.bars,
-        loudnessPerBar: s.loudness_per_bar ?? current.dynamics,
+        countInBars: s.count_in_bars ?? fallback?.count_in_bars ?? 0,
+        bars: s.music_bars ?? fallback?.bars ?? 0,
+        loudnessPerBar: s.loudness_per_bar ?? fallback?.dynamics ?? [],
+        dynamicsSource: s.dynamics_source ?? "score",
       });
       setState("ready");
       return true;
@@ -107,7 +132,9 @@ export function usePracticePiece(spec: PracticeSpec | null): {
       setError("");
       setPiece(null);
       try {
-        const s = await api.practiceGenerate(current);
+        const s = current.kind === "spec"
+          ? await api.practiceGenerate(current.spec)
+          : await api.repertoirePrepare(current.id);
         if (cancelled) return;
         if (settle(s)) return;
         if (s.state === "error") return fail(s.error || "渲染失败");

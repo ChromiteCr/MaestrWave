@@ -85,6 +85,27 @@
   gap: 6px;
 }
 
+/*
+  「真实乐曲」徽标。不是装饰：真实曲目与写谱考卷的评分含义不同（力度可能是
+  推导的、乐句长短由作曲家定），用户有权在选之前就看出这是两类东西。
+*/
+.realWork {
+  color: var(--wave-4, var(--accent));
+  border-color: color-mix(in srgb, var(--wave-4, var(--accent)) 45%, transparent);
+}
+
+/* 曲目出处与力度来源。随仓库分发的作品要说清许可，推导的力度要说清是推导的 */
+.provenance {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: color-mix(in srgb, var(--ink) 45%, transparent);
+}
+
+.provenance a {
+  color: color-mix(in srgb, var(--ink) 60%, transparent);
+}
+
 /* 及格与否。分数本身在 ScoreReport 里，这里只下结论，所以给足字号与留白 */
 .verdict {
   margin: 18px 0 0;

@@ -28,6 +28,7 @@ try:
     from . import render as renderlib
     from . import score_gen
     from . import practice
+    from . import repertoire as repertoirelib
     from .conduct import hub as conduct_hub
     from .netinfo import network_info
     from .tunnel import manager as tunnel_manager
@@ -49,6 +50,7 @@ except Exception:
     import render as renderlib
     import score_gen
     import practice
+    import repertoire as repertoirelib
     from conduct import hub as conduct_hub
     from netinfo import network_info
     from tunnel import manager as tunnel_manager
@@ -680,6 +682,73 @@ async def practice_midi(piece_id: str):
 @app.get("/api/practice/{piece_id}")
 async def practice_status(piece_id: str):
     return _practice_status(_valid_piece_id(piece_id))
+
+
+# ---------------- 随仓库分发的真实曲目 ----------------
+#
+# 渲染产物与练习曲**同形、同目录**，所以上面 `/api/practice/{id}.wav|.mid|状态`
+# 那三条端点原样就能服务这里的曲目，不需要再写一遍。这里只加「列清单」「开始渲染」
+# 「造成可指挥的项目」「下原始文件」四条。
+
+def _repertoire_or_404(item_id: str):
+    item = repertoirelib.ITEMS.get(item_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="没有这首曲目")
+    return item
+
+
+async def _render_repertoire(item, pid: str) -> None:
+    try:
+        await asyncio.to_thread(repertoirelib.render_piece, item)
+        _practice_jobs[pid] = "ready"
+    except Exception as e:
+        logger.exception("曲目渲染失败 %s", pid)
+        _practice_jobs[pid] = f"{type(e).__name__}: {e}"
+
+
+@app.get("/api/repertoire")
+async def repertoire_list():
+    """曲目清单。不触发渲染，只报「准备好了没」。"""
+    return {"items": repertoirelib.listing()}
+
+
+@app.post("/api/repertoire/{item_id}/prepare")
+async def repertoire_prepare(item_id: str):
+    """开始渲染，立刻返回 piece_id。返回结构与 `/api/practice/generate` 一致，
+    前端那个轮询 hook 不用分辨这首是写出来的还是读进来的。"""
+    item = _repertoire_or_404(item_id)
+    pid = repertoirelib.piece_id(item)
+    if repertoirelib.is_ready(pid):
+        return _practice_status(pid)
+    if _practice_jobs.get(pid) != "rendering":
+        _practice_jobs[pid] = "rendering"
+        asyncio.create_task(_render_repertoire(item, pid))
+    return {"piece_id": pid, "state": "rendering"}
+
+
+@app.post("/api/repertoire/{item_id}/project")
+async def repertoire_project(item_id: str):
+    """把曲目造成一个可指挥的项目：每条 MIDI 轨一个乐器、一条 take。
+
+    造完之后走的是和自己生成的项目完全一样的链路，指挥那边一行都不用改。
+    """
+    item = _repertoire_or_404(item_id)
+    try:
+        project = await asyncio.to_thread(repertoirelib.build_project, item)
+    except Exception as e:
+        logger.exception("曲目建项目失败 %s", item_id)
+        raise HTTPException(status_code=500, detail=f"{type(e).__name__}: {e}")
+    return {"project": project}
+
+
+@app.get("/api/repertoire/{item_id}/source.mid")
+async def repertoire_source(item_id: str):
+    """原始 MIDI，**未截取**。截取只发生在渲染那一路，想拿全曲的人应该拿到全曲。"""
+    item = _repertoire_or_404(item_id)
+    path = repertoirelib.asset_path(item)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="曲目文件不在")
+    return FileResponse(path, media_type="audio/midi", filename=item.filename)
 
 
 @app.get("/api/formation/templates")

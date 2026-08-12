@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { PageHeader } from "../../components/PageHeader/PageHeader";
 import { Button } from "../../components/Button/Button";
-import { api, type GenerationMode, type Project } from "../../lib/api";
+import { api, type GenerationMode, type Project, type RepertoireItem } from "../../lib/api";
 import { useAppStore } from "../../state/store";
 import styles from "./FilePage.module.css";
 
@@ -36,6 +36,11 @@ export function FilePage() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
 
+  // 随程序附带的真实曲目。和「已有项目」并列摆，卡片样式一样 —— 对用户来说
+  // 两者都是「可以打开来指挥的东西」，没必要让他先理解「这是内置的那是我的」。
+  const [repertoire, setRepertoire] = useState<RepertoireItem[]>([]);
+  const [importing, setImporting] = useState("");
+
   const [name, setName] = useState("");
   const [totalDuration, setTotalDuration] = useState(16);
   const [mode, setMode] = useState<GenerationMode>("multitrack");
@@ -55,7 +60,30 @@ export function FilePage() {
   useEffect(() => {
     loadProjects();
     refreshHealth();
+    // 曲目清单拿不到不算错：后端版本旧一点就没这个端点，页面其余部分照常用
+    api.repertoireList().then((r) => setRepertoire(r.items)).catch(() => setRepertoire([]));
   }, [refreshHealth]);
+
+  /**
+   * 打开一首内置曲目：后端把 MIDI 逐轨渲染成 take，造出一个正常的项目。
+   *
+   * 首次要等十几秒到一分多钟（取决于渲染器），之后这个项目就存在了，
+   * 和自己建的项目没有区别 —— 所以这里造完直接进「生成」页，不做特殊对待。
+   */
+  const openRepertoire = async (item: RepertoireItem) => {
+    if (importing) return;
+    setImporting(item.id);
+    try {
+      const { project } = await api.repertoireProject(item.id);
+      await loadProjects();
+      openProject(project);
+    } catch (e) {
+      console.error(e);
+      alert(`打开《${item.title}》失败：` + (e as Error).message);
+    } finally {
+      setImporting("");
+    }
+  };
 
   const openProject = (project: Project) => {
     setProject(project);
@@ -146,7 +174,50 @@ export function FilePage() {
         </div>
 
         <div>
-          <p className={styles.sectionTitle}>已有项目</p>
+          {repertoire.length > 0 && (
+            <>
+              <p className={styles.sectionTitle}>内置曲目</p>
+              <p className={styles.sectionHint}>
+                随程序附带的真实交响乐作品，公有领域。点开会把每个声部渲染成独立音轨，
+                之后和你自己建的项目完全一样 —— 一样能改配器、一样能用身体指挥。
+              </p>
+              <div className={styles.grid}>
+                {repertoire.map((item) => (
+                  <div
+                    key={item.id}
+                    className={`${styles.card} ${importing === item.id ? styles.cardBusy : ""}`}
+                    onClick={() => openRepertoire(item)}
+                  >
+                    <h3 className={styles.cardTitle}>{item.title}</h3>
+                    <p className={styles.cardDesc}>{item.blurb}</p>
+                    <div className={styles.cardChips}>
+                      <span className="mono-chip">{item.composer}</span>
+                      <span className="mono-chip">{item.license}</span>
+                      {!item.ready && <span className="mono-chip">首次要渲染</span>}
+                    </div>
+                    <div className={styles.cardFooter}>
+                      <span className="label">
+                        {importing === item.id ? "正在渲染各声部…" : "点开即可指挥"}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(api.repertoireSourceUrl(item.id), "_blank");
+                        }}
+                      >
+                        原始 MIDI
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          <p className={styles.sectionTitle} style={{ marginTop: repertoire.length ? 30 : 0 }}>
+            已有项目
+          </p>
           {loading ? (
             <div className={styles.empty}>加载中…</div>
           ) : projects.length === 0 ? (

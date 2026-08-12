@@ -23,6 +23,24 @@ import { DIMENSIONS, type RubricDimension, type RubricItem } from "./curriculum"
 import type { Meter } from "./patterns";
 import { countInBarsFor, type PieceMusic } from "./piece";
 
+/**
+ * 考卷的曲子从哪来。**两者取其一**，用可辨识联合而不是两个可选字段 ——
+ * 后者允许「都给」和「都不给」两种非法状态，而每多一种非法状态就是一份渲染
+ * 不出来的考卷。
+ *
+ * - `spec`：照规格写谱，同一份规格永远渲染出同一首（`backend/practice.py`）。
+ * - `repertoire`：随仓库分发的真实交响乐选段（`backend/repertoire.py`）。
+ */
+export type ExamSource =
+  | { kind: "spec"; music: PieceMusic }
+  | {
+      kind: "repertoire";
+      id: string;
+      /** 正曲小节数与时长。写在这里，免得「清单还没加载完就显示不出时长」。 */
+      bars: number;
+      durationSec: number;
+    };
+
 export interface ExamPiece {
   id: string;
   title: string;
@@ -36,15 +54,21 @@ export interface ExamPiece {
   covers: string[];
   rubric: RubricItem[];
   /**
-   * 这首曲子怎么写。**改动它等于换了一份考卷**，历史分数就不再可比 ——
-   * 规格进 piece_id，改一个数字后端就会渲染出另一首。
+   * 这首曲子从哪来。**改动它等于换了一份考卷**，历史分数就不再可比 ——
+   * 规格（或曲目文件与截取窗口）进 piece_id，改一个数字后端就会渲染出另一首。
    */
-  music: PieceMusic;
+  source: ExamSource;
 }
 
-/** 整段音频有多长（含数拍与尾巴不算 —— 这里给的是用户要打的那段）。 */
+/** 正曲小节数。真实曲目由清单给，写谱的由规格给。 */
+export function examBars(p: ExamPiece): number {
+  return p.source.kind === "spec" ? p.source.music.bars : p.source.bars;
+}
+
+/** 整段音频有多长（这里给的是用户要打的那段）。 */
 export function examDurationSec(p: ExamPiece): number {
-  return Math.round(((p.music.bars + countInBarsFor(p.meter)) * p.meter * 60) / p.bpm);
+  if (p.source.kind === "repertoire") return p.source.durationSec;
+  return Math.round(((p.source.music.bars + countInBarsFor(p.meter)) * p.meter * 60) / p.bpm);
 }
 
 /**
@@ -79,12 +103,12 @@ export const EXAM_PIECES: ExamPiece[] = [
       { dimension: "planeConsistency", weight: 0.15 },
     ],
     // 力度全程不变：这一首不考力度，那就别让力度在暗中影响别的维度
-    music: {
+    source: { kind: "spec", music: {
       style: "march",
       bars: 20,
       dynamics: flat(20, 0.62),
       key: "Bb major",
-    },
+    } },
   },
   {
     id: "exam-waltz",
@@ -103,7 +127,7 @@ export const EXAM_PIECES: ExamPiece[] = [
     ],
     // 中段一次完整的渐强再收回来。八小节推上去、再八小节退下来，
     // 两端各留几小节平的 —— 不给缓冲的话「渐强」和「起手」会混在一起评。
-    music: {
+    source: { kind: "spec", music: {
       style: "waltz",
       bars: 24,
       dynamics: [
@@ -113,7 +137,7 @@ export const EXAM_PIECES: ExamPiece[] = [
         0.4, 0.45, 0.55, 0.65, 0.55, 0.45, 0.4, 0.35,
       ],
       key: "A major",
-    },
+    } },
   },
   {
     id: "exam-lyric",
@@ -132,7 +156,7 @@ export const EXAM_PIECES: ExamPiece[] = [
       { dimension: "dynamicsMatch", weight: 0.25 },
       { dimension: "patternShape", weight: 0.2 },
     ],
-    music: {
+    source: { kind: "spec", music: {
       style: "lyric",
       bars: 16,
       pickup: true,
@@ -143,6 +167,39 @@ export const EXAM_PIECES: ExamPiece[] = [
         0.6, 0.5, 0.35, 0.2,
       ],
       key: "F major",
+    } },
+  },
+  {
+    id: "exam-beethoven-7",
+    title: "贝多芬 第七交响曲 第二乐章（选段）",
+    level: 2,
+    levelLabel: "中级",
+    // 纯文本渲染，别写 **
+    tests:
+      "第一次带真正的管弦乐作品。速度全程不变、拍子清楚到不可能听错，但织体从三个声部一层层涨到全奏 —— 拍型得跟着长大。",
+    meter: 2,
+    bpm: 76,
+    covers: ["posture", "patterns", "dynamics"],
+    /*
+     * 力度只占 0.15：这首的力度曲线是**从配器反推的**，不是贝多芬写下的
+     * （源文件所有音符 velocity 恒为 127，LilyPond 没写 \dynamics 时的默认导出）。
+     * 推导的东西不该和谱面写死的东西占一样的分量。
+     *
+     * 但也不能不考 —— 反推曲线同时用于渲染，用户听到的渐强就是被考的渐强，
+     * 两者同源，不存在「照着听到的打却被判错」。
+     */
+    rubric: [
+      { dimension: "ictusTiming", weight: 0.32 },
+      { dimension: "patternShape", weight: 0.27 },
+      { dimension: "tempoStability", weight: 0.26 },
+      { dimension: "dynamicsMatch", weight: 0.15 },
+    ],
+    source: {
+      kind: "repertoire",
+      id: "beethoven-7-ii",
+      bars: 50,
+      // 50 小节正曲 + 2 小节数拍，2/4 @ 76 BPM
+      durationSec: 82,
     },
   },
 ];

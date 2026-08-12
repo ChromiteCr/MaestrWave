@@ -8,7 +8,7 @@ import { CameraIntentSource } from "../../lib/camera/cameraIntentSource";
 import { HandTracker } from "../../lib/camera/handTracker";
 import { findLesson } from "../../lib/teaching/curriculum";
 import {
-  EXAM_PIECES, GOOD_SCORE, PASS_SCORE, examDimensions, examDurationSec, type ExamPiece,
+  EXAM_PIECES, GOOD_SCORE, PASS_SCORE, examBars, examDimensions, examDurationSec, type ExamPiece,
 } from "../../lib/teaching/exam";
 import { buildSpec } from "../../lib/teaching/piece";
 import type { SessionScore } from "../../lib/teaching/scoring";
@@ -48,8 +48,16 @@ export function ExamPage() {
   const [, force] = useState(0);
 
   // 选中哪一首就渲染哪一首。切曲目时上一首已经在缓存里，切回去是秒开。
+  // 写谱的与真实曲目走的是两条不同的发起路径，但产出同形 —— 底下一律不分辨。
   const piece = usePracticePiece(
-    buildSpec(selected.music, { meter: selected.meter, bpm: selected.bpm, id: selected.id }),
+    selected.source.kind === "spec"
+      ? {
+          kind: "spec",
+          spec: buildSpec(selected.source.music, {
+            meter: selected.meter, bpm: selected.bpm, id: selected.id,
+          }),
+        }
+      : { kind: "repertoire", id: selected.source.id },
   );
 
   // 环境检查是同步的，不用开摄像头就知道结果 —— 先把「这台机器根本不行」挡在前面
@@ -143,8 +151,9 @@ export function ExamPage() {
       <div className={styles.body}>
         <p className={styles.intro}>
           考试用固定的曲目，所有人考同一首、同一个速度 —— 练习曲跟着课程走，每一课
-          都不一样，分数没法比；考试曲目固定，分数才有意义。曲子由后端照着写死的规格
-          写谱渲染，同一份规格永远是同一首，所以不需要联网也不需要配密钥。
+          都不一样，分数没法比；考试曲目固定，分数才有意义。曲子有两类：一类由后端照着
+          写死的规格写谱渲染，另一类是随程序附带的真实交响乐作品（公有领域）。两类都
+          不需要联网、不需要配密钥，同样的输入永远渲染出同样的音频。
           全程用摄像头采集，按行业标准的几个维度给出具体数字与建议。
         </p>
 
@@ -169,11 +178,28 @@ export function ExamPage() {
                     <span className="mono-chip">
                       {p.meter}/4 · {p.bpm} BPM
                     </span>
-                    <span className="mono-chip">{p.music.bars} 小节 · {examDurationSec(p)} 秒</span>
+                    <span className="mono-chip">{examBars(p)} 小节 · {examDurationSec(p)} 秒</span>
+                    {p.source.kind === "repertoire" && (
+                      <span className={`mono-chip ${styles.realWork}`}>真实乐曲</span>
+                    )}
                   </div>
                 </button>
               ))}
             </div>
+
+            {/*
+              力度来源只在**已经知道**的时候说。曲子还没准备好时 dynamicsSource
+              是 undefined，那时候写「力度取自乐谱」就是在断言一件没核实的事 ——
+              而这一首恰好相反，它的力度是推导的。
+            */}
+            {selected.source.kind === "repertoire" && (
+              <p className={styles.provenance}>
+                真实作品，曲子属公有领域，乐谱排版来自 Mutopia Project（CC0）。
+                {piece.piece?.dynamicsSource === "derived" &&
+                  " 源乐谱不含力度信息，这一首的力度曲线是从配器反推的，不是作曲家写下的。"}
+                {piece.piece?.dynamicsSource === "score" && " 力度取自乐谱。"}
+              </p>
+            )}
 
             <p className="eyebrow" style={{ marginTop: 26 }}>
               《{selected.title}》考什么
@@ -227,7 +253,7 @@ export function ExamPage() {
               <>
                 <p className="eyebrow">正在考试 · 《{selected.title}》</p>
                 <p className={styles.checkHint}>
-                  跟着数拍进，打满 {selected.music.bars} 小节自动结束并出分。
+                  跟着数拍进，打满 {examBars(selected)} 小节自动结束并出分。
                 </p>
                 <PracticeRunner
                   meter={selected.meter}

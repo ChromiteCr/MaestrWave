@@ -35,10 +35,32 @@
   margin: 0 0 4px;
 }
 
+/* 分组下面的一句说明。「内置曲目」需要它 —— 点开会发生什么得先讲清楚 */
+.sectionHint {
+  margin: 0 0 12px;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: color-mix(in srgb, var(--ink) 48%, transparent);
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 14px;
+}
+
+/*
+  正在渲染的曲目卡。首次点开要等十几秒到一分多钟（逐声部渲染），
+  没有这个状态用户会以为点了没反应，然后连点好几下。
+*/
+.cardBusy {
+  cursor: progress;
+  border-color: var(--accent);
+  opacity: 0.75;
+}
+
+.cardBusy:hover {
+  transform: none;
 }
 
 .card {

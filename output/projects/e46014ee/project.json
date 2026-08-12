@@ -1,0 +1,320 @@
+{
+  "project_id": "e46014ee",
+  "name": "贝多芬 · 第七交响曲 第二乐章（选段）",
+  "created_at": "2026-08-12T03:06:00.020371Z",
+  "style_description": "贝多芬《第七交响曲 第二乐章（选段）》 · Public Domain (CC0)",
+  "key": "",
+  "bpm": 76,
+  "time_signature": "2/4",
+  "instruments": [
+    {
+      "id": "8b4aa8d1",
+      "library_key": "flute",
+      "display_name": "长笛",
+      "family": "woodwind",
+      "role": "melody",
+      "takes": [
+        {
+          "take_id": "5a5c1044",
+          "created_at": "2026-08-12T03:06:00.390849Z",
+          "audio_file": "5a5c1044.wav",
+          "task_type_used": "repertoire",
+          "params": {
+            "repertoire_id": "beethoven-7-ii",
+            "gm_program": 73
+          }
+        }
+      ],
+      "current_take_id": "5a5c1044",
+      "participation": [],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
+    },
+    {
+      "id": "c8ac40e8",
+      "library_key": "oboe",
+      "display_name": "双簧管",
+      "family": "woodwind",
+      "role": "melody",
+      "takes": [
+        {
+          "take_id": "e786fe7d",
+          "created_at": "2026-08-12T03:06:00.984683Z",
+          "audio_file": "e786fe7d.wav",
+          "task_type_used": "repertoire",
+          "params": {
+            "repertoire_id": "beethoven-7-ii",
+            "gm_program": 68
+          }
+        }
+      ],
+      "current_take_id": "e786fe7d",
+      "participation": [],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
+    },
+    {
+      "id": "6d2da063",
+      "library_key": "clarinet",
+      "display_name": "单簧管",
+      "family": "woodwind",
+      "role": "harmony",
+      "takes": [
+        {
+          "take_id": "8bae10ad",
+          "created_at": "2026-08-12T03:06:01.569127Z",
+          "audio_file": "8bae10ad.wav",
+          "task_type_used": "repertoire",
+          "params": {
+            "repertoire_id": "beethoven-7-ii",
+            "gm_program": 71
+          }
+        }
+      ],
+      "current_take_id": "8bae10ad",
+      "participation": [],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
+    },
+    {
+      "id": "912afef7",
+      "library_key": "woodwind",
+      "display_name": "大管",
+      "family": "woodwind",
+      "role": "harmony",
+      "takes": [
+        {
+          "take_id": "79b9f454",
+          "created_at": "2026-08-12T03:06:01.937512Z",
+          "audio_file": "79b9f454.wav",
+          "task_type_used": "repertoire",
+          "params": {
+            "repertoire_id": "beethoven-7-ii",
+            "gm_program": 70
+          }
+        }
+      ],
+      "current_take_id": "79b9f454",
+      "participation": [],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
+    },
+    {
+      "id": "cb32dfef",
+      "library_key": "french_horn",
+      "display_name": "圆号",
+      "family": "brass",
+      "role": "harmony",
+      "takes": [
+        {
+          "take_id": "a2f6c6dc",
+          "created_at": "2026-08-12T03:06:02.558916Z",
+          "audio_file": "a2f6c6dc.wav",
+          "task_type_used": "repertoire",
+          "params": {
+            "repertoire_id": "beethoven-7-ii",
+            "gm_program": 60
+          }
+        }
+      ],
+      "current_take_id": "a2f6c6dc",
+      "participation": [],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
+    },
+    {
+      "id": "9e971d72",
+      "library_key": "trumpet",
+      "display_name": "小号",
+      "family": "brass",
+      "role": "melody",
+      "takes": [
+        {
+          "take_id": "f71169d4",
+          "created_at": "2026-08-12T03:06:02.935438Z",
+          "audio_file": "f71169d4.wav",
+          "task_type_used": "repertoire",
+          "params": {
+            "repertoire_id": "beethoven-7-ii",
+            "gm_program": 56
+          }
+        }
+      ],
+      "current_take_id": "f71169d4",
+      "participation": [],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
+    },
+    {
+      "id": "ca88e077",
+      "library_key": "timpani",
+      "display_name": "定音鼓",
+      "family": "percussion",
+      "role": "rhythm",
+      "takes": [
+        {
+          "take_id": "783ff5ca",
+          "created_at": "2026-08-12T03:06:03.304100Z",
+          "audio_file": "783ff5ca.wav",
+          "task_type_used": "repertoire",
+          "params": {
+            "repertoire_id": "beethoven-7-ii",
+            "gm_program": 47
+          }
+        }
+      ],
+      "current_take_id": "783ff5ca",
+      "participation": [],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
+    },
+    {
+      "id": "56c47394",
+      "library_key": "violin",
+      "display_name": "小提琴 I",
+      "family": "strings",
+      "role": "melody",
+      "takes": [
+        {
+          "take_id": "4cd6c668",
+          "created_at": "2026-08-12T03:06:03.675320Z",
+          "audio_file": "4cd6c668.wav",
+          "task_type_used": "repertoire",
+          "params": {
+            "repertoire_id": "beethoven-7-ii",
+            "gm_program": 40
+          }
+        }
+      ],
+      "current_take_id": "4cd6c668",
+      "participation": [],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
+    },
+    {
+      "id": "058d6bf9",
+      "library_key": "violin",
+      "display_name": "小提琴 II",
+      "family": "strings",
+      "role": "melody",
+      "takes": [
+        {
+          "take_id": "457102bf",
+          "created_at": "2026-08-12T03:06:05.647716Z",
+          "audio_file": "457102bf.wav",
+          "task_type_used": "repertoire",
+          "params": {
+            "repertoire_id": "beethoven-7-ii",
+            "gm_program": 40
+          }
+        }
+      ],
+      "current_take_id": "457102bf",
+      "participation": [],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
+    },
+    {
+      "id": "a4ba16cc",
+      "library_key": "strings",
+      "display_name": "中提琴",
+      "family": "strings",
+      "role": "harmony",
+      "takes": [
+        {
+          "take_id": "f599c39a",
+          "created_at": "2026-08-12T03:06:06.018367Z",
+          "audio_file": "f599c39a.wav",
+          "task_type_used": "repertoire",
+          "params": {
+            "repertoire_id": "beethoven-7-ii",
+            "gm_program": 41
+          }
+        }
+      ],
+      "current_take_id": "f599c39a",
+      "participation": [],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
+    },
+    {
+      "id": "6486d42b",
+      "library_key": "cello",
+      "display_name": "大提琴",
+      "family": "strings",
+      "role": "bass",
+      "takes": [
+        {
+          "take_id": "d2225aff",
+          "created_at": "2026-08-12T03:06:10.884742Z",
+          "audio_file": "d2225aff.wav",
+          "task_type_used": "repertoire",
+          "params": {
+            "repertoire_id": "beethoven-7-ii",
+            "gm_program": 42
+          }
+        }
+      ],
+      "current_take_id": "d2225aff",
+      "participation": [],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
+    },
+    {
+      "id": "b9a59111",
+      "library_key": "cello",
+      "display_name": "低音提琴",
+      "family": "strings",
+      "role": "bass",
+      "takes": [
+        {
+          "take_id": "21bf04d6",
+          "created_at": "2026-08-12T03:06:11.256892Z",
+          "audio_file": "21bf04d6.wav",
+          "task_type_used": "repertoire",
+          "params": {
+            "repertoire_id": "beethoven-7-ii",
+            "gm_program": 43
+          }
+        }
+      ],
+      "current_take_id": "21bf04d6",
+      "participation": [],
+      "prompt_extra": "",
+      "tier": "core",
+      "bound_stem_id": null,
+      "origin": "planned"
+    }
+  ],
+  "schema_version": 2,
+  "generation_mode": "multitrack",
+  "total_duration": 83.6842,
+  "formation": null,
+  "generation_order": [],
+  "master": null,
+  "stems": [],
+  "score_blueprint": null,
+  "segment_duration": 83.6842
+}
