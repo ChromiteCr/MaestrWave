@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useAppStore } from "../../state/store";
 import { AgentChat } from "../AgentChat/AgentChat";
 import { AgentIcon, CloseIcon } from "../icons";
@@ -108,20 +108,40 @@ export function AgentPanel() {
   const hasMessages = useAppStore((s) => s.agentMessages.length > 0);
   const clearAgent = useAppStore((s) => s.clearAgent);
 
-  // 首帧就得有个位置（默认右下角），否则球会先在左上角闪一下再跳过去
-  const [pos, setPos] = useState<Point>(() => clampPos(readPos() ?? defaultPos()));
+  /**
+   * `null` = 用户还没自己放过，位置每次渲染按当前视口现算（右下角）。
+   *
+   * 不能在首帧算完就存进 state：页面在后台标签里挂载时 `innerWidth` 可能还是 0，
+   * 算出来的「右下角」会被 `clampPos` 夹成左上角 —— 而夹紧是幂等的，视口后来
+   * 变正常了它也回不来，球就永久停在左上角压着品牌区。现算就没有这个问题。
+   */
+  const [pos, setPos] = useState<Point | null>(() => readPos());
   const [dragging, setDragging] = useState(false);
   /** 这一次按下有没有真的移动过。用来分辨「拖」和「点」。 */
   const movedRef = useRef(false);
-  /** 松手时要落盘的是**最新**位置，而 onUp 的闭包里那个是按下那一刻的。 */
-  const posRef = useRef(pos);
-  posRef.current = pos;
-
+  /**
+   * 视口一变就重算位置。
+   *
+   * `visibilitychange` 和 `resize` 一起听：标签页在后台时 `innerWidth` 报 0，
+   * 切回前台拿到真实尺寸的那一下不一定发 resize，而这正是上面说的「球停在
+   * 左上角」会发生的时刻。
+   */
+  const [, bumpViewport] = useReducer((n: number) => n + 1, 0);
   useEffect(() => {
-    const onResize = () => setPos((p) => clampPos(p));
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    window.addEventListener("resize", bumpViewport);
+    document.addEventListener("visibilitychange", bumpViewport);
+    return () => {
+      window.removeEventListener("resize", bumpViewport);
+      document.removeEventListener("visibilitychange", bumpViewport);
+    };
   }, []);
+
+  /** 真正用的位置。夹紧放在**渲染时**做而不是存进 state：存进去就再也松不开了。 */
+  const anchor = pos ? clampPos(pos) : defaultPos();
+
+  /** 松手时要落盘的是**最新**位置，而 onUp 的闭包里那个是按下那一刻的。 */
+  const posRef = useRef(anchor);
+  posRef.current = anchor;
 
   const startDrag = useCallback((e: ReactPointerEvent) => {
     if (e.button !== 0 && e.pointerType === "mouse") return;
@@ -133,7 +153,7 @@ export function AgentPanel() {
     setDragging(true);
 
     const start = { x: e.clientX, y: e.clientY };
-    const origin = pos;
+    const origin = anchor;
 
     const onMove = (ev: PointerEvent) => {
       const dx = ev.clientX - start.x;
@@ -159,9 +179,9 @@ export function AgentPanel() {
     el.addEventListener("pointermove", onMove);
     el.addEventListener("pointerup", onUp);
     el.addEventListener("pointercancel", onUp);
-  }, [pos]);
+  }, [anchor]);
 
-  const geo = geometry(pos, open);
+  const geo = geometry(anchor, open);
 
   return (
     <div
