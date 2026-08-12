@@ -5,6 +5,7 @@
  * source -> gain -> panner -> masterGain -> destination。
  */
 import { VOLUME_TIME_CONSTANT } from "./gestureConstants";
+import { looksLikeWav } from "./wavDecode";
 
 export interface TrackInfo {
   id: string;
@@ -15,10 +16,23 @@ export interface TrackInfo {
   startedAtCtxTime: number;
 }
 
+/**
+ * 「取回来的不是音频」得说清是哪一种，否则查不下去：拿到 HTML（dev server 顶上来的
+ * 首页）、拿到空响应、和拿到半截文件，是三个完全不同的原因。
+ */
+function describeNotAudio(buf: ArrayBuffer, resp: Response): string {
+  const ct = resp.headers.get("content-type") || "未知类型";
+  if (buf.byteLength === 0) return `取回来是空的（${ct}）`;
+  const head = new TextDecoder().decode(buf.slice(0, 12)).replace(/[^\x20-\x7e]/g, ".");
+  return `取回来的不是音频：${resp.url || "?"} → ${buf.byteLength} 字节、${ct}、开头 ${JSON.stringify(head)}`;
+}
+
 export class AudioEngine {
   ctx: AudioContext | null = null;
   masterGain: GainNode | null = null;
   private tracks = new Map<string, TrackInfo>();
+  /** 解码排队用的尾指针。理由见 `loadTrack`：并发解码正是失败的病因。 */
+  private decodeChain: Promise<unknown> = Promise.resolve();
   isPlaying = false;
 
   async init(): Promise<void> {
@@ -36,32 +50,47 @@ export class AudioEngine {
   /**
    * 取回音频并解码成一条可播的轨。
    *
-   * **解码失败会重试。** `decodeAudioData` 在同时解好几条长音轨时会偶发
-   * `EncodingError: Unable to decode audio data`，而同一个文件隔一会儿再解就是好的
-   * （实测：失败那条重新 fetch + decode 立刻成功，文件本身完好）。真实交响乐一次
-   * 进来十几个声部、每条四五兆，正好是最容易撞上的场景。
+   * **解码之前先认一眼取回来的是不是音频**（`looksLikeWav`）。少了这一步，一个
+   * 拼错的 URL 会以「Decoding failed」的面目出现 —— dev server 对认不出的路径
+   * 会拿首页顶上并且给 200，于是浏览器拿到 871 字节 HTML，报的却是解码错误，
+   * 而人会照着这条消息去查音频文件。真实的例子见 `wavDecode.looksLikeWav`。
+   *
+   * 解码串行化（`decodeChain`）：十几条长音轨同时解，`decodeAudioData` 在某些
+   * 浏览器上会成片失败。本地文件四五兆解一条只要几十毫秒，排十四条也就一秒出头，
+   * 用不着冒这个险。
+   *
+   * 取数据失败重试一次，第二次绕开 HTTP 缓存 —— 万一坏响应被缓存住了，
+   * 后端好了也没用，重试多少次拿到的都是它。
    *
    * 失败一次就放弃的代价不是「少一条轨」而是**整页卡死**：波形永远停在呼吸动画、
    * 指挥启动时那一条抛出来会让整个 `start()` 挂掉。
    */
   async loadTrack(id: string, url: string, pan = 0): Promise<AudioBuffer> {
     if (!this.ctx || !this.masterGain) throw new Error("AudioEngine 未初始化");
+    const ctx = this.ctx;
 
-    let buffer: AudioBuffer | null = null;
+    let raw: ArrayBuffer | null = null;
     let lastErr: unknown = null;
-    for (let attempt = 0; attempt < 3 && !buffer; attempt++) {
-      // 隔一会儿再试。等的是解码器让出资源，不是网络 —— 所以第二次也重新 fetch：
-      // decodeAudioData 会把 ArrayBuffer 置为 detached，同一份数据没法重解
-      if (attempt > 0) await new Promise((r) => setTimeout(r, 250 * attempt));
+    for (let attempt = 0; attempt < 2 && !raw; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 200));
       try {
-        const resp = await fetch(url);
+        const resp = await fetch(url, attempt > 0 ? { cache: "reload" } : undefined);
         if (!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`);
-        buffer = await this.ctx.decodeAudioData(await resp.arrayBuffer());
+        const buf = await resp.arrayBuffer();
+        if (!looksLikeWav(buf)) throw new Error(describeNotAudio(buf, resp));
+        raw = buf;
       } catch (e) {
         lastErr = e;
       }
     }
-    if (!buffer) throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+    if (!raw) throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+    const bytes = raw;
+
+    // 排到解码队列后面。链上任何一环失败都不能让后面的排队者一起挂，所以
+    // catch 掉再往下传
+    const decode = this.decodeChain.then(() => ctx.decodeAudioData(bytes));
+    this.decodeChain = decode.catch(() => undefined);
+    const buffer = await decode;
 
     this.tracks.get(id)?.source?.stop();
 

@@ -366,5 +366,9 @@
   "master": null,
   "stems": [],
   "score_blueprint": null,
-  "segment_duration": 45.7894
+  "segment_duration": 45.7894,
+  "repertoire": {
+    "id": "beethoven-egmont-coda",
+    "piece_id": "295a2e2413e1fc50"
+  }
 }

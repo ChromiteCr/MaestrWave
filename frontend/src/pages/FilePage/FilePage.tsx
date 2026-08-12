@@ -192,9 +192,9 @@ export function FilePage() {
             <>
               <p className={styles.sectionTitle}>内置曲目</p>
               <p className={styles.sectionHint}>
-                随程序附带的真实交响乐作品，公有领域。点开会把每个声部渲染成独立音轨，
-                要等十几到几十秒；渲完就是一个正常项目，和你自己建的完全一样 ——
-                一样能改配器、一样能用身体指挥。
+                随程序附带的真实交响乐作品，公有领域。第一次点开会把每个声部渲染成独立
+                音轨，要等十几到几十秒；渲完就是一个正常项目，和你自己建的完全一样 ——
+                一样能改配器、一样能用身体指挥。一首只会生成一个项目，之后再点是打开它。
               </p>
               <div className={styles.grid}>
                 {repertoire.map((item) => (
@@ -216,7 +216,10 @@ export function FilePage() {
                       <RenderBar progress={importProgress} hint="正在渲染各声部…" />
                     ) : (
                       <div className={styles.cardFooter}>
-                        <span className="label">点开即可指挥</span>
+                        {/* 说清这一下是秒开还是要等 —— 两者差半分钟 */}
+                        <span className="label">
+                          {item.project_id ? "已生成 · 点开即可指挥" : "点开生成各声部"}
+                        </span>
                         <Button
                           variant="ghost"
                           onClick={(e) => {

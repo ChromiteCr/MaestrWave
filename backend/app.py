@@ -768,7 +768,10 @@ async def repertoire_project(item_id: str):
         raise HTTPException(status_code=500, detail=f"{type(e).__name__}: {e}")
     finally:
         _job_progress.pop(key, None)
-    return {"project": project}
+    # **必须过 `_serialize_project`**：take 的 `url` 是在这里补的，不在磁盘上。
+    # 直接把 `load_project` 的结果端出去，前端拿到的每个 take 都没有 url，
+    # 于是去取 `/undefined` —— dev server 拿首页顶上，音频「解码失败」。
+    return {"project": _serialize_project(project)}
 
 
 @app.get("/api/repertoire/{item_id}/progress")

@@ -274,6 +274,11 @@ export interface RepertoireItem {
   duration_sec: number;
   /** 有几个声部。渲染时间基本正比于它，进度条的分母也是它。 */
   track_count: number;
+  /**
+   * 这一段已经造过的项目。**一段只有一个项目**，再点是打开它而不是再造一个。
+   * 没造过就是 null —— 卡片据此说清楚这一下是秒开还是要等半分钟。
+   */
+  project_id: string | null;
 }
 
 /**

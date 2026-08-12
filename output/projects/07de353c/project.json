@@ -316,5 +316,9 @@
   "master": null,
   "stems": [],
   "score_blueprint": null,
-  "segment_duration": 45.7895
+  "segment_duration": 45.7895,
+  "repertoire": {
+    "id": "beethoven-7-ii",
+    "piece_id": "cc8c3a071d210d5d"
+  }
 }

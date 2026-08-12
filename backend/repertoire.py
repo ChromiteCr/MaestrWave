@@ -361,13 +361,35 @@ def render_piece(item: RepertoireItem, on_progress: Optional[Progress] = None) -
 
 # ---------------- 造一个可指挥的项目 ----------------
 
+def find_project(item: RepertoireItem) -> Optional[dict]:
+    """这一段已经造过项目就返回它，没有就 None。
+
+    键是 `piece_id`（文件 sha + 截取窗口 + 算法版本）而不是曲目 id：换了选段就是
+    另一段音乐，旧项目里的音频对不上，必须另造一个。
+    """
+    pid = piece_id(item)
+    for proj in projectlib.list_projects():
+        if (proj.get("repertoire") or {}).get("piece_id") == pid:
+            return proj
+    return None
+
+
 def build_project(item: RepertoireItem, on_progress: Optional[Progress] = None) -> dict:
     """每条 MIDI 轨 → 一个乐器 + 一条 take。造完之后走的是和自己生成的项目
     完全一样的链路（浏览、指挥、输出），体感混音那边一行都不用改。
 
+    **同一段只造一个项目。** 造过就直接返回那个 —— 内置曲目是「打开一首曲子」，
+    不是「新建一个项目」，每点一次多一个 12 声部 48MB 的副本既费磁盘也让文件页
+    堆满同名项目。想要第二份的人可以在文件页复制，那是另一件事。
+
     进度回报同 `render_piece`：这条路比渲染还慢（每个声部都要单独落一个 wav），
     而它是**一次阻塞请求**，前端除了转圈没别的可看。
     """
+    existing = find_project(item)
+    if existing is not None:
+        logger.info("曲目 %s 已经有项目 %s，直接打开", item.id, existing["project_id"])
+        return existing
+
     report = on_progress or (lambda *_: None)
     steps = _steps(item, count_in=False)   # 数拍那条声部下面会跳过
 
@@ -394,8 +416,14 @@ def build_project(item: RepertoireItem, on_progress: Optional[Progress] = None) 
         audio = renderer.render_part(part, blueprint)
         projectlib.add_take(proj, inst["id"], audio, "repertoire",
                             {"repertoire_id": item.id, "gm_program": part["gm_program"]})
+
+    # 认领标记写在**最后**：渲到一半崩掉的项目不该被下次点开认走，那样用户会
+    # 永远打开一个缺声部的项目，而且看不出为什么。没认领的残项目下次会被绕过。
+    fresh = projectlib.load_project(proj["project_id"])
+    fresh["repertoire"] = {"id": item.id, "piece_id": piece_id(item)}
+    projectlib.save_project(fresh)
     report(steps, steps, "完成")
-    return projectlib.load_project(proj["project_id"])
+    return fresh
 
 
 def self_check() -> list[str]:
@@ -481,6 +509,9 @@ def listing() -> list[dict]:
             "ready": is_ready(pid),
             "duration_sec": duration_sec(item),
             "track_count": len(item.tracks),
+            # 造过项目就把 id 给出去。卡片据此说「打开」而不是「点开即可指挥」——
+            # 用户得知道这一下是秒开还是要等半分钟
+            "project_id": (find_project(item) or {}).get("project_id"),
         })
     return out
 
