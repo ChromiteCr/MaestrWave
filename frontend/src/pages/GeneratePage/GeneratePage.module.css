@@ -29,6 +29,25 @@
   gap: 18px;
 }
 
+/* 音轨没加载出来。紧贴在波形下面 —— 用户正是在盯着波形等 */
+.trackError {
+  margin: -10px 0 0;
+  font-size: 13px;
+  line-height: 1.7;
+  color: color-mix(in srgb, var(--wine) 75%, var(--ink));
+}
+
+.trackRetry {
+  padding: 0 0 0 6px;
+  border: none;
+  background: none;
+  font: inherit;
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
 .transportRow {
   display: flex;
   align-items: center;

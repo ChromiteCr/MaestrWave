@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { buildAgentContext } from "../lib/agentContext";
+import { sharedAudioEngine } from "../lib/audioEngine";
 import {
   api,
   ApiError,
@@ -183,7 +184,16 @@ export const useAppStore = create<AppState>((set, get) => ({
   clearAgent: () => set({ agentMessages: [], agentError: "" }),
 
   project: null,
-  setProject: (project) => set({ project, selectedInstrumentId: project?.instruments[0]?.id ?? null }),
+  setProject: (project) => {
+    // 换项目时把上一个项目的音频从引擎里卸掉。只在 project_id 真的变了时做 ——
+    // 同一个项目内每生成一条 take 都会走这里，那时声部表本来就该原样留着。
+    // 不卸的代价见 `AudioEngine.keepOnly`：上一首的声部会跟着这一首一起响。
+    if (get().project?.project_id !== project?.project_id) {
+      sharedAudioEngine.stop();
+      sharedAudioEngine.keepOnly(project?.instruments.map((i) => i.id) ?? []);
+    }
+    set({ project, selectedInstrumentId: project?.instruments[0]?.id ?? null });
+  },
   refreshProject: async () => {
     const current = get().project;
     if (!current) return;

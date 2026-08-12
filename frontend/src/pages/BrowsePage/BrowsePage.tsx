@@ -18,19 +18,27 @@ function InstrumentRow({ instrument, playing, onToggleSolo, onEdit }: {
   onEdit: (id: string) => void;
 }) {
   const take = currentTake(instrument);
-  const { peaks } = useInstrumentTrack(instrument.id, take, 0);
+  const { peaks, error, retry } = useInstrumentTrack(instrument.id, take, 0);
   const isPlayingThis = playing === instrument.id || playing === "all";
 
   return (
     <div className={styles.row}>
       <div className={styles.rowInfo}>
         <span className={styles.rowTitle}>{instrument.display_name}</span>
-        <span className={styles.rowRole}>{instrument.role}</span>
+        {/* 加载失败时把角色换成一句话 + 重试。波形本身会退回空基线，
+            不再假装还在加载 —— 那个呼吸动画的意思是「在加载」 */}
+        {error ? (
+          <button type="button" className={styles.rowRetry} onClick={retry}>
+            没加载出来 · 重试
+          </button>
+        ) : (
+          <span className={styles.rowRole}>{instrument.role}</span>
+        )}
       </div>
 
       <Waveform
         peaks={peaks}
-        state={take ? "ready" : "empty"}
+        state={error ? "empty" : take ? "ready" : "empty"}
         isPlaying={isPlayingThis}
         height={72}
         getProgress={() => {

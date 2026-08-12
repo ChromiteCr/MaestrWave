@@ -40,6 +40,20 @@
   color: color-mix(in srgb, var(--ink) 45%, transparent);
 }
 
+/* 音轨没加载出来时顶掉 .rowRole 的位置。用酒红是因为它在这套配色里就是「出了状况」 */
+.rowRetry {
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  color: color-mix(in srgb, var(--wine) 75%, var(--ink));
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
 .rowActions {
   display: flex;
   align-items: center;

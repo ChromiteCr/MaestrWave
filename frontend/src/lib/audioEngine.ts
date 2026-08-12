@@ -33,11 +33,35 @@ export class AudioEngine {
     if (this.ctx?.state === "suspended") await this.ctx.resume();
   }
 
+  /**
+   * 取回音频并解码成一条可播的轨。
+   *
+   * **解码失败会重试。** `decodeAudioData` 在同时解好几条长音轨时会偶发
+   * `EncodingError: Unable to decode audio data`，而同一个文件隔一会儿再解就是好的
+   * （实测：失败那条重新 fetch + decode 立刻成功，文件本身完好）。真实交响乐一次
+   * 进来十几个声部、每条四五兆，正好是最容易撞上的场景。
+   *
+   * 失败一次就放弃的代价不是「少一条轨」而是**整页卡死**：波形永远停在呼吸动画、
+   * 指挥启动时那一条抛出来会让整个 `start()` 挂掉。
+   */
   async loadTrack(id: string, url: string, pan = 0): Promise<AudioBuffer> {
     if (!this.ctx || !this.masterGain) throw new Error("AudioEngine 未初始化");
-    const resp = await fetch(url);
-    const arrayBuffer = await resp.arrayBuffer();
-    const buffer = await this.ctx.decodeAudioData(arrayBuffer);
+
+    let buffer: AudioBuffer | null = null;
+    let lastErr: unknown = null;
+    for (let attempt = 0; attempt < 3 && !buffer; attempt++) {
+      // 隔一会儿再试。等的是解码器让出资源，不是网络 —— 所以第二次也重新 fetch：
+      // decodeAudioData 会把 ArrayBuffer 置为 detached，同一份数据没法重解
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 250 * attempt));
+      try {
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`);
+        buffer = await this.ctx.decodeAudioData(await resp.arrayBuffer());
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    if (!buffer) throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
 
     this.tracks.get(id)?.source?.stop();
 
@@ -65,6 +89,23 @@ export class AudioEngine {
       }
     }
     this.tracks.delete(id);
+  }
+
+  /**
+   * 只留下这些 id，其余全部卸掉。**换项目时必须调**。
+   *
+   * 两个理由，都不是省内存那么轻：
+   * 1. `playAll()` 播的是「所有已加载的轨」。不卸的话，在 A 项目听过的声部会跟着
+   *    B 项目一起响 —— 十四个声部的交响乐叠在别人的曲子上。
+   * 2. AudioBuffer 是解码后的 32 位浮点，一条 46 秒的轨就是 8MB。项目开多了
+   *    就一路堆着，而解码器撑不住时的表现正是那个偶发的 EncodingError
+   *    （见 `loadTrack`）。
+   */
+  keepOnly(ids: Iterable<string>): void {
+    const keep = new Set(ids);
+    for (const id of Array.from(this.tracks.keys())) {
+      if (!keep.has(id)) this.unload(id);
+    }
   }
 
   duration(id: string): number {

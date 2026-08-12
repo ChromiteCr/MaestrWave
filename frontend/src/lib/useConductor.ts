@@ -61,9 +61,24 @@ export function useConductor() {
     await sharedAudioEngine.init();
     await sharedAudioEngine.resume();
 
+    // 一条声部加载不出来**不能拖垮整场指挥**。原来这里是裸的 await，任何一条抛出
+    // （解码偶发失败、文件被删）都会让 start() 整个挂掉，用户看到的是「点了开始指挥
+    // 没反应」，而真实交响乐有十四条轨、撞上的概率是单条的十四倍。
+    // 逐条串行加载不改：十几条同时解码正是解码器最容易失手的时候。
+    const failed: string[] = [];
     for (const inst of project.instruments) {
       const take = currentTake(inst);
-      if (take) await sharedAudioEngine.loadTrack(inst.id, take.url, ROLE_PAN[inst.role] ?? 0);
+      if (!take) continue;
+      try {
+        await sharedAudioEngine.loadTrack(inst.id, take.url, ROLE_PAN[inst.role] ?? 0);
+      } catch (e) {
+        failed.push(inst.display_name || inst.id);
+        console.error("指挥前加载音轨失败", inst.id, e);
+      }
+    }
+    if (failed.length && sharedAudioEngine.trackIds().length === 0) {
+      setStatus("error");
+      throw new Error(`没有一条音轨加载得出来（${failed.join("、")}）`);
     }
 
     source.setBaseBpm(project.bpm);

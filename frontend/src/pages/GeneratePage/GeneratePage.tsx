@@ -111,7 +111,7 @@ export function GeneratePage() {
   const instrument = findInstrument(project, selectedInstrumentId);
   const take = currentTake(instrument);
   const trackId = instrument?.id ?? "__none__";
-  const { peaks } = useInstrumentTrack(trackId, take, 0);
+  const { peaks, error: trackError, retry: retryTrack } = useInstrumentTrack(trackId, take, 0);
   const isPending = instrument ? pendingInstruments.has(instrument.id) : false;
   const duration = take ? sharedAudioEngine.duration(trackId) : project?.segment_duration ?? 0;
 
@@ -275,12 +275,23 @@ export function GeneratePage() {
           <div className={styles.trackCard}>
             <Waveform
               peaks={peaks}
-              state={isPending ? "pending" : take ? "ready" : "empty"}
+              state={isPending ? "pending" : take && !trackError ? "ready" : "empty"}
               isPlaying={isPlaying}
               getProgress={() => (duration ? sharedAudioEngine.playheadSeconds(trackId) / duration : 0)}
               onClick={take && !isPending ? togglePlay : undefined}
               height={140}
             />
+
+            {/* 音轨加载失败得说出来。只写进控制台的话，波形会永远停在呼吸动画上，
+                而那个动画的意思是「在加载」—— 用户只会一直等下去 */}
+            {trackError && (
+              <p className={styles.trackError}>
+                这条音轨没加载出来（{trackError}）。
+                <button type="button" className={styles.trackRetry} onClick={retryTrack}>
+                  重试
+                </button>
+              </p>
+            )}
 
             <div className={styles.transportRow}>
               <button className={styles.playBtn} disabled={!take || isPending} onClick={togglePlay}>
