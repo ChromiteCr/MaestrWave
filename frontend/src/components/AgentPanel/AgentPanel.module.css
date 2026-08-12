@@ -1,41 +1,95 @@
-/* 收起态：一条竖着的窄条，文字竖排。占 40px 而不是浮一个圆钮，
-   是为了让「这里有个东西」始终可见，又不遮挡内容。 */
-.rail {
-  width: 40px;
-  flex: 0 0 40px;
-  height: 100%;
+/*
+  一个盒子，两种大小。球和对话框是**同一个** `.shell` —— 展开时改的只有
+  left/top/width/height，圆角始终 28px（也就是球的半径），所以球的那圈弧
+  和框的四个角是同一条曲线，morph 中间任何一帧都对得上。
+
+  这个 28 和 AgentPanel.tsx 里的 `RADIUS` 是同一个数，改一处必须改另一处。
+*/
+.shell {
+  position: fixed;
+  z-index: 50;
+  border-radius: 28px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.42);
+  overflow: hidden;
+  /*
+    只过渡这四个几何量。用 width/height 而不是 transform: scale —— scale 会把
+    里面的字一起拉变形，而这个动画的全部意思恰恰是「框长开了，内容是原尺寸的」。
+  */
+  transition:
+    left 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    top 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    width 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    height 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.2s ease;
+}
+
+.shellOpen {
+  box-shadow: 0 18px 54px rgba(0, 0, 0, 0.5);
+}
+
+/* 拖动时不要过渡：位置每帧都在变，插值会让球黏在手指后面一截 */
+.shellDragging {
+  transition: box-shadow 0.2s ease;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55);
+}
+
+/* ---------- 球面 ---------- */
+
+.ball {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
   border: none;
-  border-left: 1px solid var(--line);
-  background: var(--surface);
-  color: color-mix(in srgb, var(--ink) 50%, transparent);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  padding-top: 20px;
-  transition: color 0.15s ease, background 0.15s ease;
+  background: none;
+  color: var(--accent);
+  cursor: grab;
+  /* 触屏上必须关掉浏览器自己的手势，否则一拖就变成滚页面 */
+  touch-action: none;
+  transition: opacity 0.16s ease, color 0.15s ease;
 }
 
-.rail:hover {
-  color: var(--ink);
-  background: var(--surface-2);
+.ball:hover {
+  color: var(--wave-4);
 }
 
-.railText {
-  writing-mode: vertical-rl;
-  font-size: 12px;
-  letter-spacing: 0.22em;
+.shellDragging .ball {
+  cursor: grabbing;
 }
 
-.panel {
-  width: 340px;
-  flex: 0 0 340px;
-  height: 100%;
-  border-left: 1px solid var(--line);
-  background: var(--surface);
+/*
+  展开之后球面让位。节点留着不卸 —— 卸掉的话收起时它要重新挂载，淡入就没有起点。
+  淡出比几何过渡快得多（0.16s vs 0.32s）：图标得在框长开之前就消失，
+  不然它会挂在左上角跟着一起被拉开。
+*/
+.shellOpen .ball {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---------- 对话框 ---------- */
+
+.body {
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
   min-height: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+}
+
+/*
+  内容晚 0.14s 才开始淡入：这段时间框正从 56px 长到 360px，里面的字还挤在一起。
+  等框基本到位再显出来，看到的就只有「长开」和「浮现」两件事，没有中间那团糊的。
+*/
+.shellOpen .body {
+  opacity: 1;
+  pointer-events: auto;
+  transition-delay: 0.14s;
 }
 
 .head {
@@ -43,7 +97,8 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: 10px;
-  padding: 16px 16px 12px;
+  /* 左边多留 6px：圆角切掉的正是这一块，文字贴着会被啃掉一个角 */
+  padding: 16px 16px 12px 22px;
   border-bottom: 1px solid var(--line);
   flex: 0 0 auto;
 }
@@ -88,4 +143,18 @@
 
 .textBtn:hover {
   background: var(--surface-2);
+}
+
+/*
+  「减少动态效果」：直接到位，不做 morph。
+  开合本身是信息（框在不在），去掉的只是中间那段插值。
+*/
+@media (prefers-reduced-motion: reduce) {
+  .shell,
+  .ball,
+  .body,
+  .shellOpen .body {
+    transition: none;
+    transition-delay: 0s;
+  }
 }
