@@ -1,34 +1,139 @@
 .body {
-  padding: 32px 40px 64px;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 20px;
+  padding: 32px 40px 72px;
   max-width: 1080px;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+/* ---------- 分组 ---------- */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* 组标题靠一条贯穿的细线撑起层级，不靠加大字号 —— 卡片标题已经是 15px，
+   组标题再往上加就成了三级字号阶梯，页面反而更吵。 */
+.sectionHead {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.sectionTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+
+.sectionHint {
+  font-size: 12px;
+  color: color-mix(in srgb, var(--ink) 40%, transparent);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 18px;
   align-items: start;
 }
+
+/* ---------- 卡片 ---------- */
 
 .card {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 14px;
-  padding: 26px;
+  padding: 20px 22px 18px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
+}
+
+.cardWide {
+  grid-column: 1 / -1;
+}
+
+/* 标题和说明是一组，它们之间的距离必须比它们到正文的距离小，否则说明会读成
+   下一段内容的引子。所以单独包一层、内部只留 6px。 */
+.cardHead {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .cardTitle {
-  font-family: var(--font-display);
-  font-size: 18px;
-  font-weight: 600;
   margin: 0;
+  font-family: var(--font-display);
+  font-size: 15.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: color-mix(in srgb, var(--ink) 50%, transparent);
+}
+
+.note strong {
+  color: color-mix(in srgb, var(--ink) 78%, transparent);
+  font-weight: 600;
+}
+
+/* 一次性读一遍就够的说明（安全提示、接口契约）。压到卡片底部并再降一档，
+   免得每次来都拿读过的字挡住要填的东西。 */
+.fineprint {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.65;
+  color: color-mix(in srgb, var(--ink) 38%, transparent);
+}
+
+.fineprint strong {
+  color: color-mix(in srgb, var(--ink) 62%, transparent);
+  font-weight: 600;
+}
+
+/* 卡片底部那条「状态 + 按钮」。上面加一条分隔线，把「结果」和「输入」分开。 */
+.cardFoot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 2px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.errorNote {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--wine);
+}
+
+/* ---------- 状态行 ---------- */
+
+.statGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
 }
 
 .statRow {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 14px;
+  font-size: 13.5px;
   gap: 12px;
 }
 
@@ -36,11 +141,12 @@
   display: flex;
   align-items: center;
   color: color-mix(in srgb, var(--ink) 55%, transparent);
+  white-space: nowrap;
 }
 
 .statValue {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 12.5px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -64,37 +170,12 @@
   background: var(--wine);
 }
 
+/* ---------- 表单 ---------- */
+
 .field {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-}
-
-.capNote {
-  margin: 0 0 4px;
-  font-size: 12px;
-  line-height: 1.65;
-  color: color-mix(in srgb, var(--ink) 46%, transparent);
-}
-
-.capWarn {
-  margin: 4px 0 0;
-  font-size: 12px;
-  line-height: 1.65;
-  color: var(--wine);
-}
-
-/* ---- M4d：BYOK 语言模型卡片 ---- */
-.note {
-  margin: 0 0 4px;
-  font-size: 12px;
-  line-height: 1.7;
-  color: color-mix(in srgb, var(--ink) 46%, transparent);
-}
-
-.note strong {
-  color: color-mix(in srgb, var(--ink) 78%, transparent);
-  font-weight: 600;
+  gap: 7px;
 }
 
 .fieldLabel {
@@ -111,7 +192,8 @@
   color: color-mix(in srgb, var(--ink) 40%, transparent);
 }
 
-.field input {
+.field input,
+.field select {
   background: var(--surface-2);
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -121,65 +203,13 @@
   font-size: 13px;
 }
 
-.field input:focus {
+.field input:focus,
+.field select:focus {
   outline: none;
   border-color: var(--accent-dim);
 }
 
-.errorNote {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--wine);
-}
-
-/* ---- 音源选择（写谱演奏模式）---- */
-
-.rendererList {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 14px 0 16px;
-}
-
-.renderer {
-  border: 1px solid var(--line);
-  background: var(--surface-2);
-  border-radius: 10px;
-  padding: 10px 13px;
-  font: inherit;
-  text-align: left;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  transition: border-color 0.15s ease, background 0.15s ease;
-}
-
-.renderer:hover:not(:disabled) {
-  border-color: var(--accent-dim);
-}
-
-.rendererActive {
-  border-color: var(--accent);
-  background: var(--surface-3);
-}
-
-.renderer:disabled {
-  opacity: 0.42;
-}
-
-.rendererLabel {
-  font-size: 13.5px;
-  font-weight: 500;
-}
-
-.rendererHint {
-  font-size: 12px;
-  line-height: 1.55;
-  color: color-mix(in srgb, var(--ink) 45%, transparent);
-}
-
-/* ---- M7c：符号模型服务地址（输入框 + 保存按钮同一行）---- */
+/* 输入框 + 保存按钮同一行 */
 .urlRow {
   display: flex;
   gap: 10px;
@@ -201,4 +231,49 @@
 .urlRow input:focus {
   outline: none;
   border-color: var(--accent-dim);
+}
+
+/* ---------- 单选组（指挥方式 / 音源 / 作曲器共用）---------- */
+
+.optionList {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.option {
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  border-radius: 10px;
+  padding: 10px 13px;
+  font: inherit;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.option:hover:not(:disabled) {
+  border-color: var(--accent-dim);
+}
+
+.optionActive {
+  border-color: var(--accent);
+  background: var(--surface-3);
+}
+
+.option:disabled {
+  opacity: 0.42;
+}
+
+.optionLabel {
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.optionHint {
+  font-size: 12px;
+  line-height: 1.55;
+  color: color-mix(in srgb, var(--ink) 45%, transparent);
 }
