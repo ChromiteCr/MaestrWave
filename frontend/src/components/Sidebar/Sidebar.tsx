@@ -51,6 +51,16 @@ export function Sidebar() {
   const navSection = useAppStore((s) => s.navSection);
   const setActivePage = useAppStore((s) => s.setActivePage);
 
+  /**
+   * 首页什么都不选中。
+   *
+   * `navSection` 一直记着上次展开的那一级（这是对的：从「输出」点「设置」再看侧栏，
+   * 二级列表还应该是指挥体验那五项，否则回不去）。但首页在两条路径**之上** ——
+   * 一进来就把「指挥体验」描上高亮，等于告诉用户他已经在那条路上了，而他还什么
+   * 都没选。二级列表跟着一起收起来：一列没有归属的子项比高亮本身更让人犯嘀咕。
+   */
+  const onHome = activePage === "home";
+
   const renderItem = (item: Item) => {
     const on = activePage === item.id || (item.also?.includes(activePage) ?? false);
     return (
@@ -91,7 +101,7 @@ export function Sidebar() {
             type="button"
             // 停在训练/设置这种 global 页时，两个一级都不算「当前所在」，只保留 navSection 的展开态
             aria-current={PAGE_SECTION[activePage] === s.id}
-            className={`${styles.section} ${navSection === s.id ? styles.sectionOpen : ""}`}
+            className={`${styles.section} ${!onHome && navSection === s.id ? styles.sectionOpen : ""}`}
             onClick={() => setActivePage(SECTION_HOME[s.id])}
           >
             <s.icon />
@@ -103,8 +113,12 @@ export function Sidebar() {
         ))}
       </div>
 
-      <div className={styles.divider} />
-      <div className={styles.group}>{PAGES[navSection].map(renderItem)}</div>
+      {!onHome && (
+        <>
+          <div className={styles.divider} />
+          <div className={styles.group}>{PAGES[navSection].map(renderItem)}</div>
+        </>
+      )}
 
       <div className={styles.spacer} />
       <div className={styles.divider} />
