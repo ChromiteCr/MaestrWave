@@ -152,9 +152,9 @@ export function BeatPatternDemo({
 
       // 上下留白不对称：顶部要放反弹顶点，底部要放拍点编号。
       // 小窗里没有走向文字要摆，留白只需要够编号不被裁掉
-      const padX = compact ? 24 : 46;
-      const padTop = compact ? 12 : 22;
-      const padBottom = compact ? 18 : 34;
+      const padX = compact ? 24 : 48;
+      const padTop = compact ? 12 : 30;
+      const padBottom = compact ? 18 : 40;
       const iw = w - padX * 2;
       const ih = h - padTop - padBottom;
       const px = (x: number) => padX + x * iw;
@@ -178,7 +178,7 @@ export function BeatPatternDemo({
         ctx.font = canvasFont(10);
         ctx.fillStyle = withAlpha(colors.ink, 0.3);
         const midLabel = "身体中线";
-        ctx.fillText(midLabel, px(0.5) - ctx.measureText(midLabel).width / 2, padTop - 6);
+        ctx.fillText(midLabel, px(0.5) + 8, padTop - 6);
       }
 
       // 标准轨迹
@@ -225,7 +225,7 @@ export function BeatPatternDemo({
             ny = -ny;
           }
           // 法线接近水平时只挪 14px 仍会有半个词压在线上，按横向分量补上半个词宽
-          const off = 14 + (tw / 2) * Math.abs(nx);
+          const off = 20 + (tw / 2) * Math.abs(nx);
           ctx.fillText(word, mx + nx * off - tw / 2, my + ny * off + 4);
         });
       }
@@ -251,8 +251,8 @@ export function BeatPatternDemo({
         const dx = cx - px(centroid.x);
         const dy = cy - py(centroid.y);
         const len = Math.hypot(dx, dy) || 1;
-        const lx = cx + (dx / len) * (compact ? 12 : 18);
-        const ly = cy + (dy / len) * (compact ? 12 : 18);
+        const lx = cx + (dx / len) * (compact ? 12 : 24);
+        const ly = cy + (dy / len) * (compact ? 12 : 24);
         ctx.fillText(label, lx - tw / 2, ly + 4);
       });
 
