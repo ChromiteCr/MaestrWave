@@ -16,9 +16,17 @@ on:
           （⚠️ 仅限私有仓库且信任下载者；公开仓库勾选会泄露密钥）
         type: boolean
         default: false
+  # 推到 main 就构建一次。**不加 paths 过滤**：过滤器对 tag 推送同样生效，
+  # 万一某次发布 tag 落在一个只改了文档的提交上，发布就会被静默跳过。
+  # 并发组已配了 cancel-in-progress，连续推送不会堆积。
   push:
+    branches:
+      - main
     tags:
+      # M* 是本项目的版本号格式（见 docs/CHANGELOG.md 开头），v* 是早期用过的。
+      # 两个都收，否则打了 M7s 这样的 tag 不会发布。
       - "v*"
+      - "M*"
 
 permissions:
   contents: write # 发布 Release 需要

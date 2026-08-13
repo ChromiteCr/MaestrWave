@@ -1,6 +1,6 @@
 # MaestrWave
 
-![version](https://img.shields.io/badge/version-M7s-blue)
+![version](https://img.shields.io/badge/version-M7s1-blue)
 ![last commit](https://img.shields.io/github/last-commit/ChromiteCr/MaestrWave)
 ![commit activity](https://img.shields.io/github/commit-activity/m/ChromiteCr/MaestrWave)
 ![stars](https://img.shields.io/github/stars/ChromiteCr/MaestrWave)
@@ -37,7 +37,8 @@
 
 - **手动触发**：仓库 Actions 页 → `Build & Publish Startup Package` → Run workflow，
   生成 `MaestrWave-macOS.zip` 与 `MaestrWave-Windows.zip`（可在 Actions 页下载）。
-- **打 tag 自动发布**：推送 `v*` 标签（如 `v1.0.0`）时自动构建并发布到 GitHub Releases。
+- **推送到 main**：自动构建两个平台并上传 artifact，不发布 Release。
+- **打 tag 自动发布**：推送 `M*` 或 `v*` 标签（如 `M7s1`）时自动构建并发布到 GitHub Releases。
 
 发布包结构：
 
@@ -65,7 +66,7 @@ MaestrWave-{平台}.zip
 
 ## 版本记录
 
-当前版本 **M7s**。完整的变更历史、版本号规则，以及 M0 到 M6 的阶段记录，都在
+当前版本 **M7s1**。完整的变更历史、版本号规则，以及 M0 到 M6 的阶段记录，都在
 [docs/CHANGELOG.md](docs/CHANGELOG.md)。
 
 ## 用云端 API 生成（不占本机显存）
