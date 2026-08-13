@@ -85,39 +85,6 @@ jobs:
       - name: PyInstaller build
         run: pyinstaller scripts/package/maestrwave.spec --noconfirm
 
-      # ---------- 冒烟测试：真启动一次后端，验证打包正确 ----------
-      - name: Smoke test (launch backend, check HTTP)
-        if: runner.os == 'macOS'
-        shell: bash
-        env:
-          PORT: 3199
-          OUTPUT_DIR: /tmp/mw-smoke/sessions
-          PROJECTS_DIR: /tmp/mw-smoke/projects
-        run: |
-          # 组装冒烟环境：模拟发布包布局。entry.py 找的是 解压根/frontend/dist，
-          # 放错位置的话 app.py 的 / 路由会返回「前端还没有构建产物」的 JSON 兜底，
-          # 那也是 200 —— 测试照样通过，却什么都没验证到。
-          mkdir -p "dist/MaestrWave/frontend"
-          cp -R frontend/dist "dist/MaestrWave/frontend/dist"
-          ./dist/MaestrWave/MaestrWave > /tmp/mw-smoke.log 2>&1 &
-          BGPID=$!
-          CODE=""
-          for _ in $(seq 1 30); do
-            CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3199/" || true)
-            [ "$CODE" = "200" ] && break
-            sleep 1
-          done
-          BODY="$(curl -s "http://localhost:3199/" | head -c 200 || true)"
-          API=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3199/api/projects" || true)
-          kill $BGPID 2>/dev/null || true
-          echo "GET / -> $CODE ; GET /api/projects -> $API"
-          fail() { echo "!! 冒烟测试失败：$1"; echo "--- 后端日志 ---"; cat /tmp/mw-smoke.log; exit 1; }
-          test "$CODE" = "200" || fail "首页没返回 200"
-          # 必须是真的 index.html，不能是兜底 JSON —— 后者说明前端没打进包里
-          case "$BODY" in *"<!doctype html>"*|*"<!DOCTYPE html>"*) ;; *) fail "首页返回的不是 index.html：$BODY" ;; esac
-          test "$API" = "200" || fail "/api/projects 没返回 200"
-          rm -rf "dist/MaestrWave/frontend"
-
       # ---------- fluidsynth：收进发布包，让用户不必自己装 ----------
       # 这是「音源」的可选第二条路：默认走 backend/sf2.py 的内置采样播放器
       # （纯 Python，到哪都能跑），装了 fluidsynth 的人可以在设置页切过去。
@@ -140,6 +107,42 @@ jobs:
       - name: Assemble package
         shell: bash
         run: bash scripts/package/assemble.sh "${{ matrix.artifact }}" "${{ matrix.launcher }}"
+
+      # ---------- 冒烟测试：解压真要发出去的那个 zip，启动一次 ----------
+      # **必须放在 assemble 之后、测 zip 本身。**早先这一步测的是 PyInstaller 的输出
+      # 目录 dist/MaestrWave/，那个布局跟发布包不是一回事：包里可执行文件被收进
+      # 解压根/MaestrWave/，前端 dist 是它的兄弟目录而不是子目录。结果包里 serve 不出
+      # 前端（首页返回 app.py 那段 JSON 兜底，也是 200），CI 却一路绿灯。
+      # 现在测的是解压后的成品，顺带把 zip 完整性和权限位一起验了。
+      - name: Smoke test (unzip package, launch, check HTTP)
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          PORT: 3199
+          OUTPUT_DIR: /tmp/mw-smoke/sessions
+          PROJECTS_DIR: /tmp/mw-smoke/projects
+        run: |
+          rm -rf /tmp/mw-pkg && mkdir -p /tmp/mw-pkg
+          unzip -q "dist-pkg/${{ matrix.artifact }}.zip" -d /tmp/mw-pkg
+          cd "/tmp/mw-pkg/${{ matrix.artifact }}"
+          test -x "./${{ matrix.launcher }}" || { echo "!! 启动器丢了可执行位"; exit 1; }
+          ./MaestrWave/MaestrWave > /tmp/mw-smoke.log 2>&1 &
+          BGPID=$!
+          CODE=""
+          for _ in $(seq 1 30); do
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3199/" || true)
+            [ "$CODE" = "200" ] && break
+            sleep 1
+          done
+          BODY="$(curl -s "http://localhost:3199/" | head -c 200 || true)"
+          API=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3199/api/projects" || true)
+          kill $BGPID 2>/dev/null || true
+          echo "GET / -> $CODE ; GET /api/projects -> $API"
+          fail() { echo "!! 冒烟测试失败：$1"; echo "--- 后端日志 ---"; cat /tmp/mw-smoke.log; exit 1; }
+          test "$CODE" = "200" || fail "首页没返回 200"
+          # 必须是真的 index.html，不能是兜底 JSON —— 后者说明前端没被 serve 出来
+          case "$BODY" in *"<!doctype html>"*|*"<!DOCTYPE html>"*) ;; *) fail "首页返回的不是 index.html：$BODY" ;; esac
+          test "$API" = "200" || fail "/api/projects 没返回 200"
 
       # ---------- 可选：注入 TME 密钥（仅手动勾选且设置了 Secrets） ----------
       # 注意：secrets 上下文不能出现在 if: 里，所以放到步骤内判断；

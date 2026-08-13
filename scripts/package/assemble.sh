@@ -62,6 +62,27 @@ if [[ "$LAUNCHER" == *.command ]]; then
 fi
 
 # 8) 打包
+#
+# GitHub 的 Windows runner 上没有 zip：Git Bash 不带这个命令，assemble.sh 会以
+# 127 退出。所以这里分两条路，**zip 存在时走的还是原来那一行**，macOS 与 Linux
+# 的行为一字未改；只有找不到 zip 才退到 Python 的 zipfile。
+#
+# 退到 Python 而不是 PowerShell 的 Compress-Archive，是因为 Python 在这条流水线里
+# 是确定存在的（前面的 Setup Python 步骤刚装过），而 Compress-Archive 对 PyInstaller
+# 这种上千个小文件的目录出了名的慢。zipfile 也保留 Unix 权限位（ZipInfo.from_file
+# 会把 st_mode 写进 external_attr），换平台解压出来 .command 仍是可执行的。
 cd "$ROOT/dist-pkg"
-zip -r -q "${ARTIFACT}.zip" "$ARTIFACT"
+if command -v zip >/dev/null 2>&1; then
+  zip -r -q "${ARTIFACT}.zip" "$ARTIFACT"
+else
+  echo "==> 未找到 zip，改用 Python zipfile 打包"
+  PY=""
+  for c in python3 python py; do
+    command -v "$c" >/dev/null 2>&1 && { PY="$c"; break; }
+  done
+  [ -n "$PY" ] || { echo "!! zip 和 Python 都没有，无法打包" >&2; exit 1; }
+  # base_dir 限定只收 $ARTIFACT/ 这一层，生成的 zip 是它的兄弟，不会把自己卷进去
+  "$PY" -c "import shutil,sys; shutil.make_archive(sys.argv[1], 'zip', root_dir='.', base_dir=sys.argv[1])" "$ARTIFACT"
+fi
+[ -f "$ZIP_PATH" ] || { echo "!! 打包没有产出 $ZIP_PATH" >&2; exit 1; }
 echo "==> 完成：$ZIP_PATH"

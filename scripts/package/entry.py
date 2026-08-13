@@ -24,8 +24,17 @@ APP_ROOT = (
 # 先让 backend 包完成常规 import（含 /api /audio /project-audio 挂载等）
 from backend import app as backend_app  # noqa: E402
 
-# 打包后前端 dist 位于 解压根/frontend/dist，显式重定向，避免依赖 __file__ 推导
-_dist = APP_ROOT / "frontend" / "dist"
+# 前端 dist 的位置要按两种布局分别找。
+#   ① APP_ROOT/frontend/dist        —— PyInstaller 刚构建完的 dist/MaestrWave/，CI 冒烟测试用
+#   ② APP_ROOT.parent/frontend/dist —— 真正发出去的包，assemble.sh 把可执行文件收进
+#                                      解压根/MaestrWave/，前端是它的**兄弟**而不是子目录
+# 早先只找 ①，于是发布包解压后双击启动，首页返回的是 app.py 那段「前端还没有构建
+# 产物」的 JSON 兜底（那也是 200，所以冒烟测试照样绿）。
+_dist = next(
+    (p for p in (APP_ROOT / "frontend" / "dist", APP_ROOT.parent / "frontend" / "dist")
+     if (p / "index.html").is_file()),
+    APP_ROOT / "frontend" / "dist",
+)
 if _dist.exists():
     backend_app.FRONTEND_DIST_DIR = _dist
     # app.py 在模块加载时若 dist 不存在则不会挂载 /assets，这里补上

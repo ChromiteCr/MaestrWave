@@ -1,6 +1,6 @@
 # MaestrWave
 
-![version](https://img.shields.io/badge/version-M7s1-blue)
+![version](https://img.shields.io/badge/version-M7s2-blue)
 ![last commit](https://img.shields.io/github/last-commit/ChromiteCr/MaestrWave)
 ![commit activity](https://img.shields.io/github/commit-activity/m/ChromiteCr/MaestrWave)
 ![stars](https://img.shields.io/github/stars/ChromiteCr/MaestrWave)
@@ -61,12 +61,12 @@ MaestrWave-{平台}.zip
 也可在手动触发时勾选 `tme_inject`，由 Actions 从仓库 Secrets 注入密钥。
 
 > 实现要点：后端打包由 `scripts/package/entry.py` + `maestrwave.spec` 完成，前端
-> dist 在入口脚本中显式重定向给 `backend.app`（不改动任何业务代码）；CI 里带一次
-> 真启动冒烟测试（HTTP 200），确保发布包开箱即用。
+> dist 在入口脚本中显式重定向给 `backend.app`（不改动任何业务代码）；CI 会把打好的
+> zip 解压再真启动一次，断言首页是真实 index.html 而非兜底 JSON，确保发布包开箱即用。
 
 ## 版本记录
 
-当前版本 **M7s1**。完整的变更历史、版本号规则，以及 M0 到 M6 的阶段记录，都在
+当前版本 **M7s2**。完整的变更历史、版本号规则，以及 M0 到 M6 的阶段记录，都在
 [docs/CHANGELOG.md](docs/CHANGELOG.md)。
 
 ## 用云端 API 生成（不占本机显存）
